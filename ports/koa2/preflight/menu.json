@@ -1,0 +1,1 @@
+{"items":[{"name":"Readom KOA2 Boot Preflight","items":[{"name":"Collect read-only boot report","action":"sh ./collect.sh","exitmenu":false,"status":false,"internal":"status Collecting read-only boot report"}]}]}

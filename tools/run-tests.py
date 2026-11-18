@@ -46,6 +46,7 @@ CXXFLAGS = ['-std=c++14', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fexcepti
 # with '-I' is an include path instead. 'linux' marks a test that needs Linux
 # headers (device mapper, FIBMAP) and is skipped elsewhere.
 TESTS = [
+    ('koa2-contract', 'c', ['boot/koa2/contract.c', 'boot/koa2/test-contract.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

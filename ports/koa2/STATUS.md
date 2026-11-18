@@ -2,6 +2,14 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 已新增 boot/koa2/contract.c：只读 FDT 与内存区间校验；ASan/UBSan 下
+  截断/越界/机型/区间测试及 20000 变异测试通过；ARM 静态版 QEMU 也通过。
+- KUAL 的 Readom KOA2 Boot Preflight 已准备并部署，未由代理执行。
+  用户方便时启动一次，报告保存在 koa2-boot-preflight/；原始数据不可上传 Git。
+- 编译 DTB 缺 bootargs，内存比实机可用范围宽，不能直接拿来交接。
+  真实交接前必须取得并核验原厂运行时 FDT、保留范围和日志行为。
+- 用户睡觉期间继续主机开发/测试/自动提交，所有设备跳转仍未执行。
+
 - 最新：实验源码已独立解压到 linux-headless-smoke，原厂 linux-stock 不变。
   setlocalversion 条件修正只识别实验后缀；4 项实际 shell 隔离测试通过。
 - 已重建成功，release=4.1.15-lab126-koa2-headless-smoke，97 个模块的
