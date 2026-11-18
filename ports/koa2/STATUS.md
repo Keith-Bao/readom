@@ -2,6 +2,16 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- QEMU 双核内核运行验证已通过：三 Binder context 独立管理、协议/mmap、
+  子进程实际 one-way payload 分发与回收，运行日志没有 WARNING/BUG/Oops/panic。
+  测试曾捕获页映射 bug，已改为官方 4.1 映射路径。见 qemu-binder.md。
+- SELinux policy30/xperms 与 ioctl 审计前置补丁来自官方固定提交，独立树
+  对象编译通过；策略加载与执行行为未验证。见 selinux41.md。
+- 原厂 printk 的 dump_lastk_to_mmc 包含原始 MMC 写入入口。设备实验前
+  必须审计/隔离此路径；当前没有任何新内核上机。
+- 当前下一步：扩大 Binder 同步/FD/SG 运行测试；policy30 行为测试；
+  真机后端仍等待原厂运行时 FDT/保留内存的只读报告，不能猜地址直接跳转。
+
 - 主机自主工作新进展：android41-core.config 46 项原生配置全部生效，
   namespace/seccomp/SELinux/ashmem/原生 Binder/LMK 对象编译通过。
 - 已从仓库的可追溯补丁重建 Binder 多 context/SG/安全修复实现，针对 4.1

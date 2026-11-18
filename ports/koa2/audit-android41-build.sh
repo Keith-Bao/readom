@@ -26,7 +26,7 @@ if [[ -n ${KOA2_AUDIT_EXTRA_CONFIG:-} ]]; then
 fi
 make -C "$src" O="$out" -j4 kernel/seccomp.o kernel/nsproxy.o \
     drivers/android/binder.o drivers/staging/android/ashmem.o \
-    drivers/staging/android/lowmemorykiller.o security/selinux/ \
+    drivers/staging/android/lowmemorykiller.o security/lsm_audit.o security/selinux/ \
     2>&1 | tee "$art/compile.log"
 cp "$out/.config" "$art/kernel.config"
 echo 'Object compilation only; no multi-context Binder or complete Android runtime validation.' > "$art/SCOPE.txt"
