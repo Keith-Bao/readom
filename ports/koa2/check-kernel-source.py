@@ -6,6 +6,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('source', type=Path)
+parser.add_argument('--headless-smoke', action='store_true', help='No display driver is built; not a stock/Android image.')
 args = parser.parse_args()
 required = [
     'Makefile',
@@ -17,6 +18,8 @@ required = [
     'include/uapi/linux/mxcfb.h',
 ]
 missing = [name for name in required if not (args.source / name).is_file()]
+if args.headless_smoke:
+    missing = [name for name in missing if name != 'drivers/video/fbdev/mxc/mxc_epdc_fb_lab126.c']
 print(json.dumps({'check': 'required-stock-source', 'missing': missing,
                   'passed': not missing,
                   'scope': 'File presence only; not build or hardware compatibility.'}, indent=2))

@@ -16,6 +16,7 @@
 安装 build-essential gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi git
 ca-certificates curl bison flex libssl-dev libncurses-dev u-boot-tools bc python3
 xz-utils cpio rsync file device-tree-compiler qemu-system-arm。
+zImage 的 LZO 压缩另需 lzop，模块安装需 kmod；已补装。
 
 ## 工具链
 

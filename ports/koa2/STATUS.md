@@ -2,6 +2,13 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 当前主路线已按用户要求改为 headless-smoke：先解决无显示新内核和交接。
+- 独立 profile 已编译/导出一次 zImage、DTB、模块，make 退出 0。
+- 当前产物仍不能部署：官方 setlocalversion 强制原厂 release，实验后缀
+  未生效。已新增导出拒绝检查。详情和旧产物哈希见 headless-smoke.md。
+- 当前下一步：独立实验版本标识补丁和重建；随后模块检查、DTB/SMP 校验及日志通路。
+- 不再把取得完整 EPDC 源码当作启动链研究的前置条件，但完整 Android 的显示目标保留。
+
 - 最新路线决策见 route-decision.md：原厂内核缺 namespace/seccomp/LSM，
   只补普通模块无法达到约定目标。已排除该候选，继续新内核路线。
 - EPDC 已核实 8 组直接接口，旧版同名函数存在签名差异且缺少 v2 电压入口；
