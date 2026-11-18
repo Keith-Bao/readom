@@ -1,0 +1,14 @@
+{
+  "kernel": {
+    "publisher": "Amazon",
+    "firmware": "5.16.2.1.1",
+    "source_url": "https://kindledownloads.s3.amazonaws.com/Kindle_src_5.16.2.1.1_4097450002.tar.gz",
+    "archive_bytes": 356269633,
+    "archive_sha256": "f6eaefa5beae2e9e69a141f836e6441324dedf9f74520acc3412135c41003094",
+    "member": "gplrelease/linux-4.1.15.tar.gz",
+    "member_sha256": "efb1b966fedcba318af381080f6a699642a66a929c42e8578aeb6e3fe240ea93",
+    "defconfig": "imx_v7_zelda_defconfig",
+    "device_tree": "arch/arm/boot/dts/imx7d-zelda.dts",
+    "status": "Archive and listed source members inspected; not compiled or booted."
+  }
+}

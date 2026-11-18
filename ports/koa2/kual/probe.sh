@@ -26,7 +26,7 @@ read_value() {
 }
 
 {
-    printf 'KOA2 hardware metadata probe v1\n'
+    printf 'KOA2 hardware metadata probe v2\n'
     date -u 2>/dev/null || true
     uname -srm
     printf '\n[kernel]\n'
@@ -58,12 +58,12 @@ read_value() {
     read_value /proc/bootmode
     printf '\n[block_layout]\n'
     cat /proc/partitions
-    for block in /sys/class/block/mmcblk0 /sys/class/block/mmcblk0p* /sys/class/block/mmcblk0boot*; do
+    for block in /sys/class/block/mmcblk*; do
         [ -d "$block" ] || continue
         for field in size start ro force_ro; do read_value "$block/$field"; done
     done
     printf '\n[mmc_mounts]\n'
-    awk '$1 ~ /^\/dev\/mmcblk0/ {print $1, $2, $3}' /proc/mounts
+    awk '$1 ~ /^\/dev\/mmcblk[0-9]/ {print $1, $2, $3}' /proc/mounts
     printf '\n[framebuffer]\n'
     for field in name virtual_size bits_per_pixel rotate modes state; do
         read_value "/sys/class/graphics/fb0/$field"
@@ -117,5 +117,5 @@ read_value() {
     printf '\n[probe_complete]\n'
 } > "$REPORT_DIR/report.txt.tmp"
 mv "$REPORT_DIR/report.txt.tmp" "$REPORT_DIR/report.txt"
-printf 'v1 complete\n' > "$REPORT_DIR/complete.txt"
+printf 'v2 complete\n' > "$REPORT_DIR/complete.txt"
 echo 'Hardware report saved. Return to the library and reconnect USB.'

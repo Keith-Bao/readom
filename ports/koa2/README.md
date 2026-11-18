@@ -2,6 +2,10 @@
 
 状态：硬件信息采集阶段，尚不能启动 Android。不能使用 PW3 安装包。
 
+首次采集已完成，实机结论见 [hardware-findings.md](hardware-findings.md)，
+官方内核源码校验信息见 [source-lock.json](source-lock.json)。
+采集器 v2 修正了 KOA2 存储设备 mmcblk2 的分区属性采集。
+
 ## 已从这台设备确认
 
 - USB 存储卷：D:，约 6.67 GB（十进制）。
