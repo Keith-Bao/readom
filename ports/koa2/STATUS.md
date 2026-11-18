@@ -1,5 +1,32 @@
 # 当前执行状态
 
+## 最新进度（覆盖下文早期 WSL 阻塞记录）
+
+- WSL 安装完成：Readom-KOA2 已在 E 盘导入 Ubuntu 22.04.5。
+- Linux 8 CPU / 10GB RAM / 8GB swap；依赖安装完成，可直接联网。
+- Linux Git 副本 /home/builder/readom-work/readom；源码 linux-stock。
+- ARM GCC 4.9 可执行，归档来源及独立校验值见 build-environment.md。
+- 完整上游主机测试：49 passed、0 failed、24 skipped，日志
+  /home/builder/artifacts/host-tests.log。Linux KOA2 EpdcAbi.h 语法检查通过。
+- C 已开始，build-stock-kernel.sh 可重复执行；host dtc 的 yylloc 问题
+  以 make 命令行 HOSTCFLAGS=-O2 -fcommon 解决，仅影响主机工具。
+- C 当前真实阻塞：mxc_epdc_v2_fb.c:792 包含 mxc_epdc_fb_lab126.c，
+  官方内核归档和已解压源码里未找到该文件；编译退出 1，不能宣称内核通过。
+- 没有关闭 EPDC、修改原厂驱动、加载模块或进行真机交接。
+
+### 当前下一步
+
+1. 审计官方同机型其他固件归档及公开源码镜像，寻找缺失的 Lab126 EPDC
+   包含文件，核实来源、许可证和与 v2 调用点的兼容性。
+2. 若能取得完整源文件，以单独补丁和来源记录补齐；若不能，先列出
+   所有缺失接口和重实现范围，不能拿空 stub、关闭 LAB126 或换原厂二进制冒充源码复现。
+3. 原厂构建通过后才进行模块审计和干净重建，然后推进 D。
+4. 产物日志位于 /home/builder/artifacts/stock-build-console.log 和 stock-kernel/。
+
+---
+
+以下为首次安装前的历史记录，不代表当前阻塞。
+
 ## 目标及起点
 
 执行 ROADMAP.md 的完整自用目标。分支 port/koa2，起点 6a74732。
