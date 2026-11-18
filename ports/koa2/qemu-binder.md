@@ -22,6 +22,11 @@ Oops 和 panic。无磁盘后端，不涉及设备分区。
   code 和实际映射中的 payload，随后 BC_FREE_BUFFER 回收缓冲区。
 - 正常关闭映射与 FD，输出 KOA2_BINDER_SMOKE_PASS failures=0 并关闭模拟器。
 
+后续扩展也已通过：同步请求由服务端验证 payload 与 sender PID，服务端以
+BINDER_TYPE_FD 回复一个 pipe 的读端，客户端实际读到写入的 32 位值。
+另使用 BC_TRANSACTION_SG + BINDER_TYPE_PTR 发送两个 32 位值，验证接收端
+被重定位的指针位于自己的 Binder mmap 内、数据完整，最后回收缓冲区。
+
 首轮模拟器实测捕获了 Binder 页映射告警：旧 tmp_area 的 guard 处理与 4.1
 不兼容。现移植官方 4.1 的 map_kernel_range_noflush + flush_cache_vmap
 路径并检查返回映射页数为 1；重跑后上述测试通过，未见内核告警。
@@ -30,5 +35,5 @@ Oops 和 panic。无磁盘后端，不涉及设备分区。
 和 LAB126_PRINTK_BUFFER；prepare-qemu-source.py 修复原厂日志代码遗漏的
 CONFIG_LAB126_PRINTK_BUFFER guard。此改动仅在研究树，不改 linux-stock。
 
-尚未验证：同步回复、FD/PTR/FDA/SG 传递、并发/退出压力、SELinux 策略、
+尚未验证：嵌套 PTR/FDA、恶意 offsets/FD/SG 错误路径、并发/退出压力、SELinux 策略、
 Android framework、i.MX7 驱动和任何 Kindle 真机行为。

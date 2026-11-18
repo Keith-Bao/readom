@@ -2,6 +2,9 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- QEMU Binder 继续扩展并通过：同步请求/回复、实际 FD 数据读取、
+  BC_TRANSACTION_SG 的 PTR 缓冲区重定位与数据完整性；无内核告警。
+
 - QEMU 双核内核运行验证已通过：三 Binder context 独立管理、协议/mmap、
   子进程实际 one-way payload 分发与回收，运行日志没有 WARNING/BUG/Oops/panic。
   测试曾捕获页映射 bug，已改为官方 4.1 映射路径。见 qemu-binder.md。

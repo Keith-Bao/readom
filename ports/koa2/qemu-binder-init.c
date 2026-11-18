@@ -64,6 +64,122 @@ static int receive_value(int fd,int index) {
     }
     return -1;
 }
+static int next_transaction(int fd,uint32_t expected,struct binder_transaction_data *tr) {
+    unsigned attempt;
+    for(attempt=0;attempt<8;attempt++) {
+        unsigned char buffer[256];
+        struct binder_write_read wr={0};
+        size_t offset=0;
+        wr.read_size=sizeof(buffer); wr.read_buffer=(binder_uintptr_t)(uintptr_t)buffer;
+        if(ioctl(fd,BINDER_WRITE_READ,&wr)) return -1;
+        while(offset+4<=wr.read_consumed) {
+            uint32_t command;
+            memcpy(&command,buffer+offset,4); offset+=4;
+            if(command==BR_NOOP || command==BR_SPAWN_LOOPER || command==BR_TRANSACTION_COMPLETE) continue;
+            if(command!=expected || sizeof(*tr)>wr.read_consumed-offset) return -1;
+            memcpy(tr,buffer+offset,sizeof(*tr)); return 0;
+        }
+    }
+    return -1;
+}
+static int buffer_contains(void *mapping,binder_uintptr_t pointer,size_t size) {
+    uintptr_t base=(uintptr_t)mapping,address=(uintptr_t)pointer;
+    return mapping!=MAP_FAILED && size<=4096 && address>=base && address-base<=4096-size;
+}
+static void synchronous_fd_test(int server) {
+    pid_t pid=fork();
+    check(pid>=0,"fork synchronous FD client");
+    if(pid==0) {
+        int fd=device("binder"),ok=0;
+        uint32_t request=0x1234,received=0;
+        struct binder_transaction_data tr={0},reply;
+        struct binder_fd_object object;
+        void *mapping;
+        if(fd<0) _exit(1);
+        mapping=mmap(NULL,4096,PROT_READ,MAP_PRIVATE,fd,0);
+        tr.code=0x7000; tr.flags=TF_ACCEPT_FDS; tr.data_size=sizeof(request);
+        tr.data.ptr.buffer=(binder_uintptr_t)(uintptr_t)&request;
+        if(mapping!=MAP_FAILED && !send_command(fd,BC_TRANSACTION,&tr,sizeof(tr)) &&
+           !next_transaction(fd,BR_REPLY,&reply) && reply.data_size==sizeof(object) &&
+           buffer_contains(mapping,reply.data.ptr.buffer,sizeof(object))) {
+            memcpy(&object,(const void *)(uintptr_t)reply.data.ptr.buffer,sizeof(object));
+            if(object.hdr.type==BINDER_TYPE_FD) {
+                ok=read((int)object.fd,&received,sizeof(received))==sizeof(received) && received==0xfedcba98u;
+                close((int)object.fd);
+            }
+            if(send_command(fd,BC_FREE_BUFFER,&reply.data.ptr.buffer,sizeof(reply.data.ptr.buffer))) ok=0;
+        }
+        if(mapping!=MAP_FAILED) munmap(mapping,4096);
+        close(fd); _exit(ok?0:1);
+    }
+    if(pid>0) {
+        struct binder_transaction_data request,reply={0};
+        struct binder_fd_object object={0};
+        binder_size_t offset=0;
+        int descriptors[2],status=0;
+        uint32_t data=0xfedcba98u,value=0;
+        int received=next_transaction(server,BR_TRANSACTION,&request)==0;
+        check(received,"receive synchronous request");
+        if(received && buffer_contains(mappings[0],request.data.ptr.buffer,sizeof(value))) {
+            memcpy(&value,(const void *)(uintptr_t)request.data.ptr.buffer,sizeof(value));
+            check(request.code==0x7000 && request.data_size==sizeof(value) && value==0x1234 && request.sender_pid==pid,"synchronous payload and sender PID");
+        }
+        if(received && pipe(descriptors)==0) {
+            check(write(descriptors[1],&data,sizeof(data))==sizeof(data),"prepare FD payload");
+            close(descriptors[1]);
+            object.hdr.type=BINDER_TYPE_FD; object.fd=(uint32_t)descriptors[0];
+            reply.data_size=sizeof(object); reply.offsets_size=sizeof(offset);
+            reply.data.ptr.buffer=(binder_uintptr_t)(uintptr_t)&object;
+            reply.data.ptr.offsets=(binder_uintptr_t)(uintptr_t)&offset;
+            check(send_command(server,BC_REPLY,&reply,sizeof(reply))==0,"reply with translated FD");
+            close(descriptors[0]);
+            check(send_command(server,BC_FREE_BUFFER,&request.data.ptr.buffer,sizeof(request.data.ptr.buffer))==0,"free synchronous request");
+        }
+        check(waitpid(pid,&status,0)==pid && WIFEXITED(status) && WEXITSTATUS(status)==0,"client reads payload from transferred FD");
+    }
+}
+static void scatter_gather_test(int server) {
+    pid_t pid=fork();
+    check(pid>=0,"fork scatter-gather client");
+    if(pid==0) {
+        int fd=device("hwbinder"),ok;
+        uint32_t payload[2]={0xabcdef01u,0x10203040u};
+        binder_size_t offset=0;
+        struct binder_buffer_object object={0};
+        struct binder_transaction_data_sg sg={0};
+        if(fd<0) _exit(1);
+        object.hdr.type=BINDER_TYPE_PTR;
+        object.buffer=(binder_uintptr_t)(uintptr_t)payload; object.length=sizeof(payload);
+        sg.transaction_data.code=0x8000; sg.transaction_data.flags=TF_ONE_WAY;
+        sg.transaction_data.data_size=sizeof(object); sg.transaction_data.offsets_size=sizeof(offset);
+        sg.transaction_data.data.ptr.buffer=(binder_uintptr_t)(uintptr_t)&object;
+        sg.transaction_data.data.ptr.offsets=(binder_uintptr_t)(uintptr_t)&offset;
+        sg.buffers_size=sizeof(payload);
+        ok=send_command(fd,BC_TRANSACTION_SG,&sg,sizeof(sg))==0;
+        close(fd); _exit(ok?0:1);
+    }
+    if(pid>0) {
+        struct binder_transaction_data tr;
+        struct binder_buffer_object object;
+        uint32_t payload[2]={0,0};
+        int status=0,ok=0;
+        int sent=waitpid(pid,&status,0)==pid && WIFEXITED(status) && WEXITSTATUS(status)==0;
+        check(sent,"client writes BC_TRANSACTION_SG");
+        if(sent && next_transaction(server,BR_TRANSACTION,&tr)==0) {
+            if(tr.code==0x8000 && tr.data_size==sizeof(object) &&
+               buffer_contains(mappings[1],tr.data.ptr.buffer,sizeof(object))) {
+                memcpy(&object,(const void *)(uintptr_t)tr.data.ptr.buffer,sizeof(object));
+                if(object.hdr.type==BINDER_TYPE_PTR && object.length==sizeof(payload) &&
+                   buffer_contains(mappings[1],object.buffer,sizeof(payload))) {
+                    memcpy(payload,(const void *)(uintptr_t)object.buffer,sizeof(payload));
+                    ok=payload[0]==0xabcdef01u && payload[1]==0x10203040u;
+                }
+            }
+            if(send_command(server,BC_FREE_BUFFER,&tr.data.ptr.buffer,sizeof(tr.data.ptr.buffer))) ok=0;
+        }
+        check(ok,"scatter-gather buffer pointer relocated with exact payload");
+    }
+}
 int main(void) {
     const char *names[]={"binder","hwbinder","vndbinder"};
     int fds[3],i;
@@ -118,6 +234,8 @@ int main(void) {
             if(ok) for(i=0;i<3;i++) check(receive_value(fds[i],i)==0,"one-way transaction payload stays in its context");
         }
     }
+    if(!failures) synchronous_fd_test(fds[0]);
+    if(!failures) scatter_gather_test(fds[1]);
     for(i=0;i<3;i++) {
         if(mappings[i] && mappings[i]!=MAP_FAILED) munmap(mappings[i],4096);
         if(fds[i]>=0) close(fds[i]);

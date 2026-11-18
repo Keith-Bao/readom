@@ -28,4 +28,4 @@ bad = (b'KOA2_BINDER_SMOKE_FAIL', b'WARNING:', b'BUG:', b'Oops:', b'Kernel panic
 if result.returncode or b'KOA2_BINDER_SMOKE_PASS failures=0' not in output or any(word in output for word in bad):
     print(output.decode(errors='replace')[-8000:])
     raise SystemExit('QEMU smoke failed; inspect runtime.log')
-print('QEMU Binder protocol, mmap and three-context ownership smoke passed; not Kindle hardware validation.')
+print('QEMU Binder protocol/mmap, contexts, one-way, synchronous FD and scatter-gather smoke passed; not Kindle hardware validation.')
