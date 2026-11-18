@@ -5,6 +5,8 @@
 首次采集已完成，实机结论见 [hardware-findings.md](hardware-findings.md)，
 官方内核源码校验信息见 [source-lock.json](source-lock.json)。
 采集器 v2 修正了 KOA2 存储设备 mmcblk2 的分区属性采集。
+第二次采集也已完成，分区布局、SMP/DTB 启动限制、Binder 和 EPDC v2
+的源码差异见 [source-audit.md](source-audit.md)。无需再次采集。
 
 ## 已从这台设备确认
 
