@@ -33,3 +33,11 @@ tools/tests/test_release_url.py	user@readom.app
 # unlike the entry's own bytes this text does not move with a build.
 docs/design/release-build.md	appro@openssl.org
 docs/design/release-build.en.md	appro@openssl.org
+# Public upstream author/sign-off addresses retained verbatim in the pinned
+# GPL Linux patches. Scope is these two exact provenance files only.
+ports/koa2/patches/0000-upstream-ioctl-audit.patch	jeffv@google.com
+ports/koa2/patches/0000-upstream-ioctl-audit.patch	nnk@google.com
+ports/koa2/patches/0000-upstream-ioctl-audit.patch	pmoore@redhat.com
+ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	jeffv@google.com
+ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	nnk@google.com
+ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	pmoore@redhat.com
