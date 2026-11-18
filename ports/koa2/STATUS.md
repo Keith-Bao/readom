@@ -2,6 +2,14 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 当前完整主机回归：50 passed、0 failed、24 not run here。
+  日志 /home/builder/artifacts/host-tests-current.log；Linux 副本已从 Git
+  快进到 7772e24，避免 Windows CRLF 覆盖 shell 文件。
+- 原始上游 GPL 补丁中的 3 个公开 sign-off 邮箱已按两个确切文件路径
+  加入既有隐私扫描允许清单；没有放宽其他文件或设备数据规则。
+- 本轮已自动提交主机契约、预采集包、Binder 4.1 适配及 QEMU IPC、SELinux
+  policy30 编译研究。后续自主工作优先为 SELinux 策略运行测试与完整集成准备。
+
 - QEMU Binder 继续扩展并通过：同步请求/回复、实际 FD 数据读取、
   BC_TRANSACTION_SG 的 PTR 缓冲区重定位与数据完整性；无内核告警。
 
