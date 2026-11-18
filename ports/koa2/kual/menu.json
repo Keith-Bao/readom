@@ -1,0 +1,12 @@
+{
+  "items": [{
+    "name": "Readom Oasis 2 Probe",
+    "items": [{
+      "name": "Collect hardware report",
+      "action": "sh ./probe.sh",
+      "exitmenu": false,
+      "status": false,
+      "internal": "status Collecting report in koa2-port-probe"
+    }]
+  }]
+}
