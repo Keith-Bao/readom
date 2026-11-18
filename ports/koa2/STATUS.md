@@ -2,6 +2,18 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 最新：实验源码已独立解压到 linux-headless-smoke，原厂 linux-stock 不变。
+  setlocalversion 条件修正只识别实验后缀；4 项实际 shell 隔离测试通过。
+- 已重建成功，release=4.1.15-lab126-koa2-headless-smoke，97 个模块的
+  ELF .modinfo vermagic 全部匹配。保守 ARM 重定位检查通过，未做实机加载。
+- zImage SHA256：4c69f47ef82d26ef76d2b1701bc7b32de9715f528fc899ba3124e36140de3f6e。
+- 日志：/home/builder/artifacts/headless-identity-build.log、headless-identity.json、
+  headless-relocations.json。旧原厂后缀产物仍仅作历史证据，不可部署。
+- 当前下一步：实现 DTB/内存契约的主机校验与只读设备校验；核实 stock
+  模块 ABI、SMP 次核退出、DMA/中断静止和日志保留后才准备跳转实验。
+- 原厂 cpu_down 有导出，hotplug 的 i.MX7D 路径包含 GPCv2 次核电源控制；
+  只读源码审计不等于次核可以安全下线或支持恢复。尚无可用交接模块。
+
 - 当前主路线已按用户要求改为 headless-smoke：先解决无显示新内核和交接。
 - 独立 profile 已编译/导出一次 zImage、DTB、模块，make 退出 0。
 - 当前产物仍不能部署：官方 setlocalversion 强制原厂 release，实验后缀

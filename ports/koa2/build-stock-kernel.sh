@@ -8,6 +8,10 @@ case "$profile" in stock|headless-smoke) ;; *) echo 'Expected stock or headless-
 base=${KOA2_WORK_ROOT:-$HOME/readom-work}
 src=$base/linux-stock
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [[ $profile == headless-smoke ]]; then
+    src=$base/linux-headless-smoke
+    python3 "$script_dir/prepare-headless-source.py" "$base/linux-4.1.15.tar.gz" "$src"
+fi
 check_args=()
 [[ $profile == stock ]] || check_args+=(--headless-smoke)
 python3 "$script_dir/check-kernel-source.py" "$src" "${check_args[@]}"
@@ -43,6 +47,9 @@ make -C "$src" O="$out" -j4 zImage imx7d-zelda.dtb modules 2>&1 | tee "$art/buil
 if [[ $profile == headless-smoke ]] && ! grep -q -- '-koa2-headless-smoke' "$out/include/config/kernel.release"; then
     echo 'Refusing export: stock setlocalversion overrides the experimental kernel identity.' >&2
     exit 2
+fi
+if [[ $profile == headless-smoke ]]; then
+    python3 "$script_dir/check-kernel-identity.py" "$out" > "$art/identity.json"
 fi
 cp "$out/arch/arm/boot/zImage" "$out/arch/arm/boot/dts/imx7d-zelda.dtb" "$art/"
 cp "$out/.config" "$art/kernel.config"

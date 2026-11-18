@@ -16,6 +16,20 @@
 
 ## 当前实际结果
 
+最新版本标识修正后已重建成功：4.1.15-lab126-koa2-headless-smoke。
+97 个模块的原始 ELF .modinfo vermagic 均匹配；4 个 setlocalversion 隔离
+用例通过，原厂脚本不变。模块重定位使用上游保守白名单检查通过（所用类型
+也在 4.1 ARM loader 支持范围内）；仍未验证符号 CRC/真机加载/启动与恢复。
+新 zImage SHA256：4c69f47ef82d26ef76d2b1701bc7b32de9715f528fc899ba3124e36140de3f6e。
+DTB 哈希与下文相同。当前导出目录可能含旧版本模块目录，不能直接打包整个目录。
+
+源树准备由 prepare-headless-source.py 校验原始包并独立解压，按精确匹配
+修改版本脚本，只允许实验 CONFIG_LOCALVERSION 后缀；不会改 linux-stock。
+check-kernel-identity.py 验证实际 release 与全部模块内嵌字符串，任何不符
+或没有模块都拒绝通过，不仅检查 .config。
+
+下面是修正前的历史产物记录：
+
 已成功编译并导出一次 zImage（约 6.4MiB）、DTB 和模块，make 返回 0。
 zImage SHA256：585d89786cb003d5e5db76ccd68b4eca03a2f89da7f282f4f8b503786139ad03。
 DTB SHA256：8df4fe5d732069e1c45d4efa635231578254dd7cf24f85f8bf8cc1c946f144d9。
