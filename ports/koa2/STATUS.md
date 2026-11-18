@@ -2,6 +2,11 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 最新路线决策见 route-decision.md：原厂内核缺 namespace/seccomp/LSM，
+  只补普通模块无法达到约定目标。已排除该候选，继续新内核路线。
+- EPDC 已核实 8 组直接接口，旧版同名函数存在签名差异且缺少 v2 电压入口；
+  尚未完成兼容实现，不能直接移植旧文件。下一步先恢复波形/电压数据契约。
+
 - WSL 安装完成：Readom-KOA2 已在 E 盘导入 Ubuntu 22.04.5。
 - Linux 8 CPU / 10GB RAM / 8GB swap；依赖安装完成，可直接联网。
 - Linux Git 副本 /home/builder/readom-work/readom；源码 linux-stock。
