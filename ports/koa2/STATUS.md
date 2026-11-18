@@ -2,6 +2,14 @@
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
+- 主机自主工作新进展：android41-core.config 46 项原生配置全部生效，
+  namespace/seccomp/SELinux/ashmem/原生 Binder/LMK 对象编译通过。
+- 已从仓库的可追溯补丁重建 Binder 多 context/SG/安全修复实现，针对 4.1
+  FD、kuid、PID namespace、hlist、map_vm_area 做适配；46+1 配置和对象编译通过。
+  未做 Binder 运行时验证，尚未支持 SELinux policy30。见 android41-audit.md。
+- 下一项可独立工作：QEMU 中建立真实 Binder 三 context 隔离及 ioctl smoke；
+  同时真机交接仍等待用户方便时运行已部署的只读 Boot Preflight。
+
 - 已新增 boot/koa2/contract.c：只读 FDT 与内存区间校验；ASan/UBSan 下
   截断/越界/机型/区间测试及 20000 变异测试通过；ARM 静态版 QEMU 也通过。
 - KUAL 的 Readom KOA2 Boot Preflight 已准备并部署，未由代理执行。
