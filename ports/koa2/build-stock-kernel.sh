@@ -5,6 +5,8 @@ set -euo pipefail
 [[ $(uname -s) == Linux ]] || exit 1
 base=${KOA2_WORK_ROOT:-$HOME/readom-work}
 src=$base/linux-stock
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+python3 "$script_dir/check-kernel-source.py" "$src"
 out=$base/out-stock
 art=$HOME/artifacts/stock-kernel
 tc=$HOME/toolchains/aosp-arm-gcc49/bin/arm-linux-androidkernel-
