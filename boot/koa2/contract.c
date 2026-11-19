@@ -104,3 +104,48 @@ int koa2_range_allowed(struct koa2_range p, const struct koa2_range *ram, size_t
     for(i=0;i<n;i++) if(koa2_range_overlap(p,excluded[i])) return KOA2_RANGE;
     return fits?KOA2_OK:KOA2_RANGE;
 }
+const struct koa2_range koa2_measured_ram[KOA2_MEASURED_RAM_COUNT]={
+    {0x80000000u,0x1c000000u}, /* /proc/iomem System RAM 80000000-9bffffff */
+    {0x9c500000u,0x03b00000u}, /* /proc/iomem System RAM 9c500000-9fffffff */
+};
+const struct koa2_range koa2_measured_excluded[KOA2_MEASURED_EXCLUDED_COUNT]={
+    {0x80000000u,0x00c10000u}, /* running stock kernel: page tables at 0x80004000, code/data to 0x80c0facb */
+    {0x9be00000u,0x00080000u}, /* Lab126 printk buffer and previous-boot copy, 2 x LOG_GOAL_SIZE */
+    {0x9bf00000u,0x00100000u}, /* ramoops, boot log "attached 0x100000@0x9bf00000" */
+    {0x9c000000u,0x00500000u}, /* DT reserved-memory/epdc_reserved, no-map */
+    {0x9d681000u,0x0000d000u}, /* the FDT blob: memreserve #1 is U-Boot fdt_shrink_to_minimum's page-aligned
+                                  0xc000, but FDT_RAMDISK_OVERHEAD makes totalsize 0xc080, so cover a page more */
+    {0x9d691000u,0x0055aa00u}, /* FDT header memreserve #2: stock initrd, = /chosen initrd-start/end */
+    {0x9ffc0000u,0x00040000u}, /* Falcon storage BIOS + BIOS (CONFIG_FALCON_*_ADDR/SIZE, memblock_reserve'd by
+                                  fbios.c); stock eMMC access (falcon_blk, mmcblk2) executes code here */
+};
+int koa2_fdt_reservations(const void *input, size_t bytes,
+                          struct koa2_range *out, size_t max, size_t *count) {
+    const unsigned char *p=input;
+    struct koa2_fdt_info info;
+    size_t re,i;
+    int result;
+    if(count) *count=0;
+    if(!count || (max && !out)) return KOA2_BOUNDS;
+    result=koa2_fdt_validate(input,bytes,&info);
+    if(result) return result;
+    if(info.reservations>max) return KOA2_BOUNDS;
+    re=be32(p+16);
+    for(i=0;i<info.reservations;i++,re+=16) { out[i].start=be64(p+re); out[i].size=be64(p+re+8); }
+    *count=info.reservations;
+    return KOA2_OK;
+}
+int koa2_reservations_covered(const struct koa2_range *r, size_t n,
+                              const struct koa2_range *x, size_t m) {
+    size_t i,j;
+    if((n && !r) || (m && !x)) return KOA2_RANGE;
+    for(j=0;j<m;j++) if(!koa2_range_valid(x[j])) return KOA2_RANGE;
+    for(i=0;i<n;i++) {
+        int inside=0;
+        if(!koa2_range_valid(r[i])) return KOA2_RANGE;
+        for(j=0;j<m;j++)
+            if(r[i].start>=x[j].start && r[i].start+r[i].size<=x[j].start+x[j].size) inside=1;
+        if(!inside) return KOA2_RANGE;
+    }
+    return KOA2_OK;
+}

@@ -16,8 +16,16 @@
   boot-preflight-findings.md：可用 RAM 两段、EPDC/ramoops/printk/memreserve 保留区、
   2G/2G 且 lowmem 恒等、运行时 DTB 与编译 DTB 的板级差异、原厂会直接写 MMC 原始扇区。
   原始数据只在 ~/koa2-evidence/，未进仓库。
-- 仍没有任何新内核上机。下一步（主机侧）：按实测保留区为交接写排除表和测试；
-  设计让原厂 __dump_lastk_to_mmc 在交接期间不会运行的办法；确定 memreserve #1 用途。
+- 排除表已写进 boot/koa2/contract.c（koa2_measured_ram/excluded，7 段），并新增运行时 FDT
+  memreserve 读取与"每个 memreserve 必须被排除表覆盖"的检查；新的 bootloader 保留会被拒绝而不是覆盖。
+  ASan/UBSan 主机测试、qemu-arm 静态测试、运行时 DTB 与编译 DTB 全部通过。
+- memreserve #1 已查明是 FDT 本身（U-Boot fdt_shrink_to_minimum）；审计中另发现 Falcon BIOS
+  0x9ffc0000–0x9fffffff 必须保留，已补进排除表。
+- __dump_lastk_to_mmc 的三个调用方与目标扇区已审计（见 boot-preflight-findings.md 末节）：
+  原厂每次经看门狗重启都会写 eMMC 扇区 0x9a400 起 256 KiB。交接不得走重启路径。
+- 仍没有任何新内核上机，交接仍只有校验、没有跳转。下一步（主机侧）：
+  核实 mmcblk2 能否用标准 sdhci 驱动访问，从而让实验内核去掉 FALCON_BLK；
+  设计次核下线与跳转前的静止顺序。
 
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
