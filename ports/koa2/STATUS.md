@@ -35,6 +35,10 @@
   命令行解析拆成 smoke-params.h，17 个用例登记为 koa2-smoke-params，ASan/UBSan 与 qemu-arm 均通过。
 - 查明 imx2_wdt 在 LAB126 下由内核定时器喂狗，直到 /dev/watchdog 被打开；所以"用户空间卡住
   会自动复位"不成立，必须由 init 接管看门狗。handoff-quiesce.md 第二节已据此更正。
+- 交接计划校验已写（boot/koa2/plan.c，README「交接计划校验」）：derive-kernel-footprint.py 从构建
+  目录量出 LZO + AUTO_ZRELADDR 内核的解压占用（0x80004000–0x80c56000），8 条规则检查 zImage/FDT/
+  initramfs 的目的地址；测试登记为 koa2-plan。smoke 布局（0x80d00000 / 0x81400000 / 0x81500000）
+  对构建 DTB 通过；实机运行时 DTB 因保留原厂 FDT/initrd 的 memreserve 被拒绝，交接需要改写 FDT，尚未实现。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。

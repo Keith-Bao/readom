@@ -22,3 +22,34 @@ Linux 下以 gcc -std=c11 -Wall -Wextra -Werror -O1 -g
 -fsanitize=address,undefined -fno-sanitize-recover=all 编译 contract.c 与
 test-contract.c，传入真实 DTB 作为可选参数。ARM 静态编译使用
 arm-linux-gnueabi-gcc -static；qemu-arm 只验证用户空间算法，不证明 i.MX7 外设行为。
+
+## 交接计划校验（plan.c）
+
+plan.c 只判断"把 zImage、FDT、initramfs 放到哪里"是否成立，不分配、不复制、不跳转。
+暂存页由交接模块从运行中的分配器取得，最后在 MMU 关闭后复制到目的地址；因此目的地
+可以覆盖原厂内核、原厂 FDT 和原厂 initrd，但不能碰跳转后仍要存在的区段
+（koa2_handoff_persistent：printk 缓冲、ramoops、EPDC 保留区、Falcon BIOS）。
+
+内核占用由 ports/koa2/derive-kernel-footprint.py 从构建目录读出（LZO + AUTO_ZRELADDR，
+不能用 PW3 的 gzip 脚本）。headless-smoke 构建：zreladdr 0x80008000，页目录
+0x80004000 起，Image 12416856 字节，_end 0x80c55a0c（含 BSS），zImage 运行时占用
+加载地址之后 6722520 字节（映像、BSS、栈、64 KiB malloc）。
+
+规则：
+1. 段页对齐，整段落在一段实测 RAM 内（512 MiB 全是 lowmem），不碰持久区段。
+2. 恰好一个 zImage、一个 FDT，最多一个 initramfs。
+3. 占用数据与此 zImage 一致：zreladdr = (加载地址 & 0xf8000000) + 0x8000。
+   zImage 必须在 RAM 的头 128 MiB 内，否则新内核把自己的 128 MiB 对齐基址当作
+   PHYS_OFFSET，丢掉下面全部 RAM。
+4. zImage 放在内核 _end 之上，head.S 不会自我搬移，解压也写不到自己。
+5. FDT 不碰内核与运行中的 zImage，且落在 head.S 预先映射的两个 1 MiB 段内。
+6. initramfs 不碰内核、zImage、FDT；7. 各段互不重叠。
+8. 交给新内核的 FDT 里，每条 memreserve 都必须是持久区段、FDT 自身（按页取整）或
+   initramfs。原厂的 FDT/initrd 条目会让内核预留已失效的内存，还会让 arm_memblock_init
+   以"与已用区域重叠"为由丢弃 initramfs。
+
+koa2_plan_propose 给出的 headless-smoke 布局：zImage 0x80d00000，FDT 0x81400000，
+initramfs 0x81500000；用构建 DTB（0 条 memreserve）校验通过。用实机运行时 DTB 校验
+被拒绝（规则 8，两条原厂 memreserve），这是预期结果：交接必须传一份改写过的 FDT
+（去掉原厂 memreserve、改 /memory 为实测两段、写 /chosen 的 bootargs 和 initrd），
+这一步尚未实现。check-plan.c 对真实文件做同样的建议与校验，只读。
