@@ -52,4 +52,44 @@ koa2_plan_propose 给出的 headless-smoke 布局：zImage 0x80d00000，FDT 0x81
 initramfs 0x81500000；用构建 DTB（0 条 memreserve）校验通过。用实机运行时 DTB 校验
 被拒绝（规则 8，两条原厂 memreserve），这是预期结果：交接必须传一份改写过的 FDT
 （去掉原厂 memreserve、改 /memory 为实测两段、写 /chosen 的 bootargs 和 initrd），
-这一步尚未实现。check-plan.c 对真实文件做同样的建议与校验，只读。
+改写见下节。
+
+## 交接 FDT 改写（fdt-rewrite.c）
+
+koa2_fdt_rewrite 把原厂运行时 FDT 逐 token 复制成新 FDT，只改三处：
+- header reserve map 换成调用方给的列表（smoke 用空表）；
+- /chosen 的 bootargs、linux,initrd-start、linux,initrd-end 换成新值（无 initramfs 时两条
+  initrd 都删掉），新属性写在 /chosen 开头、子节点之前；没有 /chosen 就在根节点末尾补一个；
+- 删掉 NOP。缺少的属性名追加到 strings 块末尾。
+
+/memory 原样保留：U-Boot 写的是 0x80000000 + 0x20000000，实测的 0x9c000000 空洞来自
+reserved-memory/epdc_reserved 的 no-map，这个节点也原样保留。
+
+空 reserve map 足够，原因如下：
+- 新内核在 early_init_fdt_scan_reserved_mem 里自己预留 FDT；
+- initramfs 由 /chosen 预留；
+- printk 缓冲（printk_reserve_buf）、ramoops（imx7d_reserve）和 Falcon BIOS（falcon_mem_reserve）
+  由内核代码预留；
+- EPDC 由 reserved-memory 预留。
+
+失败时不留下半成品（*bytes 为 0，已写部分清零），输出必须再次通过 koa2_fdt_validate。
+不分配内存，可以原样放进内核模块。
+
+测试 koa2-fdt-rewrite 覆盖了以下情况，用 ASan/UBSan 运行：
+- 替换 /chosen，以及没有 /chosen 时补一个；
+- 第二遍改写结果逐字节不变；
+- 所有长度不足的输出缓冲；
+- 越界的编辑参数；
+- 20000 次变异输入。
+
+check-plan.c 对真实文件走完整流程：先建议布局，再按布局改写 FDT，最后校验计划，只写出新 FDT。
+在实机运行时 DTB（49280 字节）上的结果：
+- 新 FDT 47972 字节，0 条 memreserve，计划校验通过；
+- 布局为 zImage 0x80d00000、FDT 0x81400000、initramfs 0x81500000–0x81542548；
+- 用 dtc 反编译后与原件对比，只有两条原厂 memreserve 和 /chosen 三个属性不同。
+
+产物只存在 ~/koa2-evidence/handoff-plan/，不进仓库。
+
+以上都只是源码和主机层面的结论，没有在设备上验证。还没写的：
+- 交接模块本身，包括暂存、静止、复制和跳转；
+- 在交接当次读取 EPDC 帧缓冲地址。
