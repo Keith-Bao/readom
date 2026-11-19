@@ -12,8 +12,12 @@
   原因尚未查明，不能宣称两台主机产物可复现一致；两者都不可部署。
 - 主机回归：50 passed、0 failed、24 not run here，与上一台主机相同。
   日志 ~/artifacts/host-tests-this-host.log。
-- 仍没有任何新内核上机；下一步不变：用户方便时在 Kindle 运行只读
-  Boot Preflight（注意本机 Windows 磁盘会加密 .json，扩展文件须从 WSL 内生成后复制）。
+- 只读 Boot Preflight 已由用户在 Kindle 上运行（20261119-044638-4937），结果见
+  boot-preflight-findings.md：可用 RAM 两段、EPDC/ramoops/printk/memreserve 保留区、
+  2G/2G 且 lowmem 恒等、运行时 DTB 与编译 DTB 的板级差异、原厂会直接写 MMC 原始扇区。
+  原始数据只在 ~/koa2-evidence/，未进仓库。
+- 仍没有任何新内核上机。下一步（主机侧）：按实测保留区为交接写排除表和测试；
+  设计让原厂 __dump_lastk_to_mmc 在交接期间不会运行的办法；确定 memreserve #1 用途。
 
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
