@@ -23,9 +23,11 @@
   0x9ffc0000–0x9fffffff 必须保留，已补进排除表。
 - __dump_lastk_to_mmc 的三个调用方与目标扇区已审计（见 boot-preflight-findings.md 末节）：
   原厂每次经看门狗重启都会写 eMMC 扇区 0x9a400 起 256 KiB。交接不得走重启路径。
+- 静止顺序与 eMMC 路线见 handoff-quiesce.md：源码上 mmcblk2 可改用标准 sdhci 驱动（usdhc3
+  compatible 改回芯片 dtsi 的标准值）；关 FALCON_BLK 需要先让 dump_lastk_to_mmc 成为空操作。
+  看门狗交接后仍在计时（60 s，WDOG_B），可作新内核卡死时的自动回退；次核用原厂 cpu_down(1)。
 - 仍没有任何新内核上机，交接仍只有校验、没有跳转。下一步（主机侧）：
-  核实 mmcblk2 能否用标准 sdhci 驱动访问，从而让实验内核去掉 FALCON_BLK；
-  设计次核下线与跳转前的静止顺序。
+  实验内核去掉 Falcon 依赖（补丁 + 配置 + FDT 派生）并重建；逐个核对需要静止的 DMA 主设备。
 
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
