@@ -30,8 +30,16 @@
   sdhci-esdhc-imx，dump_lastk_to_mmc 不再写 eMMC；97 个模块 vermagic 匹配。
 - 需要静止的 DMA 主设备已列在 handoff-quiesce.md 第五节；EPDC 帧缓冲是动态分配的
   （本次在 0x99000000 一带），交接要先停 EPDC 或在当次读出它的地址。
-- 仍没有任何新内核上机，交接仍只有校验、没有跳转。下一步（主机侧）：
-  最小 initramfs（只喂狗、写日志到 printk 备份区后等待看门狗复位），以及交接模块的校验阶段。
+- 最小 smoke initramfs 已写好（smoke-initramfs.md）：PID 1 不碰任何块设备，写
+  KOA2_SMOKE 标记到 /dev/kmsg，占用 /dev/watchdog 一段时间后停止喂狗，由看门狗复位回原厂。
+  命令行解析拆成 smoke-params.h，17 个用例登记为 koa2-smoke-params，ASan/UBSan 与 qemu-arm 均通过。
+- 查明 imx2_wdt 在 LAB126 下由内核定时器喂狗，直到 /dev/watchdog 被打开；所以"用户空间卡住
+  会自动复位"不成立，必须由 init 接管看门狗。handoff-quiesce.md 第二节已据此更正。
+- QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
+  OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
+  形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。
+- 仍没有任何新内核上机，交接仍只有校验、没有跳转。下一步（主机侧）：交接模块的校验阶段
+  （只读 FDT + 排除表 + 载荷位置，失败即退出），以及 EPDC 帧缓冲地址的运行时读取。
 
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）

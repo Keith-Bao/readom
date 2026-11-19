@@ -47,6 +47,7 @@ CXXFLAGS = ['-std=c++14', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-fexcepti
 # headers (device mapper, FIBMAP) and is skipped elsewhere.
 TESTS = [
     ('koa2-contract', 'c', ['boot/koa2/contract.c', 'boot/koa2/test-contract.c'], False),
+    ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

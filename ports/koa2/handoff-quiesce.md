@@ -32,10 +32,13 @@
 
 - 原厂日志：`imx2-wdt 30280000.wdog: timeout 60 sec`、`use WDOG_B to reboot`、
   `kernel wdt is enabled and running`。运行时 DTB 的 wdog1 节点带 `fsl,wdog_b`、没有 status（即启用）。
-- i.MX 看门狗的 WDE 位一旦置位不能清除，所以**交接后看门狗仍在计时**，新内核必须在 60 秒内接管喂狗；
-  4.1 的 `imx2_wdt` 在 probe 时检测到已在运行就会自己定时喂。
-- 这对实验是好事：新内核卡死时，最迟约 60 秒硬件复位（WDOG_B → PMIC），回到原厂启动。
-  硬件超时复位不经过 `imx2_restart_handler`，不会调用 `dump_lastk_to_mmc`。
+- i.MX 看门狗的 WDE 位一旦置位不能清除，所以**交接后看门狗仍在计时**。
+- **更正（2026-11-19）**：`imx2_wdt` 在 `CONFIG_LAB126` 下 probe 时就 `imx2_wdt_start()` 并用
+  自己的内核定时器每 `timeout/2` 秒喂狗，一直喂到 `/dev/watchdog` 被打开（`imx2_wdt_start`
+  里 `del_timer_sync`）。所以"新内核卡死约 60 秒后自动复位"只在**内核本身停转**时成立；
+  内核还在跑而用户空间卡住时，它会一直喂狗，不会复位。要让实验可自动结束，必须由用户空间
+  占住 `/dev/watchdog` 再停止喂狗——smoke initramfs 就是这么做的（smoke-initramfs.md）。
+- 硬件超时复位不经过 `imx2_restart_handler`，不会调用 `dump_lastk_to_mmc`。
 - 约束：交接从停喂到新内核 probe 看门狗的时间必须明显短于 60 秒；最小 initramfs 不能拖延 probe。
 
 ## 三、次核
