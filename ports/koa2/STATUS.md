@@ -26,8 +26,12 @@
 - 静止顺序与 eMMC 路线见 handoff-quiesce.md：源码上 mmcblk2 可改用标准 sdhci 驱动（usdhc3
   compatible 改回芯片 dtsi 的标准值）；关 FALCON_BLK 需要先让 dump_lastk_to_mmc 成为空操作。
   看门狗交接后仍在计时（60 s，WDOG_B），可作新内核卡死时的自动回退；次核用原厂 cpu_down(1)。
+- 实验内核已去掉 Falcon 存储路径并重建通过（见 headless-smoke.md 顶部）：eMMC 交给标准
+  sdhci-esdhc-imx，dump_lastk_to_mmc 不再写 eMMC；97 个模块 vermagic 匹配。
+- 需要静止的 DMA 主设备已列在 handoff-quiesce.md 第五节；EPDC 帧缓冲是动态分配的
+  （本次在 0x99000000 一带），交接要先停 EPDC 或在当次读出它的地址。
 - 仍没有任何新内核上机，交接仍只有校验、没有跳转。下一步（主机侧）：
-  实验内核去掉 Falcon 依赖（补丁 + 配置 + FDT 派生）并重建；逐个核对需要静止的 DMA 主设备。
+  最小 initramfs（只喂狗、写日志到 printk 备份区后等待看门狗复位），以及交接模块的校验阶段。
 
 
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）

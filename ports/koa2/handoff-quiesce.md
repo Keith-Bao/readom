@@ -61,3 +61,23 @@
 
 **不得**经由 `kernel_restart()` / `machine_restart()`，否则会进 `imx2_restart_handler` 写 eMMC 扇区
 0x9a400（见 boot-preflight-findings.md 末节）。
+
+## 五、需要静止的 DMA 主设备（运行时 DTB + 原厂启动日志，2026-11-19）
+
+运行时 DTB 里启用、且原厂内核确实绑定了驱动的总线主设备：
+
+| 设备 | 驱动/证据 | 交接前要做的 |
+|---|---|---|
+| EPDC `306f0000` + ePXP `30700000` | `imx_epdc_v2_fb`；帧缓冲**动态分配**在 0x99000000（4.4 MiB）、0x99800000、0x99c00000（各 2.2 MiB），工作缓冲 0x9c000000 | 等当前刷新完成（`MXCFB_WAIT_FOR_UPDATE_COMPLETE`），再停 EPDC 时钟。这三段不在排除表里：只要目的地仍限定在低端（见第四节），它们不会被覆盖；但 EPDC 未停时不能跳转 |
+| SDMA `30bd0000` | `imx-sdma` 已加载固件 4.2 | 停所有通道；它服务 UART、ECSPI、SAI |
+| APBH-DMA `33000000` | `mxs-dma` initialized | 目前没有 GPMI/NAND 使用者，确认无通道在用即可 |
+| usdhc1 `30b40000` | `sdhci-esdhc-imx`，"assigned as wifi host"，SDIO 卡 | 先卸载/停 Wi‑Fi 驱动，再停控制器 ADMA |
+| usdhc3 `30b60000` | `falcon_blk`（eMMC） | 用户空间先 sync 并卸载；交接时不能有正在进行的 BIOS 请求 |
+| USB OTG `30b10000` | ChipIdea，peripheral 模式 | 断开 gadget，停控制器 |
+| UART ×3、ECSPI ×2 | 经 SDMA | 随 SDMA 一起停 |
+
+CAAM `30900000` 在 DTB 里没有 status（视为启用），原厂日志里没有它的 probe 记录，暂不列为活跃主设备；
+上机时要再确认一次。
+
+**新发现的约束**：EPDC 帧缓冲来自普通内存分配，地址每次启动可能不同。交接模块不能假定它们固定，
+应在运行时读 `/proc/iomem` 或 EPDC 驱动的分配记录，并把它们加入当次的排除区；或者确保 EPDC 先停。

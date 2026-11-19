@@ -16,6 +16,21 @@
 
 ## 当前实际结果
 
+**2026-11-19 去掉 Falcon 存储路径后重建**（第二台主机）：
+
+- `prepare-headless-source.py` 在实验树上另做两处改动：`dump_lastk_to_mmc()` 只在
+  `CONFIG_FALCON_BLK` 下发起写；`imx7d-zelda.dts` 的 usdhc3 不再改名 `falcon_blk`，保留芯片
+  dtsi 的 `fsl,imx7d-usdhc`。原因见 handoff-quiesce.md 第一节。
+- 配置关掉 `FALCON_WRAPPER`（随之没有 `FALCON_BLK`）；`CONFIG_FALCON` 仍开，内核照旧
+  `memblock_reserve` Falcon BIOS 区，只是不再经它访问 eMMC。
+- 构建脚本新增导出闸门：`.config` 里不得有 `FALCON_BLK=y`；编出的 DTB 里 usdhc3 必须是
+  `fsl,imx7d-usdhc`；`System.map` 里不得有 `__dump_lastk_to_mmc`。
+- 结果：make 退出 0，release `4.1.15-lab126-koa2-headless-smoke`，97 个模块 vermagic 全部匹配。
+  zImage `4261b0e2…3d910580`，DTB `fbbe9517…cfeb3172`。日志 `~/artifacts/headless-build-nofalcon-2.log`。
+- 标准驱动能否在这块 eMMC 上正常工作，只能上机才知道；仍不可部署。
+
+以下为更早的记录：
+
 最新版本标识修正后已重建成功：4.1.15-lab126-koa2-headless-smoke。
 97 个模块的原始 ELF .modinfo vermagic 均匹配；4 个 setlocalversion 隔离
 用例通过，原厂脚本不变。模块重定位使用上游保守白名单检查通过（所用类型
