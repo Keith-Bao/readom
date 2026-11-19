@@ -19,7 +19,16 @@ out=$base/out-$profile
 art=$HOME/artifacts/$profile-kernel
 tc=$HOME/toolchains/aosp-arm-gcc49/bin/arm-linux-androidkernel-
 printf '%s  %s\n' efb1b966fedcba318af381080f6a699642a66a929c42e8578aeb6e3fe240ea93 "$base/linux-4.1.15.tar.gz" | sha256sum -c -
-printf '%s  %s\n' 0d273adc4ac4672fe67a99965bf4ce3814784433d0ac2d80689ec28d49d11c25 /mnt/e/Readom-Downloads/aosp-arm-gcc49.tar.gz | sha256sum -c -
+# Gitiles regenerates +archive tarballs, so one revision yields several archive hashes.
+# Each hash below was accepted only after diffing its content against a git checkout
+# of revision 0390252b6bcc6217966ade31d07f8b12f6f78f89 (see build-environment.md).
+tc_archive=${KOA2_TC_ARCHIVE:-/mnt/e/Readom-Downloads/aosp-arm-gcc49.tar.gz}
+tc_sha=$(sha256sum "$tc_archive" | cut -d' ' -f1)
+case "$tc_sha" in
+    0d273adc4ac4672fe67a99965bf4ce3814784433d0ac2d80689ec28d49d11c25|\
+    85ee38029c2ea9a59b0b6238529acd5d061dcd341aa7edd289b6d15d302c154b) echo "$tc_archive: OK" ;;
+    *) echo "Toolchain archive not verified: $tc_archive $tc_sha" >&2; exit 1 ;;
+esac
 mkdir -p "$out" "$art"
 export ARCH=arm CROSS_COMPILE="$tc"
 export KBUILD_BUILD_USER=builder KBUILD_BUILD_HOST=koa2-build KBUILD_BUILD_VERSION=1

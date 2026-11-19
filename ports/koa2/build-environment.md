@@ -36,3 +36,18 @@ KOA2 构建入口通过 make 命令行 HOSTCFLAGS=-O2\ -fcommon，仅调整主�
 ARM KCFLAGS=-fno-pic\ -fno-pie。未改动原厂驱动源码。
 主机测试：run-tests.py --filter luma：2 passed / 0 failed。
 完整内核构建状态以 STATUS.md 为准。
+
+## 第二台主机（2026-11-19）
+
+- Windows 11 家庭版 26300，公司安装管控禁止 MSI，WSL 3.0.1.0 改从 Microsoft Store
+  安装；VirtualMachinePlatform 由用户以管理员开启并重启。
+- 同一 rootfs（SHA256 与上文一致）导入 E:\Readom-KOA2，8 CPU / 10GB / 8GB swap。
+- 网络：保持 NAT。Clash Verge 的 TUN 接管 WSL 流量，GitHub、googlesource、
+  Amazon S3 直连可用；mirrored 模式会触发本机 ARP 防护告警，不使用。
+- 工具链：同一 revision 的 Gitiles 归档这次 SHA256 为
+  85ee38029c2ea9a59b0b6238529acd5d061dcd341aa7edd289b6d15d302c154b。
+  已对同一 revision 做 `git fetch --depth 1` 检出，`diff -r` 与归档内容完全一致后才接受；
+  `build-stock-kernel.sh` 只接受这两个已核对的哈希，路径由 KOA2_TC_ARCHIVE 指定。
+- Amazon 源码归档与 linux-4.1.15.tar.gz 的 SHA256 均与 source-lock.json 一致。
+- 本机 Windows 磁盘上的 DLP 软件会加密 .py/.json 等文件，源码与构建一律在 WSL ext4 内进行，
+  不从 Windows 侧检出或复制仓库文件到 Kindle。

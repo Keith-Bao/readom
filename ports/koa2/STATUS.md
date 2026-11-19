@@ -1,5 +1,21 @@
 # 当前执行状态
 
+## 第二台主机重建（2026-11-19，覆盖下文的主机路径记录）
+
+- 新主机 WSL 环境已建立，细节见 build-environment.md「第二台主机」。
+- headless-smoke 在本机从源码重建：make 退出 0，
+  release=4.1.15-lab126-koa2-headless-smoke，97 个模块 vermagic 全部匹配
+  （identity.json passed）。日志 ~/artifacts/headless-build-this-host.log。
+- DTB SHA256 与上一台主机一致：8df4fe5d…f144d9。
+- zImage SHA256 为 71893c8e…eacbc6，与上一台主机记录的 4c69f47e…3de9715f 不同。
+  未压缩 Image 为 27a6062c…efbc0（上一台主机未记录 Image 哈希，无法逐层对照）。
+  原因尚未查明，不能宣称两台主机产物可复现一致；两者都不可部署。
+- 主机回归：50 passed、0 failed、24 not run here，与上一台主机相同。
+  日志 ~/artifacts/host-tests-this-host.log。
+- 仍没有任何新内核上机；下一步不变：用户方便时在 Kindle 运行只读
+  Boot Preflight（注意本机 Windows 磁盘会加密 .json，扩展文件须从 WSL 内生成后复制）。
+
+
 ## 最新进度（覆盖下文早期 WSL 阻塞记录）
 
 - 当前完整主机回归：50 passed、0 failed、24 not run here。
