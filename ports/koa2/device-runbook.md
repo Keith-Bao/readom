@@ -7,8 +7,10 @@
 **这次要做的事**：把暂存模块装进原厂内核，让它在设备上检查交接的全部准备工作，
 然后卸载。**不会跳转到新内核**，模块里没有任何代码能做到这件事。
 
-**不会发生的事**：不写分区、不改引导、不改 IDME、不动校准数据、不联网、不重启。
+**不会发生的事**：不写分区、不改引导、不改 IDME、不动校准数据、不联网，不主动请求重启；模块错误仍可能导致卡死或重启。
 所有写入都在 Kindle 的 `koa2-stage-test/` 目录里。
+
+**当前状态（2026-11-21）**：这套流程已在实机通过。换电脑继续不需要重跑，请先读[CONTINUE.md](CONTINUE.md)；只有暂存套件改动后需要重新验证时才再次使用本流程。
 
 ## 0. 先确认这些前提
 
@@ -17,18 +19,23 @@
 | Kindle 是 Oasis 2，固件 5.16.2.1.1 | `/etc/prettyversion.txt` | 停下。本套件只认这一个固件 |
 | 内核是 `4.1.15-lab126` | `uname -a` | 停下。脚本自己也会拒绝 |
 | Kindle 已越狱并装了 KUAL | 能看到 KUAL 菜单 | 停下，先处理越狱 |
-| 电量 > 50% | 设备状态栏 | 先充电。测试中途断电不会损坏，但会白跑一次 |
+| 电量 > 50% | 设备状态栏 | 先充电。电量不足先不要加载实验模块 |
 | 构建主机是 WSL `Readom-KOA2` | `wsl.exe -l -v` | 见 [build-environment.md](build-environment.md) |
 
 ## 1. 在主机上造套件
 
 在 WSL 里（不要在 Windows 侧操作仓库文件，公司 DLP 会加密 `.py`/`.json`）：
 
+前提：已经按[构建环境](build-environment.md)准备 headless-smoke 源码、构建输出和 ARM 工具链。仅克隆仓库不能直接生成套件。
+
 ```bash
-cd ~/readom-work/readom && bash ports/koa2/build-stage-test-kit.sh
+set -e
+cd ~/readom-work/readom
+bash ports/koa2/build-smoke-initramfs.sh
+bash ports/koa2/build-stage-test-kit.sh
 ```
 
-产物在 `~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test/`，共 7 个文件：
+产物在 `~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test/`，共 8 个文件：
 `stage-test.sh`、`koa2_handoff_stage.ko`、`koa2-stage-client`、`zImage`、
 `initramfs.cpio.gz`、`SHA256SUMS`、`menu.json`、`config.xml`。
 
@@ -40,19 +47,34 @@ cd ~/readom-work/readom && bash ports/koa2/build-stage-test-kit.sh
 
 USB 连上，在 WSL 里以 root 挂载并复制：
 
+示例使用本次实测的 D:，盘符并不固定，须先在 Windows 确认。在单独 shell 中执行：命令遇错停止，已有同名扩展目录时也会停止；需要替换时先保留旧套件。
+
 ```bash
-sudo mount -t drvfs F: /mnt/f && cp -r ~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test /mnt/f/extensions/
+set -e
+# Confirm the Kindle drive in Windows first. D: was used on 2026-11-21.
+sudo mkdir -p /mnt/kindle
+sudo mount -t drvfs D: /mnt/kindle
+test -d /mnt/kindle/documents && test -d /mnt/kindle/extensions
+test ! -e /mnt/kindle/extensions/readom-koa2-stage-test
+cp -r ~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test /mnt/kindle/extensions/
 ```
 
 复制完必须验这一句，确认 DLP 没有加密 JSON：
 
 ```bash
-head -c 8 /mnt/f/extensions/readom-koa2-stage-test/menu.json
+cd /mnt/kindle/extensions/readom-koa2-stage-test
+sha256sum -c SHA256SUMS
+cmp ~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test/menu.json menu.json
+cmp ~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test/config.xml config.xml
+head -c 8 menu.json
+cd ~
+sync
+sudo umount /mnt/kindle
 ```
 
 必须输出 `{"items"`。如果是 `%TSD-Head`，说明文件被加密了，KUAL 读不出菜单，
 换一种复制方式（别经 Windows 资源管理器）。`.ko`、zImage 和脚本被改动时设备上的
-哈希检查会拒绝运行，但 `menu.json` 和 `config.xml` 不在哈希表里，只能这样手验。
+哈希检查会拒绝运行，但 `menu.json` 和 `config.xml` 不在哈希表里，应按上面的 cmp 命令与原件逐字节核对。
 
 然后在 Windows 里安全弹出 USB，再在 Kindle 上操作。
 
@@ -73,14 +95,14 @@ KUAL → **Readom KOA2 Stage Test** → **Stage and check handoff (no jump)**。
 
 | result | 含义 | 下一步 |
 |---|---|---|
-| `insmod_refused` | **最可能**。模块是对 headless-smoke 树编的，符号 CRC 与原厂对不上，内核按规则拒绝，什么都没加载 | 走第 6 节。原厂 `.ko` 已经拷回来了，正好用来核对 |
-| `sealed_plan_valid` | 模块被接受，设备上的全部检查通过并已卸载 | 走第 7 节 |
+| `insmod_refused` | 加载失败；具体可能为 CRC、身份或其他原因，须看 dmesg。本次已记录套件实机加载成功 | 走第 6 节 |
+| `sealed_plan_valid` | 暂存封存检查通过；还需确认 rmmod_exit=0 | 走第 7 节 |
 | `seal_failed` | 模块装上了但封存被拒 | 看 `seal_stage`，对照第 5 节 |
 | `refused_unknown_kernel` | 内核不是 `4.1.15-lab126` | 确认设备和固件，什么都没加载 |
 | `refused_kit_damaged` | 套件哈希不符 | 重新执行第 1、2 节 |
 | `refused_module_already_loaded` | 模块已经在内核里 | 先 `rmmod koa2_handoff_stage` |
 
-`client_exit=0` 那一行后面还有一行数据，含义见下：
+`client_exit=0` 之前的 STATUS 行给出数据，含义见下：
 
 | 字段 | 应该是 |
 |---|---|
@@ -88,7 +110,7 @@ KUAL → **Readom KOA2 Stage Test** → **Stage and check handoff (no jump)**。
 | `plan_valid` | 1 |
 | `execute_available` | **恒为 0**。这个阶段没有跳转，是 1 就说明装错了东西 |
 | `fdt_bytes` | 约 47900（原厂 FDT 改写后，比原件小） |
-| `payload_pages` | 约 1690（三个载荷占的页数） |
+| `payload_pages` | 本次 1706；取决于三个载荷的实际大小 |
 | `collision_pages` | 被避开的页数，0 到 8192。超过 8192 会以 `-ENOSPC` 失败 |
 | `list_pages`/`list_entries` | 复制表的规模，`list_entries` 约等于 `payload_pages + 3 + list_pages` |
 
@@ -110,12 +132,18 @@ KUAL → **Readom KOA2 Stage Test** → **Stage and check handoff (no jump)**。
 5、7、9、10 任何一个出现都要先停下分析，不要重试——它们说明这台设备的内存布局
 与 [boot-preflight-findings.md](boot-preflight-findings.md) 记录的不一样。
 
-## 6. 如果是 insmod_refused（最可能）
+## 6. 如果是 insmod_refused
 
 把报告拷回主机并核对 CRC：
 
 ```bash
-mkdir -p ~/koa2-evidence/stage-test && sudo mount -t drvfs F: /mnt/f && cp -r /mnt/f/koa2-stage-test/* ~/koa2-evidence/stage-test/
+set -e
+# Use the actual drive letter; mount only if not already mounted.
+sudo mkdir -p /mnt/kindle
+sudo mount -t drvfs D: /mnt/kindle
+mkdir -p ~/koa2-evidence/stage-test
+cp -a /mnt/kindle/koa2-stage-test/. ~/koa2-evidence/stage-test/
+sudo umount /mnt/kindle
 ```
 
 ```bash
@@ -137,7 +165,7 @@ KOA2_STOCK_MODULES=$R/stock-modules bash ports/koa2/build-stage-test-kit.sh
 
 ## 7. 如果是 sealed_plan_valid
 
-主机侧和设备侧能验的都验完了。把报告拷回主机（命令同第 6 节），
+本套件的暂存检查通过，不代表全部交接工作已经验证。确认 client_exit=0、rmmod_exit=0 且 execute_available=0。把报告拷回主机（命令同第 6 节），
 更新 [STATUS.md](STATUS.md)，然后**停在这里**。
 
 下一个阶段是真正的交接执行，它还缺两样东西，都不在这份流程里：
@@ -150,10 +178,10 @@ KOA2_STOCK_MODULES=$R/stock-modules bash ports/koa2/build-stage-test-kit.sh
 
 | 现象 | 原因 | 怎么办 |
 |---|---|---|
-| 设备在 `insmod` 之后卡住或重启 | 模块在原厂内核里出错（oops） | 等。`panic_on_oops` 为 1 时原厂内核约 5 秒后自己重启回原厂；为 0 时只有那个进程死掉 |
+| 设备在 `insmod` 之后卡住或重启 | 模块在原厂内核里出错（oops） | 等。`panic_on_oops` 为 1 时原厂内核约 5 秒后自己重启回原厂；为 0 时可能仅终止进程，也可能留下无法继续使用的内核状态 |
 | 屏幕没反应但设备还活着 | 测试不碰显示，正常 | 等脚本结束，看报告 |
-| 完全不响应 | — | 长按电源键约 40 秒强制重启。看门狗 60 秒也会复位 |
-| 重启后担心数据 | 没有写过任何分区 | 原厂系统照常启动，书库和 KUAL 不受影响 |
+| 完全不响应 | — | 长按电源键约 40 秒强制重启。不能依赖 60 秒自动恢复：内核仍运行时可能持续喂狗 |
+| 重启后担心数据 | 没有写过任何分区 | 预期从原厂路径启动；恢复后检查书库和 KUAL |
 
 重启走原厂路径时，原厂内核会照常把 printk 写到 eMMC 扇区 0x9a400。
 这是它对任何崩溃都会做的事，与交接无关，见

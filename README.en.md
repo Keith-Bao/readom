@@ -160,6 +160,8 @@ The website has an illustrated install guide, and a way to have an AI walk you t
 
 ## Other models
 
+This fork also tracks the **Oasis 2 experimental port**: [current status](ports/koa2/STATUS.en.md) and [continue on another computer](ports/koa2/CONTINUE.en.md). Device staging passed on 2026-11-21; no new kernel or Android has booted on the Oasis 2, and there is no installable KOA2 package.
+
 Readom has been verified on the Kindle Paperwhite 3 only. The maintainer has only that one, so every other model depends on people who have the device. How far each is from the PW3, going by the kernel source Amazon publishes:
 
 | Model | Where it stands |

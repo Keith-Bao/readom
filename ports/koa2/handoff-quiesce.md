@@ -1,6 +1,6 @@
 # 交接前的静止顺序与 eMMC 访问路线（源码审计，2026-11-19）
 
-依据：原厂 4.1.15 源码（`linux-headless-smoke` 树，与原厂只差版本标识）、同一 GPL 包里的
+依据：原厂 4.1.15 源码（`linux-headless-smoke` 树，由原厂树派生、禁用部分 EINK/Falcon 路径的实验树）、同一 GPL 包里的
 `uboot-4.1.15`、用户运行的只读 Boot Preflight（见 boot-preflight-findings.md）。
 **全部是源码与日志层面的结论，没有在设备上执行过任何一步。**
 
@@ -20,7 +20,7 @@
 就由标准 sdhci 驱动访问 eMMC，不再调用 Falcon BIOS，也就不再依赖 0x9ffc0000 那片代码与
 闭源 `falcon` 模块。
 
-要先解决一处构建问题：`kernel/printk/printk.c` 的 `dump_lastk_to_mmc()` 无条件引用
+以下构建问题已在实验树处理（不是当前待办）：`kernel/printk/printk.c` 的 `dump_lastk_to_mmc()` 无条件引用
 `__dump_lastk_to_mmc()`，而后者只在 `CONFIG_FALCON_BLK` 的 `drivers/falcon/block.c` 里。直接关掉
 `FALCON_BLK` 会链接失败。实验内核需要一个只在实验版本标识下生效的补丁，让 `dump_lastk_to_mmc()`
 成为空操作——这也同时去掉了新内核重启和长按电源键时写 eMMC 原始扇区的行为。
@@ -50,20 +50,21 @@
 - 所以交接模块应**调用原厂自己的 `cpu_down(1)`**，不自写次核停机代码；调用后检查
   `cpu_online(1)` 为假再继续。
 
-## 四、建议的交接顺序（待实现，未验证）
+## 四、当前代码采用的静止顺序（硬件实现待完成）
 
-1. 用户空间：同步、卸载或只读重挂原厂文件系统（PW3 的做法）。
-2. 交接模块加载，**先只做校验**：运行时 FDT 结构、memreserve 全部被排除表覆盖、载荷位置合法
-   （`boot/koa2/contract.c`）。任一失败即退出，不改任何状态。
-3. `cpu_down(1)`，确认只剩 CPU0。
-4. 关中断；停 SDMA、EPDC/PXP、USB 等 DMA 主设备（具体清单待逐个核对驱动）。
-5. 喂一次看门狗，记下时间。
-6. 复制载荷到已验证的目的地，清理/失效缓存，关 MMU，跳到新内核入口，传运行时 FDT
-   （按需派生：bootargs、usdhc3 compatible）。
-7. 新内核：先 probe 看门狗，再挂载最小 initramfs。
+早期草案先下线次核、再关中断停设备；当前以 boot/koa2/quiesce.h 的顺序为准。
+这张顺序表已有主机回滚测试，尚未接入设备模块；2026-11-21 的暂存测试没有执行下列硬件步骤。
 
-**不得**经由 `kernel_restart()` / `machine_restart()`，否则会进 `imx2_restart_handler` 写 eMMC 扇区
-0x9a400（见 boot-preflight-findings.md 末节）。
+用户空间先 sync，并安排文件系统卸载或只读重挂。之后依次：
+校验计划和复制表 → EPDC/ePXP → Wi-Fi → USB gadget → SDMA → eMMC 静止 →
+原厂 cpu_down(1) → 屏蔽 IRQ/FIQ → 喂一次看门狗 → 清理并关闭缓存。
+
+关闭缓存为不可逆点。之前的每一步都需要 run/undo；失败按逆序回滚，undo 失败也须记录。
+硬件实现须明确每步的完成条件、超时和恢复方式，不能把顺序测试当作硬件已验证。
+跳转蹦床仅在这之后关 MMU、按复制表复制载荷并跳转；它尚未编进设备模块。
+
+**不得**经由 kernel_restart() / machine_restart()，否则会进入原厂重启路径并写 printk 到 eMMC。
+EPDC 动态帧缓冲须在当次交接采集并加入排除；下节地址只是此前一次启动的观察值。
 
 ## 五、需要静止的 DMA 主设备（运行时 DTB + 原厂启动日志，2026-11-19）
 

@@ -156,6 +156,8 @@ Readom 是为 Kindle 定制的 Android 系统。它把 Android 8.1（AOSP）适�
 
 ## 其他机型
 
+本分支同时记录 **Oasis 2 实验移植**：[当前进度](ports/koa2/STATUS.md)、[换电脑继续](ports/koa2/CONTINUE.md)。2026-11-21 已通过实机暂存检查；尚未在 Oasis 2 启动新内核或 Android，没有可安装的 KOA2 系统包。
+
 Readom 现在只在 Kindle Paperwhite 3 上验证过。维护者手里只有这一台，别的机型要靠手里有那台机器的人一起做。按亚马逊公开的内核源码，各机型离 PW3 有多远：
 
 | 机型 | 现在的情况 |

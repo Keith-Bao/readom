@@ -38,7 +38,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 |---|---|
 | 内核 release | `4.1.15-lab126-koa2-headless-smoke`，97 个模块 vermagic 匹配 |
 | Image（build-id 清零） | `e2eba61b8420…`，换输出目录重建后相同 |
-| zImage | `4921c4b2…`，每次构建都会变（lzop 时间戳），钉在 target-lock.h |
+| zImage | `4c69f47e…`，每次构建都会变（lzop 时间戳），钉在 target-lock.h |
 | DTB | `fbbe9517…` |
 | 新内核占用 | 页目录 0x80004000，解压到 0x80008000，_end 0x80c55a0c |
 | 交接布局 | zImage 0x80d00000、FDT 0x81400000、initramfs 0x81500000 |
@@ -48,3 +48,5 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 逐日的开发记录移到了 [worklog.md](worklog.md)。
 
 [本次实机证据与换电脑继续的说明](reports/2026-11-21-stage-test/README.md)。
+
+[换电脑继续](CONTINUE.md)：接下来的主机工作暂时不需要设备。

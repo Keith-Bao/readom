@@ -9,7 +9,7 @@ Chinese: [README.md](README.md). The device procedure is
 tests; the jump trampoline is written and has run bare-metal on QEMU's
 Cortex-A7, **but it is built into no module**; the quiesce sequence has only
 its testable order, and the parts that touch hardware are not written.
-**Nothing has run on the device.**
+**Device staging passed on 2026-11-21; no jump has run on hardware.**
 
 ## The order
 
@@ -25,7 +25,7 @@ its testable order, and the parts that touch hardware are not written.
 | 8 | Caches off, MMU off, walk the list, jump | `jump.S` (in no module) | **Irreversible** |
 
 Steps 1 to 6 are what the device test does today, and it unloads afterwards.
-The point of no return in step 7 is the caches: before it, a failure at any
+The point of no return is turning the caches off at the start of step 8: before it, a failure at any
 step has to put the stock system back as it was; after it there is no stock
 kernel left to return to, and the only paths are the new kernel or the
 watchdog.
@@ -137,12 +137,11 @@ runtime DTB of 49280 bytes:
 Its output is kept in ~/koa2-evidence/handoff-plan/ and never in the
 repository.
 
-All of the above is a conclusion about source and host behaviour; none of it
-has been verified on the device.
+The FDT rewrite and layout validation also passed in device staging on 2026-11-21. This does not verify copying or jumping.
 
 ## The staging module (stage.c, koa2_handoff_stage.ko)
 
-The module stages and checks; it has no jump. No ioctl copies a payload to its
+The module stages and checks; it has no jump. Experimental module faults can still hang or restart the stock kernel. No ioctl copies a payload to its
 destination, stops a device, takes down the second core or leaves Linux, and
 closing the device file frees every staged page with the stock system
 untouched. The copy, the quiesce and the jump are the next stage, behind a
@@ -235,11 +234,7 @@ are in hand, `KOA2_STOCK_MODULES=<directory>
 ports/koa2/build-handoff-module.sh ...` runs this check before exporting and
 refuses if anything disagrees.
 
-Not yet verified: the stock modules are not in hand, so whether the
-headless-smoke tree (with the EINK panel and FALCON_WRAPPER turned off) gives
-the same CRCs as stock is unknown. If a symbol disagrees, the types it involves
-have to be rebuilt with the stock configuration, or the import replaced. The
-module has never been loaded on the device.
+Device evidence on 2026-11-21: this staging module loaded, sealed and unloaded successfully. 63 stock modules were recovered; offline CRC checking has not been run. This proves loader acceptance of this module, not compatibility of every module or kernel configuration. The report is linked from [current status](../../ports/koa2/STATUS.en.md).
 
 ## The jump trampoline (jump.S)
 

@@ -4,13 +4,14 @@ The workspace for making an Oasis 2 (firmware 5.16.2.1.1, kernel
 4.1.15-lab126) keep its stock system and also boot Android 8.1.
 Chinese: [README.md](README.md).
 
-**Where it stands**: everything the handoff (taking over the boot) needs on the
-host is written and tested; **device staging passed on 2026-11-21**, and no new
+**Where it stands**: staging and validation have host tests; **device staging passed on 2026-11-21**, and no new
 kernel has booted. The plan is [ROADMAP.md](ROADMAP.en.md) and the step-by-step
 state is [STATUS.md](STATUS.en.md).
 
 **The PW3 package does not apply here**: that is a different device, on a
 3.0.35 kernel with a 3G/1G split.
+
+**Continue without the Kindle**: read [continuing on another computer](CONTINUE.en.md). Device staging passed; hardware quiesce and actual kernel boot are still pending.
 
 ## Where to start reading
 
@@ -61,3 +62,5 @@ python3 tools/run-tests.py --filter koa2
 - Experiments on the device are started by the user, and only once recovery can be argued.
 - Raw device data (the runtime DTB, bootargs, kernel logs, the stock modules) stays on the device and in `~/koa2-evidence/`, never in the repository.
 - Company policy and DLP are not worked around: repository files are edited and built inside WSL's ext4 only.
+
+The reviewed short staging report and kit hashes are published under reports/; full raw device evidence stays local.

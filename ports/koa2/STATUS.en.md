@@ -40,7 +40,7 @@ No new kernel has booted. The previous 59 host tests were not rerun this session
 |---|---|
 | Kernel release | `4.1.15-lab126-koa2-headless-smoke`, with 97 modules' vermagic matching |
 | Image (build-id zeroed) | `e2eba61b8420…`, the same after a rebuild in another output directory |
-| zImage | `4921c4b2…`, different on every build (the lzop timestamp); pinned in target-lock.h |
+| zImage | `4c69f47e…`, different on every build (the lzop timestamp); pinned in target-lock.h |
 | DTB | `fbbe9517…` |
 | What the new kernel writes | Page directory at 0x80004000, decompressed to 0x80008000, _end at 0x80c55a0c |
 | The handoff layout | zImage 0x80d00000, FDT 0x81400000, initramfs 0x81500000 |
@@ -50,3 +50,5 @@ No new kernel has booted. The previous 59 host tests were not rerun this session
 The day-by-day log lives in [worklog.md](worklog.md), in Chinese only.
 
 [Device report and continuation notes (Chinese)](reports/2026-11-21-stage-test/README.md)。
+
+[Continue on another computer](CONTINUE.en.md): no device is needed for the next host work.
