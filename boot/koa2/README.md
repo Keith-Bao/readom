@@ -1,27 +1,55 @@
-# KOA2 交接契约开发
+# KOA2 交接
 
-当前只有只读 DTB 结构/机型校验与内存区间检查，没有模块加载、内存复制、
-CPU 下线或内核跳转。`safe_to_boot` 固定为 false。
+在原厂内核里把新内核装进内存、再跳过去的那套代码。不写分区、不改引导。
+English: [README.en.md](README.en.md)。设备流程见
+[ports/koa2/device-runbook.md](../../ports/koa2/device-runbook.md)。
 
-contract.c 拒绝截断、重叠块、无终止 reserve map、深度过大、非法 token、
-错误 Zelda compatible、溢出的内存区间及跨越允许 RAM 边界的载荷。
-它不是完整 libfdt 替代品，也不验证面板校准、所有 DT 属性语义或允许跳转。
-只有在全部原厂专属数据、保留内存和运行环境契约核实后，才能加入后端。
+**现在的状态**：暂存和校验的全部代码已完成，并有主机测试；跳转蹦床已写好并在
+QEMU 的 Cortex-A7 上裸机跑过，**但没有编进任何模块**；静止顺序只有可测的顺序，
+碰硬件的实现还没写。**设备上一步都没跑过。**
 
-主机测试已登记 tools/run-tests.py，启用 ASan/UBSan；包括 20000 次确定性
-变异输入。另以 ARM 静态二进制在 qemu-arm 上运行同样测试和实际构建 DTB。
-实际 DTB：50984 字节、260 节点、1475 属性、0 个 header reserve 条目。
-0 条目不等于没有保留内存：内核启动过程还会动态预留 RAM。
+## 顺序
 
-当前编译 DTB /memory 为 0x80000000 + 0x20000000，而实机 /proc/iomem
-另有不可用空洞；/chosen 没有 bootargs。不能以此 DTB 直接替换原厂运行时数据。
+| 阶段 | 做什么 | 在哪 | 可逆 |
+|---|---|---|---|
+| 1 | 核对原厂内核身份 | `stage.c` 加载时 | 是（不加载） |
+| 2 | 暂存 zImage、原厂 FDT、initramfs 到自己拥有的页 | `stage.c` BEGIN/PUT | 是（关闭即释放） |
+| 3 | 核对哈希、钉住的内核、FDT 身份与保留区 | `stage.c` SEAL、`contract.c` | 是 |
+| 4 | 算出布局并校验 | `plan.c` | 是 |
+| 5 | 改写 FDT（bootargs、initrd、清 memreserve） | `fdt-rewrite.c` | 是 |
+| 6 | 建出复制表并审计 | `copylist.c` | 是 |
+| 7 | 静止：EPDC、Wi-Fi、USB、SDMA、eMMC、次核、中断、看门狗 | `quiesce.c`（未实现硬件部分） | 每步都要能回滚 |
+| 8 | 关缓存、关 MMU、走表、跳转 | `jump.S`（未编进模块） | **不可逆** |
 
-## 重复验证
+第 1 到 6 步就是设备测试现在做的事，做完就卸载。第 7 步的不可逆点在"关缓存"：
+在那之前任何一步失败都必须把原厂系统放回原样；在那之后已经没有可以回去的原厂内核，
+只剩新内核或看门狗两条路。
 
-Linux 下以 gcc -std=c11 -Wall -Wextra -Werror -O1 -g
--fsanitize=address,undefined -fno-sanitize-recover=all 编译 contract.c 与
-test-contract.c，传入真实 DTB 作为可选参数。ARM 静态编译使用
-arm-linux-gnueabi-gcc -static；qemu-arm 只验证用户空间算法，不证明 i.MX7 外设行为。
+## 这里的代码怎么测
+
+交接这件事不能在主机上整体验证，所以分三层：
+
+- **主机测试**（`tools/run-tests.py --filter koa2`）：契约、布局、FDT 改写、复制表、
+  静止顺序、CRC 核对，以及用替身内核接口跑 `stage.c` 本身。全部开 ASan/UBSan。
+- **裸机 QEMU**：`jump.S` 在 Cortex-A7 上真的关 MMU、走表、跳转。
+- **设备**：只有暂存和校验这一段，由用户按 runbook 发起。
+
+QEMU 整机启动这条路走不通，原因记在
+[ports/koa2/STATUS.md](../../ports/koa2/STATUS.md)：QEMU 6.2 的 i.MX7D 模型缺
+OCRAM_S、DDR 低功耗 OCRAM、GPCv2 的 core-1 上电握手和 DDR 控制器。
+
+## 契约校验（contract.c）
+
+只读校验 DTB 结构与 Zelda 机型，以及内存区间。它拒绝截断、重叠块、无终止 reserve map、
+深度过大、非法 token、错误的 compatible、溢出的区间，以及跨越允许 RAM 边界的载荷。
+它不是 libfdt 的替代品，也不验证面板校准或"可以跳转"。
+
+实测的内存布局（`koa2_measured_ram`、`koa2_measured_excluded`）是**这一台设备**的事实，
+不是默认值，来源见
+[ports/koa2/boot-preflight-findings.md](../../ports/koa2/boot-preflight-findings.md)。
+
+主机测试包含 20000 次确定性变异输入；另以 ARM 静态二进制在 qemu-arm 上跑同样的测试，
+以及实机运行时 DTB。
 
 ## 交接计划校验（plan.c）
 
@@ -45,8 +73,9 @@ plan.c 只判断"把 zImage、FDT、initramfs 放到哪里"是否成立，不分
 5. FDT 不碰内核与运行中的 zImage，且落在 head.S 预先映射的两个 1 MiB 段内。
 6. initramfs 不碰内核、zImage、FDT；7. 各段互不重叠。
 8. 交给新内核的 FDT 里，每条 memreserve 都必须是持久区段、FDT 自身（按页取整）或
-   initramfs。原厂的 FDT/initrd 条目会让内核预留已失效的内存，还会让 arm_memblock_init
-   以"与已用区域重叠"为由丢弃 initramfs。
+   initramfs。原厂的 FDT/initrd 条目会让新内核预留已经失效的内存，也说明传过去的是
+   没改写过的 FDT。（`arm_memblock_init` 先处理 initrd 再扫 memreserve，所以这些条目
+   不会让 initramfs 被丢弃；早先记成会，是搞错了顺序。）
 
 koa2_plan_propose 给出的 headless-smoke 布局：zImage 0x80d00000，FDT 0x81400000，
 initramfs 0x81500000；用构建 DTB（0 条 memreserve）校验通过。用实机运行时 DTB 校验
@@ -90,9 +119,7 @@ check-plan.c 对真实文件走完整流程：先建议布局，再按布局改�
 
 产物只存在 ~/koa2-evidence/handoff-plan/，不进仓库。
 
-以上都只是源码和主机层面的结论，没有在设备上验证。还没写的：
-- 交接模块本身，包括暂存、静止、复制和跳转；
-- 在交接当次读取 EPDC 帧缓冲地址。
+以上都只是源码和主机层面的结论，没有在设备上验证。
 
 ## 交接暂存模块（stage.c，koa2_handoff_stage.ko）
 
@@ -115,6 +142,20 @@ check-plan.c 对真实文件走完整流程：先建议布局，再按布局改�
 5. 最后建出跳转阶段要走的复制表并审一遍（copylist.c）。这里没有任何代码会走它；
    这是离开 Linux 之前最后一件能检查的事，所以现在就在设备上检查，而不是以后假定。
 6. STATUS 只报告数据，不给出物理地址；execute_available 恒为 0。
+
+构建：`ports/koa2/build-handoff-module.sh KERNEL_SRC KERNEL_OUT PAYLOAD_OUT`。
+它从 PAYLOAD_OUT 生成 target-lock.h（钉住 zImage 大小、哈希、占用和 bootargs），
+并在导出前拒绝三种情况：需要 GOT 的模块、导入了构建树没有导出的符号、写协处理器寄存器
+（mcr/mcrr）或导入 cpu_down、restart、__dump_lastk_to_mmc、kallsyms_lookup_name 等符号。
+koa2-stage-client 是配套的用户态程序（ARM 静态版），只做 BEGIN/PUT/SEAL/STATUS 然后关闭。
+
+测试 koa2-stage 在主机上编译 stage.c 本身，内核接口由 boot/koa2/tests/kshim 替代，
+用 ASan/UBSan 运行。覆盖的情况：
+- 身份门槛和打开规则；
+- BEGIN/PUT 的每种拒绝，包括分配器耗尽和用户缓冲出错；
+- SEAL 的每个失败阶段；
+- 加载窗口内的页被避开，关闭后页数归零。
+传入实机运行时 DTB 时，49280 字节改写为 47972 字节，计划校验通过。
 
 ## 复制表（copylist.c）
 
@@ -140,20 +181,6 @@ koa2_copylist_audit 是独立的第二个读者：它按写下的字逐项核对
 物理内存的数组上），再核对每个载荷字节是否都到了该去的地方。链接、越界、重叠和被改动的
 表项都有用例。写表时的一个计数错误就是这个测试发现的：它把含链接的字数和不含链接的项数
 相比。
-
-构建：`ports/koa2/build-handoff-module.sh KERNEL_SRC KERNEL_OUT PAYLOAD_OUT`。
-它从 PAYLOAD_OUT 生成 target-lock.h（钉住 zImage 大小、哈希、占用和 bootargs），
-并在导出前拒绝三种情况：需要 GOT 的模块、导入了构建树没有导出的符号、写协处理器寄存器
-（mcr/mcrr）或导入 cpu_down、restart、__dump_lastk_to_mmc、kallsyms_lookup_name 等符号。
-koa2-stage-client 是配套的用户态程序（ARM 静态版），只做 BEGIN/PUT/SEAL/STATUS 然后关闭。
-
-测试 koa2-stage 在主机上编译 stage.c 本身，内核接口由 boot/koa2/tests/kshim 替代，
-用 ASan/UBSan 运行。覆盖的情况：
-- 身份门槛和打开规则；
-- BEGIN/PUT 的每种拒绝，包括分配器耗尽和用户缓冲出错；
-- SEAL 的每个失败阶段；
-- 加载窗口内的页被避开，关闭后页数归零。
-传入实机运行时 DTB 时，49280 字节改写为 47972 字节，计划校验通过。
 
 ## 原厂内核的版本检查（module-crcs.py）
 

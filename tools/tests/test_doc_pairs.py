@@ -76,7 +76,17 @@ STRICT = [('README.md', 'README.en.md'),
           ('docs/design/release-build.md', 'docs/design/release-build.en.md'),
           ('docs/design/performance.md', 'docs/design/performance.en.md'),
           ('docs/design/porting-to-other-models.md',
-           'docs/design/porting-to-other-models.en.md')]
+           'docs/design/porting-to-other-models.en.md'),
+          # The KOA2 port. Its runbook is read on the day the device is in
+          # hand, by whoever has it, so a half that has drifted is worse than
+          # no half at all; the rest of these are what that reader needs
+          # around it. The port's day-by-day log (ports/koa2/worklog.md) is
+          # deliberately not paired: it is a record, not an explanation.
+          ('ports/koa2/README.md', 'ports/koa2/README.en.md'),
+          ('ports/koa2/ROADMAP.md', 'ports/koa2/ROADMAP.en.md'),
+          ('ports/koa2/STATUS.md', 'ports/koa2/STATUS.en.md'),
+          ('ports/koa2/device-runbook.md', 'ports/koa2/device-runbook.en.md'),
+          ('boot/koa2/README.md', 'boot/koa2/README.en.md')]
 PAIRS = STRICT
 PAIRED = {name for pair in PAIRS for name in pair}
 

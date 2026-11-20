@@ -1,0 +1,188 @@
+# Device test procedure (Oasis 2)
+
+This file is for **whoever runs the test**, human or agent, and assumes no
+earlier conversation. Work through it in order; each step says what it needs,
+what it gives back, and what to do when it goes wrong. Chinese version:
+[device-runbook.md](device-runbook.md).
+
+**What this run does**: loads the staging module into the stock kernel, has it
+check every preparation the handoff needs on the device itself, and unloads it.
+**It does not jump to the new kernel**; no code in the module can.
+
+**What it does not do**: no partition write, no bootloader change, no IDME, no
+calibration data, no network, no reboot. Everything it writes is under
+`koa2-stage-test/` on the Kindle.
+
+## 0. Confirm these first
+
+| Needs | How to confirm | If not |
+|---|---|---|
+| The Kindle is an Oasis 2, firmware 5.16.2.1.1 | `/etc/prettyversion.txt` | Stop. The kit accepts this firmware only |
+| The kernel is `4.1.15-lab126` | `uname -a` | Stop. The script refuses it as well |
+| Jailbroken, with KUAL installed | The KUAL menu appears | Stop; deal with the jailbreak first |
+| Battery over 50% | The device status bar | Charge first. Losing power mid-test harms nothing but wastes the run |
+| The build host is WSL `Readom-KOA2` | `wsl.exe -l -v` | See [build-environment.md](build-environment.md) |
+
+## 1. Build the kit on the host
+
+Inside WSL (never through Windows: company DLP encrypts `.py` and `.json`
+written to a Windows disk):
+
+```bash
+cd ~/readom-work/readom && bash ports/koa2/build-stage-test-kit.sh
+```
+
+The result is in `~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test/`:
+`stage-test.sh`, `koa2_handoff_stage.ko`, `koa2-stage-client`, `zImage`,
+`initramfs.cpio.gz`, `SHA256SUMS`, `menu.json`, `config.xml`.
+
+Before exporting, the script refuses a module that needs a GOT, imports a
+symbol the tree it was built against does not export, writes a coprocessor
+register, imports `cpu_down` or anything that restarts, or carries a zImage
+that is not the one it pinned. **If it refuses, do not copy anything to the
+device**; fix it first.
+
+## 2. Copy it to the Kindle
+
+With USB connected, mount and copy from inside WSL as root:
+
+```bash
+sudo mount -t drvfs F: /mnt/f && cp -r ~/artifacts/koa2-stage-test-kit/readom-koa2-stage-test /mnt/f/extensions/
+```
+
+Then check this one thing, to be sure DLP did not encrypt the JSON:
+
+```bash
+head -c 8 /mnt/f/extensions/readom-koa2-stage-test/menu.json
+```
+
+It has to print the start of a JSON object. If it prints `%TSD-Head` the file
+was encrypted, KUAL will not read the menu, and the copy has to be made another
+way (not through Windows Explorer). A changed `.ko`, zImage or script is caught
+by the checksum test on the device, but `menu.json` and `config.xml` are not in
+that list, so this is the only check for them.
+
+Eject the USB volume in Windows before touching the Kindle.
+
+## 3. Run it on the Kindle
+
+KUAL, then **Readom KOA2 Stage Test**, then **Stage and check handoff (no
+jump)**.
+
+It takes under a minute. The screen will not change, which is expected: the
+test does not touch the display.
+
+In order, the script checks the kernel identity and its own checksums, copies
+the stock `.ko` files read-only, records `panic_on_oops`, memory and dmesg,
+runs `insmod`, stages the zImage, the runtime FDT and the initramfs, seals,
+runs `rmmod`, and records everything again.
+
+## 4. Read the result
+
+The report is in `koa2-stage-test/<UTC time>-<PID>/` on the Kindle, and
+`LAST_RUN.txt` names the newest. Read `result=` at the end of `report.txt`:
+
+| result | Meaning | Next |
+|---|---|---|
+| `insmod_refused` | **The likely one**. The module was built against the headless-smoke tree, its symbol CRCs do not match stock, and the kernel refused it by the rules. Nothing was loaded | Go to section 6. The stock `.ko` files have been copied back, which is what they are for |
+| `sealed_plan_valid` | The module was accepted, every check on the device passed, and it was unloaded | Go to section 7 |
+| `seal_failed` | The module loaded but sealing was refused | Read `seal_stage` against section 5 |
+| `refused_unknown_kernel` | The kernel is not `4.1.15-lab126` | Check the device and firmware. Nothing was loaded |
+| `refused_kit_damaged` | The kit's checksums do not match | Redo sections 1 and 2 |
+| `refused_module_already_loaded` | The module is already in the kernel | `rmmod koa2_handoff_stage` first |
+
+The line after `client_exit=0` carries the numbers:
+
+| Field | Should be |
+|---|---|
+| `state` | 2 (sealed) |
+| `plan_valid` | 1 |
+| `execute_available` | **always 0**. There is no jump at this stage; a 1 means the wrong thing was installed |
+| `fdt_bytes` | about 47900 (the rewritten FDT, smaller than the stock one) |
+| `payload_pages` | about 1690 (the pages the three payloads hold) |
+| `collision_pages` | pages set aside, 0 to 8192. Past 8192 it fails with `-ENOSPC` |
+| `list_pages`/`list_entries` | the copy list's size; `list_entries` is about `payload_pages + 3 + list_pages` |
+
+## 5. What seal_stage means
+
+| seal_stage | Where it stopped |
+|---|---|
+| 1 | A payload was not written in full |
+| 2 | A payload's hash is not what was declared (`seal_result` is the slot: 0 zImage, 1 FDT, 2 initramfs) |
+| 3 | The zImage is not the one the build pinned |
+| 4 | The stock runtime FDT is malformed, or not a Zelda |
+| 5 | The FDT reserves something the measured exclusions do not cover (**this device's reserved memory differs from the record; important**) |
+| 6 | Rewriting the FDT failed |
+| 7 | `/memory` is not 0x80000000 + 0x20000000 |
+| 8 | The layout check failed |
+| 9 | A staged page lies on a destination |
+| 10 | The copy-list audit failed |
+
+Any of 5, 7, 9 or 10 means stop and work out why rather than retry: each says
+this device's memory layout is not the one
+[boot-preflight-findings.md](boot-preflight-findings.md) recorded.
+
+## 6. If it was insmod_refused (the likely one)
+
+Copy the report back to the host and check the CRCs:
+
+```bash
+mkdir -p ~/koa2-evidence/stage-test && sudo mount -t drvfs F: /mnt/f && cp -r /mnt/f/koa2-stage-test/* ~/koa2-evidence/stage-test/
+```
+
+```bash
+cd ~/readom-work/readom && R=~/koa2-evidence/stage-test/$(cat ~/koa2-evidence/stage-test/LAST_RUN.txt) && python3 ports/koa2/module-crcs.py check --stock $R/stock-modules --symvers ~/readom-work/out-headless-smoke/Module.symvers ~/artifacts/koa2-handoff-module/koa2_handoff_stage.ko
+```
+
+`differ` lists symbols whose CRCs disagree and `unknown` those no stock module
+records. If both are empty and `passed` is true the module should have loaded,
+so the reason is in the dmesg around `insmod` instead.
+
+When something disagrees, follow "the stock kernel's version checks" in
+[boot/koa2/README.md](../../boot/koa2/README.en.md): replace the import, or
+rebuild the types those symbols involve with the stock configuration. Then redo
+section 1, giving the build the stock modules so it checks itself first:
+
+```bash
+KOA2_STOCK_MODULES=$R/stock-modules bash ports/koa2/build-stage-test-kit.sh
+```
+
+Then return to section 2.
+
+## 7. If it was sealed_plan_valid
+
+Everything checkable on the host and on the device has been checked. Copy the
+report back (the commands in section 6), update [STATUS.md](STATUS.en.md), and
+**stop here**.
+
+The next stage is the handoff itself, and two pieces of it do not exist yet,
+neither of them part of this procedure: the hardware run/undo bodies of the
+quiesce sequence ([quiesce.c](../../boot/koa2/quiesce.c) currently holds only
+the order, which is what the host tests check), and reading the EPDC
+framebuffer addresses during the handoff so they can be excluded.
+The trampoline ([jump.S](../../boot/koa2/jump.S)) is written and has run
+bare-metal on an emulated Cortex-A7, but it is in no module and has never run
+on the device.
+
+## 8. When something goes wrong
+
+| What you see | Why | What to do |
+|---|---|---|
+| The device hangs or restarts after `insmod` | The module faulted in the stock kernel (an oops) | Wait. With `panic_on_oops` at 1 the stock kernel restarts itself into stock after about 5 seconds; at 0 only that process dies |
+| The screen does nothing but the device is alive | The test does not touch the display; expected | Wait for the script to end, then read the report |
+| Nothing responds at all | Unknown | Hold power about 40 seconds to force a restart. The watchdog also resets after 60 seconds |
+| Worried about data after a restart | No partition was ever written | Stock boots as usual; the library, KOReader and KUAL are untouched |
+
+A restart through the stock path writes printk to eMMC sector 0x9a400, as the
+stock kernel does for any crash. It has nothing to do with the handoff; see the
+last section of [boot-preflight-findings.md](boot-preflight-findings.md).
+
+## 9. Still needs the device, but not in this procedure
+
+| What | Why it needs hardware |
+|---|---|
+| The speed mode and tuning the standard sdhci driver reaches on this eMMC | Only measurable on the device |
+| The EPDC framebuffer addresses of a given boot | Allocated dynamically; must be read that time |
+| What each quiesce step does to the hardware | Only the order and the rollback are checked today |
+| Whether the printk buffer survives a WDOG_B reset | Only measurable on the device |
+| The handoff itself (copy and jump) | Not until all of the above is settled |

@@ -2,28 +2,45 @@
 
 目标：Oasis 2 / 固件 5.16.2.1.1 保留原厂系统，运行 Android 8.1、微信读书，
 支持触摸、实体翻页、旋转、前光、联网、USB、休眠和返回原厂。
+English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)。
 
-## 顺序与阶段门槛
+## 阶段与当前状态
 
-1. A 开发记录：保存基线、命令、证据和下一步；每阶段独立提交。
-2. B 环境：E 盘 WSL2 Ubuntu 22.04，Readom-KOA2；8 CPU、10GB RAM、8GB swap。
-   ext4 内构建；内核 -j4、AOSP -j2；剩余空间不足 40GB 停止新增构建。
-3. C 原厂内核：校验 source-lock，独立源码树与构建入口，zelda defconfig、
-   zImage、DTB、modules、System.map、Module.symvers、日志及哈希；干净重建。
-4. D Android 内核：逐项审计补丁，独立 4.1 配置和序列，优先 Binder 多上下文，
-   再处理安全、内存、网络、USB；检查最终配置，不合入 PW3 专用驱动。
-5. E 交接：独立 SMP/DTB 后端；核实次核停止、缓存、DMA、GIC、看门狗、保留内存。
-   先校验模式，再分配/释放模式，最后真实跳转；测试截断、溢出、重叠和身份错误。
-6. F 最小 Linux：先验证日志通路，每包附提交与哈希、预期和恢复办法。
-   用户手动启动；连续三次进入新内核并返回原厂后才推进 Android。
-7. G 基础硬件：EPDC v2 ABI、stride、灰阶/局刷/全刷、触摸、翻页、旋转、
-   MAX77796 单位及前光；波形和校准不提交仓库。
-8. H AOSP：锁定上游修订，koa2-userdebug / Cortex-A7，独立输出和数据镜像；
-   WSL x86_64 主机工具替代 Lima ARM64 假设；桌面稳定 30 分钟并可返回原厂。
-9. I 日常功能：同内核编译 Broadcom，Wi-Fi/DNS/HTTPS、ADB 授权、MTP；
-   官方微信读书由用户登录，验证同步和输入；最后启用自动休眠。
-10. J 安装回退：KUAL 入口，机型/固件/内核校验，文件镜像不重新分区，
-    校验后替换并保留上一版；拒绝不兼容数据降级，不自动格式化。
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| A 开发记录 | 基线、命令、证据、下一步；每阶段独立提交 | 进行中 |
+| B 环境 | WSL2 Ubuntu 22.04 `Readom-KOA2`，ext4 内构建 | 已完成，见 [build-environment.md](build-environment.md) |
+| C 原厂内核 | zelda defconfig、zImage、DTB、modules、哈希；干净重建 | 已完成（headless-smoke），见 [headless-smoke.md](headless-smoke.md) |
+| D Android 内核 | 逐项审计补丁，4.1 配置，Binder 多上下文优先 | 已审计未构建，见 [android41-audit.md](android41-audit.md) |
+| E 交接 | 校验、暂存、复制表、跳转；SMP/DTB 后端 | 主机侧完成，设备侧未运行，见 [boot/koa2/README.md](../../boot/koa2/README.md) |
+| F 最小 Linux | smoke initramfs，日志通路，三次往返 | initramfs 已就绪，未在设备上启动 |
+| G 基础硬件 | EPDC v2、触摸、翻页、旋转、前光 | 未开始，缺 EPDC 源码，见 [epdc-source-gap.md](epdc-source-gap.md) |
+| H AOSP | koa2-userdebug / Cortex-A7，独立输出 | 未开始 |
+| I 日常功能 | Wi-Fi、ADB、MTP、微信读书、自动休眠 | 未开始 |
+| J 安装回退 | KUAL 入口，机型校验，保留上一版 | 未开始 |
+
+## E 阶段内部（当前重心）
+
+| 件 | 状态 |
+|---|---|
+| DTB/内存契约校验 | 完成，测试 `koa2-contract` |
+| 实测内存布局与排除表 | 完成，见 [boot-preflight-findings.md](boot-preflight-findings.md) |
+| 内核占用推导（LZO + AUTO_ZRELADDR） | 完成，`ports/koa2/derive-kernel-footprint.py` |
+| 布局校验 | 完成，测试 `koa2-plan` |
+| 交接 FDT 改写 | 完成，测试 `koa2-fdt-rewrite` |
+| 复制表与审计 | 完成，测试 `koa2-copylist` |
+| 暂存模块（无跳转） | 完成，测试 `koa2-stage` |
+| 原厂符号 CRC 核对 | 工具完成，缺原厂模块，测试 `koa2-module-crcs` |
+| 跳转蹦床 | 完成并裸机验证，测试 `koa2-jump-baremetal`，未编进模块 |
+| 静止顺序 | 只有可测的顺序，缺碰硬件的实现，测试 `koa2-quiesce` |
+| 设备测试套件 | 完成，未运行，见 [device-runbook.md](device-runbook.md) |
+
+## 阶段门槛
+
+- E 推进到 F：设备上 `sealed_plan_valid`，且静止顺序的硬件实现齐备。
+- F 推进到 G：用户手动启动，连续三次进入新内核并返回原厂。
+- G 推进到 H：EPDC 源码缺口解决，刷新、触摸、翻页、旋转可用。
+- H 推进到 I：桌面稳定 30 分钟并可返回原厂。
 
 ## 最终验收
 
@@ -36,7 +53,7 @@
 
 ## 执行规则
 
-每轮读取 STATUS.md，核实 Git 和真实产物，完成当前未完成步骤并验证，
+每轮读取 [STATUS.md](STATUS.md)，核实 Git 和真实产物，完成当前未完成步骤并验证，
 保存证据、提交推送、更新下一步。主机测试、模拟器和真机结果分开记录。
 用户负责管理员操作/重启、Kindle 启动和恢复、应用登录；不购买云资源。
 不删除保护检查、不强制加载不兼容模块、不写原始分区/IDME/密钥/校准。
