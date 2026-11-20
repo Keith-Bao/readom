@@ -25,6 +25,7 @@ struct k2s_put { k2s_u32 slot, offset, bytes, reserved; k2s_u64 user_buffer; };
 struct k2s_status {
     k2s_u32 version, state, written[K2S_SLOTS], sizes[K2S_SLOTS];
     k2s_u32 payload_pages, collision_pages, fdt_bytes;
+    k2s_u32 list_pages, list_entries;
     signed int seal_stage, seal_result;  /* which check of seal() failed last, and its code */
     k2s_u32 plan_valid, execute_available;
 };
@@ -43,4 +44,5 @@ struct k2s_status {
 #define K2S_STAGE_MEMORY 7
 #define K2S_STAGE_PLAN 8
 #define K2S_STAGE_PAGES 9
+#define K2S_STAGE_COPYLIST 10
 #endif

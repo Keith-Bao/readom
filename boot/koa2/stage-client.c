@@ -14,7 +14,7 @@
 #include <unistd.h>
 _Static_assert(sizeof(struct k2s_begin)==116, "k2s_begin");
 _Static_assert(sizeof(struct k2s_put)==24, "k2s_put");
-_Static_assert(sizeof(struct k2s_status)==60, "k2s_status");
+_Static_assert(sizeof(struct k2s_status)==68, "k2s_status");
 static unsigned char *slurp(const char *path, size_t *bytes) {
     /* /sys/firmware/fdt reports no size, so read until EOF. */
     int fd=open(path,O_RDONLY); size_t cap=1<<16,n=0; unsigned char *p=malloc(cap);
@@ -57,8 +57,10 @@ int main(int argc, char **argv) {
     if(rc) perror("seal");
     memset(&st,0,sizeof(st));
     if(ioctl(fd,K2S_STATUS,&st)) { perror("status"); return 1; }
-    printf("state=%u plan_valid=%u execute_available=%u fdt_bytes=%u payload_pages=%u collision_pages=%u seal_stage=%d seal_result=%d\n",
-           st.state,st.plan_valid,st.execute_available,st.fdt_bytes,st.payload_pages,st.collision_pages,st.seal_stage,st.seal_result);
+    printf("state=%u plan_valid=%u execute_available=%u fdt_bytes=%u payload_pages=%u\n"
+           "collision_pages=%u list_pages=%u list_entries=%u seal_stage=%d seal_result=%d\n",
+           st.state,st.plan_valid,st.execute_available,st.fdt_bytes,st.payload_pages,
+           st.collision_pages,st.list_pages,st.list_entries,st.seal_stage,st.seal_result);
     close(fd);
     return rc||!st.plan_valid;
 }

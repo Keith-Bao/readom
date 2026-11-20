@@ -27,6 +27,7 @@
 #include "contract.h"
 #include "plan.h"
 #include "fdt-rewrite.h"
+#include "copylist.h"
 #include "sha256.h"
 #include "target-lock.h"
 
@@ -39,6 +40,9 @@
 #define K2S_FDT_MAX (64u * 1024u)
 #define K2S_FDT_OUT_MAX (K2S_FDT_MAX + 8192u)
 #define MAX_WRITE (64u * 1024u)
+/* One list page per 1023 entries; the largest payload here is about 108000
+ * pages, so 128 is far more than enough and bounds the allocation. */
+#define MAX_LIST_PAGES 128u
 /* The largest the three payloads can be: a zImage below 8 MiB, the FDT, and an
  * initramfs that reaches the printk buffer from 0x81500000. */
 #define MAX_PAYLOAD_BYTES (8u*1024u*1024u + K2S_FDT_MAX + 0x1a900000u)
@@ -64,6 +68,7 @@ struct store {
     unsigned int count, collisions;
     int seal_stage, seal_result;
     unsigned int fdt_bytes, plan_valid;
+    unsigned int list_first, list_pages, list_entries;   /* the audited copy list */
     struct koa2_plan plan;         /* filled by seal(); no addresses leave the module */
 };
 static atomic_t opened = ATOMIC_INIT(0);
@@ -94,6 +99,7 @@ static void discard(struct store *s)
     s->owned=s->rejected=NULL; s->count=s->collisions=0;
     wipe(s->slot,sizeof(s->slot)); memset(&s->plan,0,sizeof(s->plan));
     s->fdt_bytes=s->plan_valid=0; s->state=K2S_EMPTY;
+    s->list_first=s->list_pages=s->list_entries=0;
 }
 /* The ranges a staged page must avoid: the running stock kernel's low memory
  * through 0x88000000 would hold the new kernel and its decompression, and the
@@ -195,6 +201,58 @@ static void slot_read(struct store *s, unsigned int slot, unsigned int offset, u
         out+=take; offset+=take; n-=take;
     }
 }
+/* The staged pages of one segment, as physical addresses in order. */
+static int segment_pages(struct store *s, unsigned int slot, unsigned int count, u32 *out)
+{
+    unsigned int i;
+    if(count>s->slot[slot].pages) return KOA2_BOUNDS;
+    for(i=0;i<count;++i) out[i]=owned_phys(s,s->slot[slot].first+i);
+    return KOA2_OK;
+}
+/* Allocates the list pages, writes the list, and audits it against the plan.
+ * The audit is what matters: it refuses a list whose own pages or sources lie
+ * where the copy writes, which is what makes the copy order irrelevant. */
+static int build_copy_list(struct store *s)
+{
+    struct koa2_copy_segment segments[KOA2_PLAN_MAX_SEGMENTS];
+    u32 *pages[KOA2_PLAN_MAX_SEGMENTS]={NULL,NULL,NULL};
+    u32 **list_virtual=NULL, *list_physical=NULL;
+    size_t want,entries=0,audited=0,i;
+    int result=KOA2_BOUNDS;
+    if(s->plan.segment_count>KOA2_PLAN_MAX_SEGMENTS) return KOA2_BOUNDS;
+    for(i=0;i<s->plan.segment_count;++i) {
+        unsigned int count=DIV_ROUND_UP((unsigned int)s->plan.segments[i].size,PAGE_SIZE);
+        pages[i]=vzalloc(count*sizeof(u32));
+        if(!pages[i] || segment_pages(s,(unsigned int)i,count,pages[i])) goto out;
+        segments[i].dest=s->plan.segments[i].dest;
+        segments[i].pages=pages[i];
+        segments[i].page_count=count;
+    }
+    want=koa2_copylist_pages(segments,s->plan.segment_count);
+    if(!want || want>MAX_LIST_PAGES) goto out;
+    list_virtual=vzalloc(want*sizeof(*list_virtual));
+    list_physical=vzalloc(want*sizeof(*list_physical));
+    if(!list_virtual || !list_physical) goto out;
+    s->list_first=s->count;
+    for(i=0;i<want;++i) {
+        if(allocate_owned(s)) goto out;
+        list_virtual[i]=owned_addr(s,s->list_first+(unsigned int)i);
+        list_physical[i]=owned_phys(s,s->list_first+(unsigned int)i);
+    }
+    result=koa2_copylist_build(list_virtual,list_physical,want,segments,s->plan.segment_count,&entries);
+    if(result) goto out;
+    result=koa2_copylist_audit((const u32 *const *)list_virtual,list_physical,want,
+                               segments,s->plan.segment_count,
+                               koa2_handoff_persistent,KOA2_HANDOFF_PERSISTENT_COUNT,&audited,NULL);
+    if(result) goto out;
+    if(audited!=entries) { result=KOA2_BOUNDS; goto out; }
+    s->list_pages=(unsigned int)want; s->list_entries=(unsigned int)entries;
+    result=KOA2_OK;
+out:
+    for(i=0;i<KOA2_PLAN_MAX_SEGMENTS;++i) vfree(pages[i]);
+    vfree(list_virtual); vfree(list_physical);
+    return result;
+}
 static int seal_fail(struct store *s, int stage, int result, int rc)
 {
     s->seal_stage=stage; s->seal_result=result;
@@ -289,6 +347,11 @@ static int seal(struct store *s)
         memset(page,0,PAGE_SIZE);
         if(at<bytes) memcpy(page,out+at,min_t(size_t,PAGE_SIZE,bytes-at));
     }
+    /* Build and audit the list the jump stage would walk. Nothing here walks
+     * it: this is the last thing that can be checked without leaving Linux, so
+     * it is checked now, on the device, rather than assumed later. */
+    result=build_copy_list(s);
+    if(result) { result=seal_fail(s,K2S_STAGE_COPYLIST,result,-EUCLEAN); goto out; }
     s->fdt_bytes=(unsigned int)bytes; s->plan_valid=1; s->state=K2S_SEALED;
     s->seal_stage=s->seal_result=0; result=0;
 out:
@@ -317,6 +380,7 @@ static long stage_ioctl(struct file *file, unsigned int command, unsigned long a
             status.payload_pages+=s->slot[i].pages;
         }
         status.collision_pages=s->collisions; status.fdt_bytes=s->fdt_bytes;
+        status.list_pages=s->list_pages; status.list_entries=s->list_entries;
         status.seal_stage=s->seal_stage; status.seal_result=s->seal_result;
         status.plan_valid=s->plan_valid; status.execute_available=0;
         rc=copy_to_user((void __user *)arg,&status,sizeof(status))?-EFAULT:0; break;
@@ -354,7 +418,7 @@ static int __init stage_init(void)
     const struct new_utsname *u=init_utsname();
     BUILD_BUG_ON(sizeof(struct k2s_begin)!=116);
     BUILD_BUG_ON(sizeof(struct k2s_put)!=24);
-    BUILD_BUG_ON(sizeof(struct k2s_status)!=60);
+    BUILD_BUG_ON(sizeof(struct k2s_status)!=68);
     BUILD_BUG_ON(sizeof(K2S_BOOTARGS)>KOA2_BOOTARGS_MAX+1);
     /* Only the stock kernel the measurements came from, with the split they assume. */
     if(strcmp(u->release,K2S_STOCK_RELEASE) || strcmp(u->version,K2S_STOCK_VERSION) ||

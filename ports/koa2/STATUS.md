@@ -56,6 +56,9 @@
   KUAL 一键 insmod → 暂存 → 封存 → rmmod，同时只读复制原厂 .ko，不含跳转。主机上验证过两种拒绝路径：
   内核不符时在身份检查处停下，套件被改动时在哈希检查处停下。
   暂存模块被避开的页数上限改为 8192 页（32 MiB），超出时返回 -ENOSPC，避免挤占原厂系统的内存。尚未在设备上运行。
+- 复制表已写（boot/koa2/copylist.c，README「复制表」），测试 koa2-copylist 会按跳转阶段的方式
+  走一遍写出来的表并核对每个字节。暂存模块封存时会建出真实的表并审一遍（seal_stage 10），
+  但没有任何代码会走它。STATUS 多了 list_pages/list_entries。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。

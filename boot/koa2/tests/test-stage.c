@@ -110,6 +110,9 @@ static void happy_path(size_t n)
     assert(run(fdt_fixture,n,initramfs,sizeof(initramfs))==0);
     st=status();
     assert(st.state==K2S_SEALED && st.plan_valid==1 && st.execute_available==0 && st.seal_stage==0);
+    /* The copy list was built and audited: one destination entry per segment,
+     * one per payload page, the terminator, and a link on every page but the last. */
+    assert(st.list_pages>=1 && st.list_entries==3+st.payload_pages+1+st.list_pages-1);
     /* The FDT slot now holds the rewrite: no memreserve, the build's bootargs. */
     s=f.private_data;
     assert(st.fdt_bytes<=sizeof(out)); slot_read(s,1,0,out,st.fdt_bytes);

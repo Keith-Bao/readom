@@ -18,7 +18,7 @@ here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 tc=$HOME/toolchains/aosp-arm-gcc49/bin/arm-linux-androidkernel-
 nm=$HOME/toolchains/aosp-arm-gcc49/bin/arm-linux-androideabi-gcc-nm
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
-cp "$here"/boot/koa2/{Kbuild,stage.c,stage-abi.h,contract.c,contract.h,plan.c,plan.h,fdt-rewrite.c,fdt-rewrite.h,koa2-types.h} "$work/"
+cp "$here"/boot/koa2/{Kbuild,stage.c,stage-abi.h,contract.c,contract.h,plan.c,plan.h,fdt-rewrite.c,fdt-rewrite.h,copylist.c,copylist.h,koa2-types.h} "$work/"
 cp "$here"/boot/handoff/{sha256.c,sha256.h} "$work/"
 fp=$(python3 "$here/ports/koa2/derive-kernel-footprint.py" "$payload")
 zimage=$payload/arch/arm/boot/zImage
