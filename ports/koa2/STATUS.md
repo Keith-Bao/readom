@@ -43,6 +43,11 @@
   做法：清空 reserve map，替换 /chosen 的 bootargs 和 initrd，其余原样复制。
   对实机运行时 DTB 的结果：改写后计划校验通过；dtc 对比只有预期的差异。
   这只是主机层面的结论，没有在设备上验证。
+- 交接暂存模块已写（boot/koa2/stage.c，README「交接暂存模块」）：暂存、核对、改写 FDT、校验计划，
+  不含跳转。主机测试 koa2-stage 用替身内核接口跑 stage.c 本身；对 headless-smoke 树编译出
+  koa2_handoff_stage.ko（33 个导入，导出前会检查不含 GOT、不写协处理器、不导入下线/重启类符号）。
+  阻塞：原厂内核树因缺 EPDC 源码编译不出，没有原厂 Module.symvers，模块的 vermagic/CRC 对不上
+  原厂内核，暂时不能在设备上加载。下一步是从设备上的原厂模块读出导出符号的 CRC。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。

@@ -93,3 +93,43 @@ check-plan.c 对真实文件走完整流程：先建议布局，再按布局改�
 以上都只是源码和主机层面的结论，没有在设备上验证。还没写的：
 - 交接模块本身，包括暂存、静止、复制和跳转；
 - 在交接当次读取 EPDC 帧缓冲地址。
+
+## 交接暂存模块（stage.c，koa2_handoff_stage.ko）
+
+模块只做暂存和校验，不含跳转。没有任何 ioctl 会把载荷复制到目的地址、停设备、
+下线次核或离开 Linux；关闭设备文件就释放全部暂存页，原厂系统不受影响。
+复制、静止和跳转是下一阶段，要另起一个设备、另设门槛。
+
+流程（/dev/koa2-handoff-stage，需要 CAP_SYS_BOOT，同时只能打开一次）：
+1. 加载时核对原厂内核身份：release `4.1.15-lab126`、version
+   `#1 SMP PREEMPT Tue Aug 1 11:50:12 UTC 2023`、armv7l、PHYS_OFFSET 与 PAGE_OFFSET 均为
+   0x80000000。不符就拒绝加载。
+2. BEGIN：调用方给出三个槽（zImage、/sys/firmware/fdt 读出的原厂 FDT、initramfs）的大小和
+   SHA256。zImage 必须是构建时钉住的那一个，否则不分配任何页。暂存页避开 zImage 加载窗口
+   0x80000000–0x88000000 和持久区段；被避开的页先留在手里，之后一起释放，防止分配器重复给出。
+3. PUT：按顺序写入，每次最多 64 KiB。用户缓冲出错会丢弃全部暂存内容。
+4. SEAL：依次核对哈希、钉住的内核、原厂 FDT（Zelda，且 memreserve 都在实测排除表内）。
+   然后给出布局、改写 FDT、核对 /memory，再校验计划。最后确认没有任何暂存页落在目的地址上
+   （复制阶段要一边读源页一边写目的地址）。任何一步失败都丢弃全部暂存内容，
+   并在 STATUS 的 seal_stage/seal_result 里记下失败的是哪一步。
+5. STATUS 只报告数据，不给出物理地址；execute_available 恒为 0。
+
+构建：`ports/koa2/build-handoff-module.sh KERNEL_SRC KERNEL_OUT PAYLOAD_OUT`。
+它从 PAYLOAD_OUT 生成 target-lock.h（钉住 zImage 大小、哈希、占用和 bootargs），
+并在导出前拒绝三种情况：需要 GOT 的模块、导入了构建树没有导出的符号、写协处理器寄存器
+（mcr/mcrr）或导入 cpu_down、restart、__dump_lastk_to_mmc、kallsyms_lookup_name 等符号。
+koa2-stage-client 是配套的用户态程序（ARM 静态版），只做 BEGIN/PUT/SEAL/STATUS 然后关闭。
+
+测试 koa2-stage 在主机上编译 stage.c 本身，内核接口由 boot/koa2/tests/kshim 替代，
+用 ASan/UBSan 运行。覆盖的情况：
+- 身份门槛和打开规则；
+- BEGIN/PUT 的每种拒绝，包括分配器耗尽和用户缓冲出错；
+- SEAL 的每个失败阶段；
+- 加载窗口内的页被避开，关闭后页数归零。
+传入实机运行时 DTB 时，49280 字节改写为 47972 字节，计划校验通过。
+
+尚未解决：原厂内核树编译不出来（缺 mxc_epdc_fb_lab126.c，见 ports/koa2/epdc-source-gap.md），
+所以没有原厂的 Module.symvers。现在只能针对 headless-smoke 树编译，得到的模块 vermagic 是
+`4.1.15-lab126-koa2-headless-smoke`，原厂内核不会加载它。能在原厂内核里加载之前，必须先拿到
+原厂导出符号的 CRC（例如从设备上 /lib/modules 里原厂模块的 __versions 段读取），并核对模块
+用到的 33 个导入。模块从未在设备上加载过。

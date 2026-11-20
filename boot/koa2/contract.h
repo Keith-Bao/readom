@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 #ifndef KOA2_CONTRACT_H
 #define KOA2_CONTRACT_H
-#include <stddef.h>
-#include <stdint.h>
+#include "koa2-types.h"
 enum koa2_error { KOA2_OK=0, KOA2_BOUNDS=-1, KOA2_FORMAT=-2, KOA2_IDENTITY=-3, KOA2_RANGE=-4 };
 struct koa2_fdt_info { uint32_t total, nodes, properties, reservations; };
 /* Read-only: validates the complete envelope/token stream and Zelda identity.

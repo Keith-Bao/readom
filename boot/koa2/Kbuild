@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
+obj-m := koa2_handoff_stage.o
+koa2_handoff_stage-y := stage.o contract.o plan.o fdt-rewrite.o sha256.o
+ccflags-y := -I$(src) -Werror

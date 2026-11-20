@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 #include "fdt-rewrite.h"
-#include <string.h>
 #define RESERVE_MAX 64
 enum { BEGIN=1, END_NODE=2, PROP=3, NOP=4, END=9 };
 enum { NAME_BOOTARGS, NAME_START, NAME_END, NAMES };

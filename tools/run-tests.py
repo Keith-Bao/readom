@@ -49,6 +49,11 @@ TESTS = [
     ('koa2-contract', 'c', ['boot/koa2/contract.c', 'boot/koa2/test-contract.c'], False),
     ('koa2-plan', 'c', ['boot/koa2/contract.c', 'boot/koa2/plan.c', 'boot/koa2/test-plan.c'], False),
     ('koa2-fdt-rewrite', 'c', ['boot/koa2/contract.c', 'boot/koa2/fdt-rewrite.c', 'boot/koa2/test-fdt-rewrite.c'], False),
+    # boot/koa2/stage.c itself, compiled on the host against a small stand-in
+    # for the Linux 4.1 module API (boot/koa2/tests/kshim).
+    ('koa2-stage', 'c', ['-Iboot/koa2/tests/kshim', '-Iboot/koa2/tests', '-Iboot/koa2', '-Iboot/handoff',
+                         'boot/koa2/tests/test-stage.c', 'boot/koa2/tests/kshim/kshim.c', 'boot/koa2/contract.c',
+                         'boot/koa2/plan.c', 'boot/koa2/fdt-rewrite.c', 'boot/handoff/sha256.c'], False),
     ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is

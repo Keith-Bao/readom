@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 #include "contract.h"
-#include <string.h>
 #define MAX_DTB (16u * 1024u * 1024u)
 static uint32_t be32(const unsigned char *p) {
     return ((uint32_t)p[0]<<24)|((uint32_t)p[1]<<16)|((uint32_t)p[2]<<8)|p[3];
