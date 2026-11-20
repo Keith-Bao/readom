@@ -39,12 +39,13 @@ typedef uint64_t u64;
 extern unsigned long kshim_phys_offset;
 #define PHYS_OFFSET kshim_phys_offset
 #define PAGE_OFFSET 0x80000000u
-struct page { u64 phys; unsigned char *data; };
+struct page { u64 phys; unsigned char *data; struct page *next; };
 struct page *alloc_page(unsigned int gfp);
 void __free_page(struct page *p);
-static inline u64 page_to_phys(struct page *p) { return p->phys; }
 static inline void *page_address(struct page *p) { return p->data; }
-void *__vmalloc(unsigned long size, unsigned int gfp, int prot);
+u64 kshim_virt_to_phys(const void *v);
+#define virt_to_phys(v) kshim_virt_to_phys(v)
+static inline void *vzalloc(unsigned long size) { return calloc(1,size); }
 static inline void vfree(void *p) { free(p); }
 static inline void *kmalloc(size_t n, unsigned int gfp) { (void)gfp; return malloc(n); }
 static inline void *kzalloc(size_t n, unsigned int gfp) { (void)gfp; return calloc(1,n); }

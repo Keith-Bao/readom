@@ -48,6 +48,10 @@
   koa2_handoff_stage.ko（33 个导入，导出前会检查不含 GOT、不写协处理器、不导入下线/重启类符号）。
   阻塞：原厂内核树因缺 EPDC 源码编译不出，没有原厂 Module.symvers，模块的 vermagic/CRC 对不上
   原厂内核，暂时不能在设备上加载。下一步是从设备上的原厂模块读出导出符号的 CRC。
+- 原厂 CRC 核对已写（ports/koa2/module-crcs.py，README「原厂内核的版本检查」），测试为 koa2-module-crcs。
+  modversions 下 release 字符串不同不会被拒，只看 vermagic 尾部和每个导入的 CRC。stage.c 换掉了
+  原厂模块没用过的 4 个导入，现在 31 项导入都能核对。Boot Preflight 升到 v2，会只读复制原厂 .ko。
+  下一步：用户在 Kindle 上跑一次 v2，再用 KOA2_STOCK_MODULES 重建模块。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。

@@ -128,8 +128,33 @@ koa2-stage-client 是配套的用户态程序（ARM 静态版），只做 BEGIN/
 - 加载窗口内的页被避开，关闭后页数归零。
 传入实机运行时 DTB 时，49280 字节改写为 47972 字节，计划校验通过。
 
-尚未解决：原厂内核树编译不出来（缺 mxc_epdc_fb_lab126.c，见 ports/koa2/epdc-source-gap.md），
-所以没有原厂的 Module.symvers。现在只能针对 headless-smoke 树编译，得到的模块 vermagic 是
-`4.1.15-lab126-koa2-headless-smoke`，原厂内核不会加载它。能在原厂内核里加载之前，必须先拿到
-原厂导出符号的 CRC（例如从设备上 /lib/modules 里原厂模块的 __versions 段读取），并核对模块
-用到的 33 个导入。模块从未在设备上加载过。
+## 原厂内核的版本检查（module-crcs.py）
+
+原厂内核开了 CONFIG_MODVERSIONS，没开模块签名，也没开强制加载。Linux 4.1 的加载器
+（kernel/module.c）只看两件事：
+- vermagic 在第一个空格之后的部分必须相同（模块带 CRC 时，same_magic 跳过 release），
+  所以 `4.1.15-lab126-koa2-headless-smoke` 与 `4.1.15-lab126` 的差别本身不会被拒；
+- module_layout 和每个导入符号的 CRC 必须与内核导出的一致；模块的 __versions 里
+  没有某个导入符号也会被拒。
+
+原厂内核的 CRC 在设备上读不到（它们是绝对符号，/proc/kallsyms 不列），但每个原厂模块
+的 __versions 都记着它链接时用到的符号 CRC。ports/koa2/module-crcs.py 把这些合起来，
+和交接模块的 __versions 逐项对比；原厂模块彼此不一致、vermagic 不止一种、找不到模块、
+__versions 长度不对或不是 ARM 文件，都直接拒绝。--symvers 另报告构建树与原厂在共同符号上
+是否一致，可以看出改用这棵树重编能否行得通。测试 koa2-module-crcs 用逐字节拼出的模块覆盖
+这些规则。
+
+为了让每个导入都能核对，stage.c 不再用原厂模块没用过的四个符号：__vmalloc 换成 vzalloc，
+ulong 参数换成 uint，page_to_phys/PHYS_OFFSET（ARM_PATCH_PHYS_VIRT 下要导入
+__pv_phys_pfn_offset）换成 virt_to_phys(page_address())，在全部是 lowmem 的 KOA2 上二者相同。
+用 headless-smoke 自己的 97 个模块当作"原厂"自检：31 项全部匹配，构建树与这些模块的 1037 个共同符号全部一致。
+这只说明工具和模块本身自洽，不说明原厂内核会接受。
+
+Boot Preflight v2（ports/koa2/preflight）会把设备 /lib/modules/$(uname -r) 下的原厂 .ko
+原样复制出来（只读，不加载）。拿到之后：
+`KOA2_STOCK_MODULES=<目录> ports/koa2/build-handoff-module.sh ...` 会在导出前做这项检查，
+有任何一项不匹配就拒绝导出。
+
+尚未验证：还没有拿到原厂模块，所以不知道 headless-smoke 树（关了 EINK 面板和 FALCON_WRAPPER）
+的 CRC 与原厂是否一致。如果有符号不一致，需要用原厂配置重编那些符号所在的类型，或者换掉
+相应的导入。模块从未在设备上加载过。

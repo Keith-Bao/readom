@@ -63,11 +63,18 @@ struct store {
     struct koa2_plan plan;         /* filled by seal(); no addresses leave the module */
 };
 static atomic_t opened = ATOMIC_INIT(0);
-static unsigned long live_pages;
-module_param(live_pages, ulong, 0444);
+/* Every import has to be one some stock module also imports, so that its CRC
+ * can be checked before loading (ports/koa2/module-crcs.py). That rules out
+ * __vmalloc (with PAGE_KERNEL), PHYS_OFFSET and page_to_pfn under
+ * ARM_PATCH_PHYS_VIRT (__pv_phys_pfn_offset), and ulong parameters. */
+static unsigned int live_pages;
+module_param(live_pages, uint, 0444);
 
 static void wipe(void *p, size_t n) { volatile u8 *v=p; while(n--) *v++=0; }
-static u32 owned_phys(struct store *s, unsigned int i) { return (u32)page_to_phys(s->owned[i].page); }
+/* All RAM is lowmem here, so a page's linear address gives its physical one
+ * through the patched virt_to_phys, which imports nothing. */
+static u32 phys_of(struct page *page) { return (u32)virt_to_phys(page_address(page)); }
+static u32 owned_phys(struct store *s, unsigned int i) { return phys_of(s->owned[i].page); }
 static void *owned_addr(struct store *s, unsigned int i) { return page_address(s->owned[i].page); }
 
 static void free_record(struct allocation *a)
@@ -112,7 +119,7 @@ static int allocate_owned(struct store *s)
         page=alloc_page(GFP_KERNEL|__GFP_ZERO|__GFP_NORETRY|__GFP_NOWARN);
         if(!page) return -ENOMEM;
         live_pages++;
-        base=(u32)page_to_phys(page);
+        base=phys_of(page);
         if(page_usable(base)) break;
         s->rejected[s->collisions++].page=page;
     }
@@ -135,10 +142,8 @@ static int begin(struct store *s, void __user *arg)
     if(b.images[0].bytes!=K2S_KERNEL_BYTES || memcmp(b.images[0].sha256,pinned_kernel_sha,32)) return -EKEYREJECTED;
     for(i=0;i<K2S_SLOTS;++i) pages+=DIV_ROUND_UP(b.images[i].bytes,PAGE_SIZE);
     if(pages>MAX_PAYLOAD_PAGES) return -E2BIG;
-    s->owned=__vmalloc(MAX_PAYLOAD_PAGES*sizeof(*s->owned),
-        GFP_KERNEL|__GFP_HIGHMEM|__GFP_ZERO|__GFP_NORETRY|__GFP_NOWARN,PAGE_KERNEL);
-    s->rejected=__vmalloc(MAX_COLLISIONS*sizeof(*s->rejected),
-        GFP_KERNEL|__GFP_HIGHMEM|__GFP_ZERO|__GFP_NORETRY|__GFP_NOWARN,PAGE_KERNEL);
+    s->owned=vzalloc(MAX_PAYLOAD_PAGES*sizeof(*s->owned));
+    s->rejected=vzalloc(MAX_COLLISIONS*sizeof(*s->rejected));
     if(!s->owned || !s->rejected) { rc=-ENOMEM; goto fail; }
     for(i=0;i<K2S_SLOTS;++i) {
         struct slot *slot=&s->slot[i];
@@ -349,8 +354,8 @@ static int __init stage_init(void)
     BUILD_BUG_ON(sizeof(K2S_BOOTARGS)>KOA2_BOOTARGS_MAX+1);
     /* Only the stock kernel the measurements came from, with the split they assume. */
     if(strcmp(u->release,K2S_STOCK_RELEASE) || strcmp(u->version,K2S_STOCK_VERSION) ||
-       strcmp(u->machine,K2S_STOCK_MACHINE) || PHYS_OFFSET!=0x80000000u ||
-       PAGE_OFFSET!=0x80000000u) return -ENOEXEC;
+       strcmp(u->machine,K2S_STOCK_MACHINE) || PAGE_OFFSET!=0x80000000u ||
+       virt_to_phys((void *)PAGE_OFFSET)!=0x80000000u) return -ENOEXEC;
     return misc_register(&device);
 }
 static void __exit stage_exit(void) { misc_deregister(&device); }

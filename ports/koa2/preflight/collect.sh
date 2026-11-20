@@ -1,6 +1,8 @@
 #!/bin/sh
 # Read-only hardware inspection; writes report files ONLY under /mnt/us/koa2-boot-preflight.
-# No modules, CPU hotplug, hardware settings, network, mounts or reboot commands.
+# No module loading, CPU hotplug, hardware settings, network, mounts or reboot commands.
+# v2 also copies the stock .ko files (read with cp, never loaded): their __versions
+# sections carry the stock kernel's symbol CRCs, which ports/koa2/module-crcs.py reads.
 set -eu
 BASE=/mnt/us/koa2-boot-preflight
 [ -r /proc/version ] && [ -d /mnt/us/documents ] || exit 1
@@ -19,7 +21,7 @@ read_text() {
     fi
 }
 {
-    printf 'Readom KOA2 boot preflight v1 -- NOT a boot experiment\n'
+    printf 'Readom KOA2 boot preflight v2 -- NOT a boot experiment\n'
     date -u
     uname -a
     for file in /etc/prettyversion.txt /proc/cmdline /proc/iomem /proc/partitions /proc/sys/kernel/tainted; do read_text "$file"; done
@@ -56,9 +58,32 @@ read_text() {
         else printf 'printk_copy=failed\n'; fi
     else printf 'printkbuf=unavailable\n'; fi
     if [ -d /sys/fs/pstore ]; then ls -l /sys/fs/pstore; fi
+    printf '\n[stock_modules]\n'
+    REL=$(uname -r)
+    printf 'release=%s\n' "$REL"
+    ls /lib/modules 2>/dev/null || true
+    if [ -r /proc/modules ]; then printf '\n/proc/modules:\n'; cat /proc/modules; fi
+    MODDIR=/lib/modules/$REL
+    if [ -d "$MODDIR" ]; then
+        # Bounded: refuse to copy more than 64 MiB of modules.
+        KB=$(find "$MODDIR" -name '*.ko' -type f -exec cat {} + 2>/dev/null | wc -c)
+        KB=$((KB / 1024))
+        printf 'module_bytes_kib=%s\n' "$KB"
+        if [ "$KB" -le 65536 ]; then
+            mkdir "$DIR/stock-modules"
+            ( cd "$MODDIR" && find . -name '*.ko' -type f ) | while read -r f; do
+                mkdir -p "$DIR/stock-modules/$(dirname "$f")"
+                cp "$MODDIR/$f" "$DIR/stock-modules/$f" || printf 'copy_failed=%s\n' "$f"
+            done
+            printf 'modules_copied=%s\n' "$(find "$DIR/stock-modules" -name '*.ko' | wc -l)"
+            for f in modules.dep Module.symvers; do
+                [ -r "$MODDIR/$f" ] && cp "$MODDIR/$f" "$DIR/stock-modules/" && printf 'copied=%s\n' "$f"
+            done
+        else printf 'modules_copy=skipped_too_large\n'; fi
+    else printf 'module_dir=unavailable\n'; fi
     printf '\n[complete]\n'
 } > "$DIR/report.txt.tmp" 2>&1
 mv "$DIR/report.txt.tmp" "$DIR/report.txt"
 printf '%s\n' "$RUN" > "$BASE/LAST_RUN.txt"
-printf 'preflight-v1 complete\n' > "$DIR/complete.txt"
+printf 'preflight-v2 complete\n' > "$DIR/complete.txt"
 echo 'Read-only boot report saved. Reconnect USB when convenient.'

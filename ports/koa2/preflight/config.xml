@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<extension><information><name>Readom KOA2 Boot Preflight</name><version>0.1</version><author>Local adaptation</author></information><menus><menu type="json" dynamic="true">menu.json</menu></menus></extension>
+<extension><information><name>Readom KOA2 Boot Preflight</name><version>0.2</version><author>Local adaptation</author></information><menus><menu type="json" dynamic="true">menu.json</menu></menus></extension>

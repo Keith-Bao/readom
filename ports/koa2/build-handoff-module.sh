@@ -64,7 +64,13 @@ for s in $undefined; do
         echo "Refusing: staging module imports $s" >&2; exit 2 ;;
     esac
 done
+# Gate 3, when the stock modules copied by Boot Preflight v2 are given: the
+# stock loader would accept this module's vermagic and every CRC.
+if [[ -n ${KOA2_STOCK_MODULES:-} ]]; then
+    python3 "$here/ports/koa2/module-crcs.py" check --stock "$KOA2_STOCK_MODULES" --symvers "$out/Module.symvers" "$ko" > "$work/crcs.json"         || { cat "$work/crcs.json" >&2; echo "Refusing: stock kernel would reject this module's versions" >&2; exit 2; }
+fi
 mkdir -p "$dest"
+[[ -f $work/crcs.json ]] && cp "$work/crcs.json" "$dest/"
 cp "$ko" "$work/target-lock.h" "$dest/"
 arm-linux-gnueabi-readelf -p .modinfo "$ko" | grep -o 'vermagic=.*' > "$dest/vermagic.txt"
 echo "$undefined" > "$dest/imports.txt"

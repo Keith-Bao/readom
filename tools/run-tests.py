@@ -54,6 +54,7 @@ TESTS = [
     ('koa2-stage', 'c', ['-Iboot/koa2/tests/kshim', '-Iboot/koa2/tests', '-Iboot/koa2', '-Iboot/handoff',
                          'boot/koa2/tests/test-stage.c', 'boot/koa2/tests/kshim/kshim.c', 'boot/koa2/contract.c',
                          'boot/koa2/plan.c', 'boot/koa2/fdt-rewrite.c', 'boot/handoff/sha256.c'], False),
+    ('koa2-module-crcs', 'python', ['tools/tests/test_koa2_module_crcs.py'], False),
     ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is

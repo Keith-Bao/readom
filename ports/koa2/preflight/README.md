@@ -6,7 +6,10 @@ KUAL → Readom KOA2 Boot Preflight → Collect read-only boot report。
 
 输出在 Kindle 的 koa2-boot-preflight/<UTC时间-PID>/，LAST_RUN.txt 指向
 最新记录；complete.txt 表示采集结束。包括运行时 FDT、CPU 状态、选定符号、
-内存范围、上次内核日志。只读取设备，不联网、不加载模块、不改 CPU/挂载/硬件设置。
+内存范围、上次内核日志。v2 另把 /lib/modules/$(uname -r) 下的原厂 .ko 原样复制到
+stock-modules/（只用 cp 读取，从不加载；超过 64 MiB 就跳过），连同 /proc/modules 列表。
+这些模块的 __versions 段记着原厂内核导出符号的 CRC，ports/koa2/module-crcs.py 用它们判断
+交接模块能否通过原厂内核的版本检查。只读取设备，不联网、不加载模块、不改 CPU/挂载/硬件设置。
 所有写入限定在报告目录。
 
 原始 DTB 和启动参数可能含设备标识，只保留在用户设备/电脑，不能提交公共仓库。
