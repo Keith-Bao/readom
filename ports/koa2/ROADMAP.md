@@ -12,7 +12,7 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 | B 环境 | WSL2 Ubuntu 22.04 `Readom-KOA2`，ext4 内构建 | 已完成，见 [build-environment.md](build-environment.md) |
 | C 原厂内核 | zelda defconfig、zImage、DTB、modules、哈希；干净重建 | 已完成（headless-smoke），见 [headless-smoke.md](headless-smoke.md) |
 | D Android 内核 | 逐项审计补丁，4.1 配置，Binder 多上下文优先 | 已审计未构建，见 [android41-audit.md](android41-audit.md) |
-| E 交接 | 校验、暂存、复制表、跳转；SMP/DTB 后端 | 主机侧完成，设备侧未运行，见 [boot/koa2/README.md](../../boot/koa2/README.md) |
+| E 交接 | 校验、暂存、复制表、跳转；SMP/DTB 后端 | 主机侧完成，实机暂存检查通过；尚未跳转，见 [boot/koa2/README.md](../../boot/koa2/README.md) |
 | F 最小 Linux | smoke initramfs，日志通路，三次往返 | initramfs 已就绪，未在设备上启动 |
 | G 基础硬件 | EPDC v2、触摸、翻页、旋转、前光 | 未开始，缺 EPDC 源码，见 [epdc-source-gap.md](epdc-source-gap.md) |
 | H AOSP | koa2-userdebug / Cortex-A7，独立输出 | 未开始 |
@@ -30,10 +30,10 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 | 交接 FDT 改写 | 完成，测试 `koa2-fdt-rewrite` |
 | 复制表与审计 | 完成，测试 `koa2-copylist` |
 | 暂存模块（无跳转） | 完成，测试 `koa2-stage` |
-| 原厂符号 CRC 核对 | 工具完成，缺原厂模块，测试 `koa2-module-crcs` |
+| 原厂符号 CRC 核对 | 工具完成，已回收 63 个原厂模块，测试 `koa2-module-crcs` |
 | 跳转蹦床 | 完成并裸机验证，测试 `koa2-jump-baremetal`，未编进模块 |
 | 静止顺序 | 只有可测的顺序，缺碰硬件的实现，测试 `koa2-quiesce` |
-| 设备测试套件 | 完成，未运行，见 [device-runbook.md](device-runbook.md) |
+| 设备测试套件 | 完成，实机暂存测试通过，见 [device-runbook.md](device-runbook.md) |
 
 ## 阶段门槛
 

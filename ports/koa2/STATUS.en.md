@@ -6,30 +6,30 @@ Chinese: [STATUS.md](STATUS.md). The device procedure is
 
 ## In one sentence
 
-Everything the handoff needs on the host is written and tested (59 host tests
-pass, none fail); **nothing has run on the device**, no new kernel has booted,
-and no module has been loaded into the stock kernel.
+The device staging test passed on 2026-11-21 (Asia/Shanghai): sealed_plan_valid.
+The module loaded, validated the layout, FDT rewrite and copy list, and unloaded.
+No new kernel has booted. The previous 59 host tests were not rerun this session.
 
 ## Where this sits right now
 
 | Question | Answer |
 |---|---|
-| What is next | The user runs the staging test once, following [device-runbook.md](device-runbook.en.md) |
-| The likely result | `insmod_refused`: the module is built against the headless-smoke tree and its symbol CRCs do not match stock |
-| What follows that | Check the CRCs against the stock `.ko` files the device copied back, replace the imports that disagree, rebuild, run again |
+| What is next | Stop device testing; implement hardware quiesce run/undo and capture the live EPDC framebuffer exclusion |
+| Observed result | `sealed_plan_valid`; insmod_exit=0, client_exit=0, rmmod_exit=0 |
+| What follows that | 63 stock modules recovered; loading succeeded, so no retry for the predicted CRC mismatch |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
-| Anything irreversible done | No. Every device action so far has been a read, or a write to a report directory under `/mnt/us` |
+| Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |
 
 ## The handoff piece by piece
 
 | Piece | Code | Test | On the device |
 |---|---|---|---|
 | The DTB and memory contract | `boot/koa2/contract.c` | `koa2-contract` | The read-only checker has run |
-| The layout check | `boot/koa2/plan.c` | `koa2-plan` | Not run |
-| The FDT rewrite | `boot/koa2/fdt-rewrite.c` | `koa2-fdt-rewrite` | Not run |
-| The copy list and its audit | `boot/koa2/copylist.c` | `koa2-copylist` | Not run |
-| The staging module (no jump) | `boot/koa2/stage.c` | `koa2-stage` | Never loaded |
-| Stock CRC checking | `ports/koa2/module-crcs.py` | `koa2-module-crcs` | The stock modules are not in hand |
+| The layout check | `boot/koa2/plan.c` | `koa2-plan` | Passed in device staging |
+| The FDT rewrite | `boot/koa2/fdt-rewrite.c` | `koa2-fdt-rewrite` | Passed in device staging |
+| The copy list and its audit | `boot/koa2/copylist.c` | `koa2-copylist` | Passed in device staging |
+| The staging module (no jump) | `boot/koa2/stage.c` | `koa2-stage` | Loaded, sealed and unloaded successfully |
+| Stock CRC checking | `ports/koa2/module-crcs.py` | `koa2-module-crcs` | 63 stock modules recovered; offline checking not yet run |
 | The jump trampoline | `boot/koa2/jump.S` | `koa2-jump-baremetal` | In no module, never executed |
 | The quiesce sequence | `boot/koa2/quiesce.c` | `koa2-quiesce` | Only the order; the hardware bodies are missing |
 | Build reproducibility | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | Not applicable |
@@ -48,3 +48,5 @@ and no module has been loaded into the stock kernel.
 ## The earlier record
 
 The day-by-day log lives in [worklog.md](worklog.md), in Chinese only.
+
+[Device report and continuation notes (Chinese)](reports/2026-11-21-stage-test/README.md)。

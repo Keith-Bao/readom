@@ -4,6 +4,17 @@
 这是一份只追加的记录：写下来的那天知道什么就是什么，后来的更正写在新的条目里，
 不回头改旧条目。只有中文版，因为它是工作记录而不是说明。
 
+## 实机暂存检查通过（2026-11-21，Asia/Shanghai）
+
+- 代码 f858117；报告标识 20261120-160050-26549（UTC 时间，对应本地 2026-11-21 00:00:50）。
+- 设备身份与套件哈希检查通过；原厂模块回收 63 个。
+- insmod_exit=0；state=2、plan_valid=1、execute_available=0；client_exit=0、rmmod_exit=0。
+- fdt_bytes=47972、payload_pages=1706、collision_pages=230、list_pages=2、list_entries=1710。
+- seal_stage=0、seal_result=0；result=sealed_plan_valid。tainted 前后均为 4097。
+- 原始报告与模块保存在 ~/koa2-evidence/stage-test/，另备份至 Windows F:/Kindle/koa2-evidence/stage-test/；不纳入 Git。
+- 实机加载成功，覆盖先前对 insmod_refused 的预测；不据此推断所有模块均兼容。
+- 未跳转、未启动新内核。按流程在此停止；后续缺静止顺序的硬件 run/undo 和交接当次 EPDC 帧缓冲排除。
+
 ## 第二台主机重建（2026-11-19，覆盖下文的主机路径记录）
 
 - 新主机 WSL 环境已建立，细节见 build-environment.md「第二台主机」。

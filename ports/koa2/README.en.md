@@ -5,7 +5,7 @@ The workspace for making an Oasis 2 (firmware 5.16.2.1.1, kernel
 Chinese: [README.md](README.md).
 
 **Where it stands**: everything the handoff (taking over the boot) needs on the
-host is written and tested; **nothing has run on the device**, and no new
+host is written and tested; **device staging passed on 2026-11-21**, and no new
 kernel has booted. The plan is [ROADMAP.md](ROADMAP.en.md) and the step-by-step
 state is [STATUS.md](STATUS.en.md).
 

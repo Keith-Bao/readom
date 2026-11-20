@@ -13,7 +13,7 @@ Chinese: [ROADMAP.md](ROADMAP.md). Where it stands: [STATUS.md](STATUS.en.md).
 | B Environment | WSL2 Ubuntu 22.04 `Readom-KOA2`, building inside ext4 | Done, see [build-environment.md](build-environment.md) |
 | C Stock kernel | zelda defconfig, zImage, DTB, modules, hashes; clean rebuild | Done (headless-smoke), see [headless-smoke.md](headless-smoke.md) |
 | D Android kernel | Patches audited one by one, a 4.1 configuration, Binder contexts first | Audited, not built, see [android41-audit.md](android41-audit.md) |
-| E Handoff | Validation, staging, copy list, jump; an SMP/DTB backend | Host side done, nothing run on the device, see [boot/koa2/README.md](../../boot/koa2/README.en.md) |
+| E Handoff | Validation, staging, copy list, jump; an SMP/DTB backend | Host side done, device staging passed; no jump executed, see [boot/koa2/README.md](../../boot/koa2/README.en.md) |
 | F Minimal Linux | The smoke initramfs, a log path, three round trips | The initramfs is ready; it has never booted on the device |
 | G Basic hardware | EPDC v2, touch, page keys, rotation, frontlight | Not started; the EPDC source is missing, see [epdc-source-gap.md](epdc-source-gap.md) |
 | H AOSP | koa2-userdebug / Cortex-A7, its own output tree | Not started |
@@ -31,10 +31,10 @@ Chinese: [ROADMAP.md](ROADMAP.md). Where it stands: [STATUS.md](STATUS.en.md).
 | The handoff FDT rewrite | Done, test `koa2-fdt-rewrite` |
 | The copy list and its audit | Done, test `koa2-copylist` |
 | The staging module (no jump) | Done, test `koa2-stage` |
-| Stock symbol CRCs | The tool is done; the stock modules are not in hand, test `koa2-module-crcs` |
+| Stock symbol CRCs | The tool is done; 63 stock modules recovered, test `koa2-module-crcs` |
 | The jump trampoline | Done and run bare-metal, test `koa2-jump-baremetal`; in no module |
 | The quiesce sequence | Only the testable order; the hardware bodies are missing, test `koa2-quiesce` |
-| The device test kit | Done, never run, see [device-runbook.md](device-runbook.en.md) |
+| The device test kit | Done, device staging passed, see [device-runbook.md](device-runbook.en.md) |
 
 ## What each stage has to show before the next
 
