@@ -64,6 +64,9 @@
   测试 koa2-jump-baremetal 在 QEMU 的 Cortex-A7 上以裸机方式跑真正的 jump.S 和复制表：
   正常路径里替身内核自己核对 r0/r1/r2，五种拒绝从 monitor 读参数块核对。
   这只说明 ARMv7 上按设计运行，不说明真机外设行为；蹦床从未在设备上执行。
+- 静止顺序已写成可测的序列（boot/koa2/quiesce.c，README「静止顺序」），测试 koa2-quiesce：
+  十步、不可逆点在"关缓存"，对每一步都试一遍失败并核对逆序回滚，拒绝"可逆步骤没有 undo"
+  和"不可逆步骤宣称 undo"两种表。真正碰硬件的 run/undo 还没写，模块里也还没装这张表。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。
