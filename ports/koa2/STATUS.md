@@ -7,9 +7,12 @@
   release=4.1.15-lab126-koa2-headless-smoke，97 个模块 vermagic 全部匹配
   （identity.json passed）。日志 ~/artifacts/headless-build-this-host.log。
 - DTB SHA256 与上一台主机一致：8df4fe5d…f144d9。
-- zImage SHA256 为 71893c8e…eacbc6，与上一台主机记录的 4c69f47e…3de9715f 不同。
-  未压缩 Image 为 27a6062c…efbc0（上一台主机未记录 Image 哈希，无法逐层对照）。
-  原因尚未查明，不能宣称两台主机产物可复现一致；两者都不可部署。
+- zImage 哈希与上一台主机不同的原因已查明（2026-11-20，见 headless-smoke.md 末节）：
+  与内核无关。`cat Image | lzop -9` 经管道压缩时 lzop 把当前时间写进头部，所以每次构建的
+  zImage 都不同；链接器的 GNU build-id 又由目标文件路径算出，换输出目录就变。
+  本机在另一个输出目录完整重建一次：Image 只差那 20 字节 build-id，清零后哈希完全相同，
+  piggy.lzo 解压后与 Image 逐字节一致。**内核本身可复现**。
+  判断工具为 ports/koa2/compare-kernel-build.py，测试 koa2-compare-build。
 - 主机回归：50 passed、0 failed、24 not run here，与上一台主机相同。
   日志 ~/artifacts/host-tests-this-host.log。
 - 只读 Boot Preflight 已由用户在 Kindle 上运行（20261119-044638-4937），结果见
@@ -67,6 +70,8 @@
 - 静止顺序已写成可测的序列（boot/koa2/quiesce.c，README「静止顺序」），测试 koa2-quiesce：
   十步、不可逆点在"关缓存"，对每一步都试一遍失败并核对逆序回滚，拒绝"可逆步骤没有 undo"
   和"不可逆步骤宣称 undo"两种表。真正碰硬件的 run/undo 还没写，模块里也还没装这张表。
+- 当前 headless-smoke 产物（2026-11-20 重建）：Image build-id 清零后 e2eba61b8420…，
+  zImage 4921c4b2…（每次构建都会变，钉在 target-lock.h 里）。测试套件 58→60 项全过。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。

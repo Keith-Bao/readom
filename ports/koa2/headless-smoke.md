@@ -81,3 +81,28 @@ SMP 入口初查：arch/arm/mach-imx/platsmp.c 的 imx_smp_ops 在
 HOTPLUG_CPU 下提供 imx_cpu_die/imx_cpu_kill；hotplug.c 针对 i.MX7D
 调用 imx_gpcv2_set_core1_pdn_pup_by_software。后续应沿原厂 hotplug
 机制设计停止次核的前置阶段，而非复用 PW3 的 UP-only 交接假设。
+
+## zImage 哈希为什么每次都不一样（2026-11-20 查明）
+
+曾经把"两台主机的 zImage 哈希不同"记成未查明的差异，并因此说产物不能宣称可复现。
+这个结论是错的：差异与内核无关，来自两处与内容无关的非确定性。
+
+1. **lzop 的时间戳。** `arch/arm/boot/Makefile` 用 `cat Image | lzop -9` 压缩载荷。
+   lzop 从管道读入时，头里的 mtime 字段没有源文件可取，于是写入当前时间
+   （`-n`/`--no-name` 对管道无效）。所以同一个 Image 每次压出的 piggy.lzo 都不同，
+   zImage 也就不同。本机实测：同一文件用 `lzop -9 -c` 两次结果相同，经管道两次不同。
+2. **链接器的 build-id。** 链接器往 `.notes` 写 20 字节 GNU build-id，它由目标文件
+   （含其路径）算出，所以换一个输出目录重建，Image 就在这 20 字节上不同。
+
+本机用同一份源码和配置、在另一个输出目录完整重建一次，结果：Image 一共只差 20 字节，
+正是 `__start_notes + 16` 起的 build-id（0x80aff04c）；把这 20 字节清零后两个 Image
+的 SHA256 完全相同（e2eba61b8420…）。piggy.lzo 解压后与 Image 逐字节相同。
+
+所以**内核本身是可复现的**。ports/koa2/compare-kernel-build.py 用来做这个判断：
+它报告 Image 的原始哈希、build-id 清零后的哈希、lzop 写进去的时间戳，并核对载荷解压
+后确实是旁边那个 Image。`image_identical_but_for_the_build_id` 才是"是不是同一个内核"
+的答案。测试 koa2-compare-build 用自造的构建产物覆盖这些情况。
+
+要让 zImage 本身可复现，得改 `arch/arm/boot/Makefile`（先写文件再 lzop，或给 lzop
+一个固定 mtime）并固定 build-id。目前没有改，因为交接模块钉的是 zImage 的哈希，
+重建后重新生成 target-lock.h 就够了。

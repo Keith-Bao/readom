@@ -62,6 +62,7 @@ TESTS = [
     ('koa2-jump-baremetal', 'python', ['boot/koa2/tests/baremetal/run.py'], True),
     ('koa2-quiesce', 'c', ['boot/koa2/quiesce.c', 'boot/koa2/test-quiesce.c'], False),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
+    ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),
     ('koa2-module-crcs', 'python', ['tools/tests/test_koa2_module_crcs.py'], False),
     ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
