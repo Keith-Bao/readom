@@ -43,10 +43,14 @@
  * initramfs that reaches the printk buffer from 0x81500000. */
 #define MAX_PAYLOAD_BYTES (8u*1024u*1024u + K2S_FDT_MAX + 0x1a900000u)
 #define MAX_PAYLOAD_PAGES (MAX_PAYLOAD_BYTES / PAGE_SIZE + K2S_SLOTS)
-/* Every page koa2 can refuse is one that can be set aside, and a page held is
- * never offered again; so the number of rejects is bounded by the pages the
- * footprint and persistent ranges cover, well under this. */
-#define MAX_COLLISIONS (((0x20000000u) / PAGE_SIZE))
+/* Pages the allocator offers in the zImage window or a persistent range are
+ * held, not used, so it cannot offer them again. On a running stock system
+ * that window is 128 MiB of mostly-used memory, and every page held is one the
+ * stock system cannot have back until we close, so the number held is capped
+ * well below what would push it towards the OOM killer: 32 MiB. Hitting the
+ * cap fails BEGIN with -ENOSPC (the allocator running dry is -ENOMEM), and
+ * closing gives everything back. */
+#define MAX_COLLISIONS 8192u
 
 static const k2s_u8 pinned_kernel_sha[32] = K2S_KERNEL_SHA256;
 
@@ -115,7 +119,7 @@ static int allocate_owned(struct store *s)
     struct page *page;
     u32 base;
     for(;;) {
-        if(s->collisions>=MAX_COLLISIONS) return -ENOMEM;
+        if(s->collisions>=MAX_COLLISIONS) return -ENOSPC;
         page=alloc_page(GFP_KERNEL|__GFP_ZERO|__GFP_NORETRY|__GFP_NOWARN);
         if(!page) return -ENOMEM;
         live_pages++;

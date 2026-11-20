@@ -2,7 +2,7 @@
 /* Drives /dev/koa2-handoff-stage: stages zImage, the stock FDT and the
  * initramfs, seals, prints the status, and closes (which frees everything).
  * It never asks the module to jump; the module has no way to.
- * usage: koa2-stage-client zImage /sys/firmware/fdt initramfs */
+ * usage: koa2-stage-client [--device PATH] zImage /sys/firmware/fdt initramfs */
 #include "stage-abi.h"
 #include "sha256.h"
 #include <errno.h>
@@ -32,8 +32,10 @@ static unsigned char *slurp(const char *path, size_t *bytes) {
 int main(int argc, char **argv) {
     struct k2s_begin b; struct k2s_status st;
     unsigned char *data[K2S_SLOTS]; size_t bytes[K2S_SLOTS];
+    const char *device="/dev/koa2-handoff-stage";
     unsigned i; int fd,rc;
-    if(argc!=4) { fprintf(stderr,"usage: %s zImage fdt initramfs\n",argv[0]); return 2; }
+    if(argc==6 && !strcmp(argv[1],"--device")) { device=argv[2]; argv+=2; argc-=2; }
+    if(argc!=4) { fprintf(stderr,"usage: %s [--device PATH] zImage fdt initramfs\n",argv[0]); return 2; }
     memset(&b,0,sizeof(b)); b.version=K2S_VERSION;
     for(i=0;i<K2S_SLOTS;++i) {
         SHA256_CTX c;
@@ -41,7 +43,7 @@ int main(int argc, char **argv) {
         b.images[i].bytes=(k2s_u32)bytes[i];
         sha256_init(&c); sha256_update(&c,data[i],bytes[i]); sha256_final(&c,b.images[i].sha256);
     }
-    if((fd=open("/dev/koa2-handoff-stage",O_RDWR))<0) { perror("open"); return 1; }
+    if((fd=open(device,O_RDWR))<0) { perror("open"); return 1; }
     if(ioctl(fd,K2S_BEGIN,&b)) { perror("begin"); return 1; }
     for(i=0;i<K2S_SLOTS;++i) {
         size_t at=0;

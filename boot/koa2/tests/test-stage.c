@@ -183,6 +183,11 @@ static void seal_stages(void)
     assert(run(fdt_fixture,n,big,0x6b01000u)==-EADDRINUSE);
     st=status(); assert(st.seal_stage==K2S_STAGE_PAGES && st.seal_result==2 && kshim_live==0);
     free(big);
+    /* An allocator that only offers pages in the zImage window: BEGIN stops at
+     * the cap and gives every page back. */
+    kshim_next=0x80000000u;
+    {   struct k2s_begin b=begin_for(fdt_fixture,n,initramfs,sizeof(initramfs));
+        assert(call(K2S_BEGIN,&b)==-ENOSPC && kshim_live==0 && status().state==K2S_EMPTY); }
     /* Pages offered in the zImage window are held aside, not used, then freed. */
     kshim_next=0x87ff0000u;
     assert(run(fdt_fixture,n,initramfs,sizeof(initramfs))==0); st=status();
