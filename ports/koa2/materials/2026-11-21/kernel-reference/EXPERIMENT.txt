@@ -1,0 +1,1 @@
+EXPERIMENT ONLY: no EPDC display, no Android, not ready to boot.

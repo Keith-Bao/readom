@@ -1,0 +1,5 @@
+{
+  "device-evidence/dmesg-after-insmod.txt": 8,
+  "device-evidence/dmesg-after.txt": 8,
+  "device-evidence/dmesg-before.txt": 8
+}

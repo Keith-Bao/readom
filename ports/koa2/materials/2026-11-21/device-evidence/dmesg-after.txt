@@ -1,0 +1,600 @@
+[    0.000000] Booting Linux on physical CPU 0x0
+[    0.000000] Linux version 4.1.15-lab126 (builder@eink-builds) (gcc version 4.9.1 (GCC) ) #1 SMP PREEMPT Tue Aug 1 11:50:12 UTC 2023
+[    0.000000] CPU: ARMv7 Processor [410fc075] revision 5 (ARMv7), cr=10c53c7d
+[    0.000000] CPU: PIPT / VIPT nonaliasing data cache, VIPT aliasing instruction cache
+[    0.000000] Machine model: Lab126 i.MX7 Board
+[    0.000000] log_goal_location: 0x9be00000  log_size: 0x80000 
+[    0.000000] printk_reserve_buf: num_retry = 0 
+[    0.000000] Printk log placed at 0x9be00000
+[    0.000000] Memory policy: Data cache writealloc
+[    0.000000] Falcon BIOS found.
+[    0.000000] On node 0 totalpages: 129792
+[    0.000000] free_area_init_node: node 0, pgdat 80b7fc80, node_mem_map 9f37f000
+[    0.000000]   Normal zone: 1152 pages used for memmap
+[    0.000000]   Normal zone: 0 pages reserved
+[    0.000000]   Normal zone: 129792 pages, LIFO batch:31
+[    0.000000] PERCPU: Embedded 12 pages/cpu @9ff7d000 s17472 r8192 d23488 u49152
+[    0.000000] pcpu-alloc: s17472 r8192 d23488 u49152 alloc=12*4096
+[    0.000000] pcpu-alloc: [0] 0 [0] 1 
+[    0.000000] Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 128640
+[    0.000000] Kernel command line: console=ttymxc0,115200 no_console_suspend video=mxcepdcfb:ED070KC1,bpp=8 root=/dev/mmcblk2p5 rootwait rw hwid=5 smtid=0 secure_cpu=1 androidboot.prod=1 quiet androidboot.serialno=[REDACTED] androidboot.unlocked_kernel=false
+[    0.000000] Prink buffer had been relocated to physical address: 0x9be00000
+[    0.000000] log_buf_len: 262144 bytes
+[    0.000000] early log buf free: 260232(99%)
+[    0.000000] PID hash table entries: 2048 (order: 1, 8192 bytes)
+[    0.000000] Dentry cache hash table entries: 65536 (order: 6, 262144 bytes)
+[    0.000000] Inode-cache hash table entries: 32768 (order: 5, 131072 bytes)
+[    0.000000] Memory: 487840K/519168K available (8010K kernel code, 469K rwdata, 2940K rodata, 424K init, 472K bss, 31328K reserved, 0K cma-reserved, 0K highmem)
+[    0.000000] Virtual kernel memory layout:
+    vector  : 0xffff0000 - 0xffff1000   (   4 kB)
+    fixmap  : 0xffc00000 - 0xfff00000   (3072 kB)
+    vmalloc : 0xa0800000 - 0xff000000   (1512 MB)
+    lowmem  : 0x80000000 - 0xa0000000   ( 512 MB)
+    pkmap   : 0x7fe00000 - 0x80000000   (   2 MB)
+    modules : 0x7f000000 - 0x7fe00000   (  14 MB)
+      .text : 0x80008000 - 0x80ab9d60   (10952 kB)
+      .init : 0x80aba000 - 0x80b24000   ( 424 kB)
+      .data : 0x80b24000 - 0x80b997d8   ( 470 kB)
+       .bss : 0x80b997d8 - 0x80c0facc   ( 473 kB)
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=2, Nodes=1
+[    0.000000] Preemptible hierarchical RCU implementation.
+[    0.000000] 	Additional per-CPU info printed with stalls.
+[    0.000000] 	RCU restricting CPUs from NR_CPUS=4 to nr_cpu_ids=2.
+[    0.000000] RCU: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=2
+[    0.000000] NR_IRQS:16 nr_irqs:16 16
+[    0.000000] Architected cp15 timer(s) running at 8.00MHz (phys).
+[    0.000000] clocksource arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x1d854df40, max_idle_ns: 440795202120 ns
+[    0.000006] sched_clock: 56 bits at 8MHz, resolution 125ns, wraps every 2199023255500ns
+[    0.000021] Switching to timer-based delay loop, resolution 125ns
+[    0.000546] mxc_clocksource_init 3000000
+[    0.000561] Ignoring duplicate/late registration of read_current_timer delay
+[    0.000579] clocksource mxc_timer1: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 637086815595 ns
+[    0.002066] Console: colour dummy device 80x30
+[    0.002087] Calibrating delay loop (skipped), value calculated using timer frequency.. 16.00 BogoMIPS (lpj=80000)
+[    0.002104] pid_max: default: 32768 minimum: 301
+[    0.002218] Mount-cache hash table entries: 1024 (order: 0, 4096 bytes)
+[    0.002233] Mountpoint-cache hash table entries: 1024 (order: 0, 4096 bytes)
+[    0.002930] Initializing cgroup subsys memory
+[    0.002976] Initializing cgroup subsys net_cls
+[    0.003006] CPU: Testing write buffer coherency: ok
+[    0.003282] /cpus/cpu@0 missing clock-frequency property
+[    0.003304] /cpus/cpu@1 missing clock-frequency property
+[    0.003319] CPU0: thread -1, cpu 0, socket 0, mpidr 80000000
+[    0.003379] Setting up static identity map for 0x80008280 - 0x800082d8
+[    0.080501] CPU1: thread -1, cpu 1, socket 0, mpidr 80000001
+[    0.080588] Brought up 2 CPUs
+[    0.080607] SMP: Total of 2 processors activated (32.00 BogoMIPS).
+[    0.080616] CPU: All CPU(s) started in SVC mode.
+[    0.081212] devtmpfs: initialized
+[    0.097411] VFP support v0.3: implementor 41 architecture 2 part 30 variant 7 rev 5
+[    0.102592] clocksource jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.103075] pinctrl core: initialized pinctrl subsystem
+[    0.104714] NET: Registered protocol family 16
+[    0.105324] DMA: preallocated 256 KiB pool for atomic coherent allocations
+[    0.131914] cpuidle: using governor ladder
+[    0.161938] cpuidle: using governor menu
+[    0.181169] DDR type is LPDDR3!
+[    0.190795] LPSR mode enabled, DSM will go into LPSR mode!
+[    0.191875] hw-breakpoint: found 5 (+1 reserved) breakpoint and 4 watchpoint registers.
+[    0.191889] hw-breakpoint: maximum watchpoint size is 8 bytes.
+[    0.193956] imx7d-pinctrl 302c0000.iomuxc-lpsr: initialized IMX pinctrl driver
+[    0.194727] imx7d-pinctrl 30330000.iomuxc: initialized IMX pinctrl driver
+[    0.195808] MAX77796 I2C 2.14.0
+[    0.198160] MU is ready for cross core communication!
+[    0.256129] mxs-dma 33000000.dma-apbh: initialized
+[    0.257607] SCSI subsystem initialized
+[    0.259150] libata version 3.00 loaded.
+[    0.259643] usbcore: registered new interface driver usbfs
+[    0.259746] usbcore: registered new interface driver hub
+[    0.259860] usbcore: registered new device driver usb
+[    0.260371] 30800000.aips-bus:usbphy_nop2 supply vcc not found, using dummy regulator
+[    0.262478] max77796 3c.max77796: IRQ 29 GPIO 4
+[    0.262495] MAX77796 Driver Core 2.14.0
+[    0.263895] max77796 3c.max77796: SN  404040
+[    0.263911] max77796 3c.max77796: SBT 00
+[    0.263922] max77796 3c.max77796: DRV 40
+[    0.263933] max77796 3c.max77796: DID 31
+[    0.264029] MAX77796 IRQ 2.14.0
+[    0.265068] MAX77796 TOPSYS Support 2.14.0
+[    0.266771] max77796 3c.max77796: ERCFLAG [1] 0x0000 [0] 0x0020
+[    0.266792] Reboot Reason: SFT_PRSTRT     Software Partial Restart
+[    0.268733] MAX77796 GPIO Driver 2.14.0
+[    0.280696] i2c i2c-0: IMX I2C adapter registered
+[    0.280721] i2c i2c-0: can't use DMA
+[    0.281550] i2c i2c-1: IMX I2C adapter registered
+[    0.281571] i2c i2c-1: can't use DMA
+[    0.282786] i2c i2c-2: IMX I2C adapter registered
+[    0.282806] i2c i2c-2: can't use DMA
+[    0.283066] Linux video capture interface: v2.00
+[    0.283356] pps_core: LinuxPPS API ver. 1 registered
+[    0.283368] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <[REDACTED-EMAIL]>
+[    0.283463] PTP clock support registered
+[    0.285757] Advanced Linux Sound Architecture Driver Initialized.
+[    0.286752] Bluetooth: Core ver 2.20
+[    0.286872] NET: Registered protocol family 31
+[    0.286883] Bluetooth: HCI device and connection manager initialized
+[    0.286910] Bluetooth: HCI socket layer initialized
+[    0.286927] Bluetooth: L2CAP socket layer initialized
+[    0.286968] Bluetooth: SCO socket layer initialized
+[    0.287622] cfg80211: World regulatory domain updated:
+[    0.287635] cfg80211:  DFS Master region: unset
+[    0.287644] cfg80211:   (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp), (dfs_cac_time)
+[    0.287659] cfg80211:   (2402000 KHz - 2472000 KHz @ 40000 KHz), (N/A, 2000 mBm), (N/A)
+[    0.287674] cfg80211:   (2457000 KHz - 2482000 KHz @ 20000 KHz, 92000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[    0.287686] cfg80211:   (2474000 KHz - 2494000 KHz @ 20000 KHz), (N/A, 2000 mBm), (N/A)
+[    0.287700] cfg80211:   (5170000 KHz - 5250000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[    0.287714] cfg80211:   (5250000 KHz - 5330000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (0 s)
+[    0.287727] cfg80211:   (5490000 KHz - 5730000 KHz @ 160000 KHz), (N/A, 2000 mBm), (0 s)
+[    0.287739] cfg80211:   (5735000 KHz - 5835000 KHz @ 80000 KHz), (N/A, 2000 mBm), (N/A)
+[    0.287751] cfg80211:   (57240000 KHz - 63720000 KHz @ 2160000 KHz), (N/A, 0 mBm), (N/A)
+[    0.288440] Switched to clocksource arch_sys_counter
+[    0.306697] idme_init: alscal2 = 0x0B:0x36,0x0C:0x31
+[    0.306734] idme_init: alscal1 = 0x0B:0x2c,0x0C:0x28
+[    0.306786] idme_init: can't read dev_flags err=0
+[    0.306838] idme_init: vcom = -1350000
+[    0.306958] idme_init: main 5
+[    0.306969] idme_init: can't read bootmode err=-22
+[    0.307104] idme_init: read serial successfully
+[    0.307128] idme_init: read board_id successfully
+[    0.307149] hwid_init: device hwid = 5
+[    0.307664] NET: Registered protocol family 2
+[    0.308368] TCP established hash table entries: 4096 (order: 2, 16384 bytes)
+[    0.308513] TCP bind hash table entries: 4096 (order: 3, 32768 bytes)
+[    0.308595] TCP: Hash tables configured (established 4096 bind 4096)
+[    0.308660] UDP hash table entries: 256 (order: 1, 8192 bytes)
+[    0.308698] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes)
+[    0.308914] NET: Registered protocol family 1
+[    0.309257] RPC: Registered named UNIX socket transport module.
+[    0.309271] RPC: Registered udp transport module.
+[    0.309279] RPC: Registered tcp transport module.
+[    0.309288] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    0.309558] Trying to unpack rootfs image as initramfs...
+[    0.335866] Freeing initrd memory: 5484K (9d691000 - 9dbec000)
+[    0.337940] imx rpmsg driver is registered.
+[    0.339418] Bus freq driver module loaded
+[    0.340285] console [pstore-1] enabled
+[    0.340298] pstore: Registered ramoops as persistent store backend
+[    0.340310] ramoops: attached 0x100000@0x9bf00000, ecc: 0/0
+[    0.340327] mxc_ramoops device success loaded
+[    0.341988] qbblk(storage): Enabled per clock
+[    0.342015] qbblk(storage): Enabled ipg clock
+[    0.342041] qbblk(storage): Enabled ahb clock
+[    0.342065] qbblk(storage): Set pinctrl
+[    0.342085] qbblk(storage): Don't get regulator
+[    0.343948] futex hash table entries: 512 (order: 3, 32768 bytes)
+[    0.354970] VFS: Disk quotas dquot_6.6.0
+[    0.355270] VFS: Dquot-cache hash table entries: 1024 (order 0, 4096 bytes)
+[    0.357814] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+[    0.359230] NFS: Registering the id_resolver key type
+[    0.359297] Key type id_resolver registered
+[    0.359307] Key type id_legacy registered
+[    0.359402] jffs2: version 2.2. (NAND) © 2001-2006 Red Hat, Inc.
+[    0.360503] fuse init (API version 7.23)
+[    0.364746] io scheduler noop registered
+[    0.364771] io scheduler deadline registered
+[    0.365011] io scheduler cfq registered (default)
+[    0.366624] MAX77796 BL Driver 2.14.0
+[    0.366653] max77796-bl max77796-bl: failed to get pwm device
+[    0.366843] new frontlight device (backlight:max77796-bl) registered.
+[    0.369007] imx-sdma 30bd0000.sdma: no event needs to be remapped
+[    0.369259] imx-sdma 30bd0000.sdma: loaded firmware 4.2
+[    0.373263] imx-sdma 30bd0000.sdma: initialized
+[    0.373768] MAX77796 BUCK Regulators Driver 2.14.0
+[    0.388749] MAX77796 BUCK Boost Regulators Driver 2.14.0
+[    0.390658] MAX77796 LDO Regulators Driver 2.14.0
+[    0.401879] MAX77796 Load Switches Driver 2.14.0
+[    0.404584] max77796-lsw max77796-lsw.2: no supply regulator
+[    0.406294] max77796-lsw max77796-lsw.3: no supply regulator
+[    0.408106] max77796-lsw max77796-lsw.4: no supply regulator
+[    0.409373] MAX77796 EPD Supplies Driver 2.14.0
+[    0.410184] max77796-epds max77796-epds: max77696_epds_probe: read EPDSEQ = 0x58
+[    0.419379] MAX77796 LPDDR2 VDDQ Supply Driver 2.14.0
+[    0.421277] 30860000.serial: [REDACTED] at MMIO 0x30860000 (irq = 275, base_baud = 1500000) is a IMX
+[    0.468074] console [ttymxc0] enabled
+[    0.468926] 30890000.serial: [REDACTED] at MMIO 0x30890000 (irq = 276, base_baud = 1500000) is a IMX
+[    0.469665] 30880000.serial: [REDACTED] at MMIO 0x30880000 (irq = 277, base_baud = 1500000) is a IMX
+[    0.472137] imx sema4 driver is registered.
+[    0.472281] [drm] Initialized drm 1.1.0 20060810
+[    0.473020] [drm] Initialized vivante 1.0.0 20120216 on minor 0
+[    0.486992] brd: module loaded
+[    0.494709] loop: module loaded
+[    0.495538] zram: Created 1 device(s)
+[    0.495816] bt_pwrctrl_init called..
+[    0.496168] 
+bt_reset pin obtained is 74
+[    0.496185] 
+bt_dev_wake pin obtained is 72
+[    0.496200] 
+bt_host_wake pin obtained is 73
+[    0.496229] IRQ# for BT HOST WAKE: 102
+[    0.500377] bt_pwrctrl_probe probe successful
+[    0.500859] MAX77796 CLK Driver 2.14.0
+[    0.501282] MAX77796 UIC Driver 2.14.0
+[    0.502606] max77796-uic max77796-uic: ID 0x0002 Revision 0x0001
+[    0.502625] chg_control=0x2d
+[    0.504552] frontlight dev entries driver.
+[    0.511135] spi_imx 30820000.ecspi: probed
+[    0.511887] spi_imx 30830000.ecspi: probed
+[    0.512371] CAN device driver interface
+[    0.515261] ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+[    0.515302] ehci-mxc: Freescale On-Chip EHCI Host driver
+[    0.515694] usbcore: registered new interface driver usb-storage
+[    0.517414] 30b10200.usbmisc supply vbus-wakeup not found, using dummy regulator
+[    0.517559] 30b20200.usbmisc supply vbus-wakeup not found, using dummy regulator
+[    0.517694] 30b30200.usbmisc supply vbus-wakeup not found, using dummy regulator
+[    0.518760] 30b10000.usb supply vbus not found, using dummy regulator
+[    0.522204] state=0
+[    0.969427] mousedev: PS/2 mouse device common for all mice
+[    0.970452] input: 30370000.snvs:snvs-powerkey as /devices/platform/soc/30000000.aips-bus/30370000.snvs/30370000.snvs:snvs-powerkey/input/input0
+[    0.971197] MAX77796 Key Input Driver 2.14.0
+[    0.972080] input: max77796-key as /devices/platform/3c.max77796/max77796-key/input/input1
+[    0.975266] input: Unspecified device as /devices/virtual/input/input2
+[    0.976376] input: Unspecified device as /devices/virtual/input/input3
+[    0.977593] MAX77796 Real Time Clock Driver 2.14.0
+[    1.019491] max77796-rtc max77796-rtc: rtc core: registered max77796-rtc.0 as rtc0
+[    1.059497] max77796-rtc max77796-rtc: rtc core: registered max77796-rtc.1 as rtc1
+[    1.079209] max77796-rtc max77796-rtc: initial time: 2026-11-20 Fri 15:58:04
+[    1.080124] snvs_rtc 30370000.snvs:snvs-rtc-lp: rtc core: registered 30370000.snvs:snvs- as rtc2
+[    1.080411] i2c /dev entries driver
+[    1.082135] IR NEC protocol handler initialized
+[    1.082153] IR RC5(x/sz) protocol handler initialized
+[    1.082168] IR RC6 protocol handler initialized
+[    1.082182] IR JVC protocol handler initialized
+[    1.082195] IR Sony protocol handler initialized
+[    1.082209] IR SANYO protocol handler initialized
+[    1.082223] IR Sharp protocol handler initialized
+[    1.082238] IR MCE Keyboard/mouse protocol handler initialized
+[    1.082252] IR XMP protocol handler initialized
+[    1.082848] MAX77796 FG Driver 2.14.0
+[    1.085458] MAX77796 Charger Driver 2.14.0
+[    1.086536] batt_type=0
+[    1.088176] chg_cnfg_0 = 0x5
+[    1.088756] chg_cnfg_1 = 0x95
+[    1.089793] chg_cnfg_2 = 0x8b
+[    1.090886] chg_cnfg_3 = 0x0
+[    1.091936] chg_cnfg_4 = 0x4e
+[    1.092977] chg_cnfg_5 = 0x6
+[    1.094028] chg_cnfg_7 = 0x40
+[    1.095088] chg_cnfg_8 = 0x0
+[    1.096129] chg_cnfg_9 = 0x64
+[    1.097189] chg_cnfg_10 = 0x0
+[    1.098229] chg_cnfg_11 = 0x52
+[    1.099287] chg_cnfg_12 = 0x7
+[    1.100335] chg_cnfg_13 = 0x0
+[    1.101374] chg_cnfg_14 = 0x3c
+[    1.107048] MAX77796 ADC Driver 2.14.0
+[    1.111681] imx2-wdt 30280000.wdog: use WDOG_B to reboot.
+[    1.112973] imx2-wdt 30280000.wdog: timeout 60 sec (nowayout=0)
+[    1.113012] imx2-wdt 30280000.wdog: register reboot notifier.
+[    1.113155] imx2-wdt 30280000.wdog: kernel wdt is enabled and running
+[    1.113823] Bluetooth: HCI UART driver ver 2.3
+[    1.113860] Bluetooth: HCI UART protocol H4 registered
+[    1.113872] Bluetooth: HCI UART protocol BCSP registered
+[    1.113901] Bluetooth: HCI UART protocol ATH3K registered
+[    1.114336] usbcore: registered new interface driver bcm203x
+[    1.114689] usbcore: registered new interface driver btusb
+[    1.114731] Bluetooth: Generic Bluetooth SDIO driver ver 0.1
+[    1.115302] usbcore: registered new interface driver ath3k
+[    1.116729] sdhci: Secure Digital Host Controller Interface driver
+[    1.116762] sdhci: Copyright(c) Pierre Ossman
+[    1.116779] sdhci-pltfm: SDHCI platform and OF driver helper
+[    1.119504] /soc/aips-bus@30800000/usdhc@30b40000: voltage-ranges unspecified
+[    1.119544] sdhci-esdhc-imx 30b40000.usdhc: could not get ultra high speed state, work on normal mode
+[    1.119728] sdhci-esdhc-imx 30b40000.usdhc: assigned as wifi host
+[    1.121081] sdhci-esdhc-imx 30b40000.usdhc: No vmmc regulator found
+[    1.121187] sdhci-esdhc-imx 30b40000.usdhc: No vqmmc regulator found
+[    1.127877] I2C read in POWER_SUPPLY_PROP_RU_CAP...
+[    1.169516] mmc0: SDHCI controller on 30b40000.usdhc [30b40000.usdhc] using ADMA
+[    1.179917] MAX77796 LED Indicators Driver 2.14.0
+[    1.187770] usbcore: registered new interface driver usbhid
+[    1.187785] usbhid: USB HID core driver
+[    1.200167] coresight-tmc 30086000.etr: TMC initialized
+[    1.200751] coresight-tmc 30084000.etf: TMC initialized
+[    1.201167] coresight-tpiu 30087000.tpiu: TPIU initialized
+[    1.201795] coresight-funnel 30083000.funnel: FUNNEL initialized
+[    1.202167] coresight-funnel 30041000.funnel: FUNNEL initialized
+[    1.202719] coresight-replicator replicator: REPLICATOR initialized
+[    1.203722] coresight-etm3x 3007c000.etm: ETM initialized
+[    1.204335] coresight-etm3x 3007d000.etm: ETM initialized
+[    1.204879] qbblk(timer): Enabled per clock
+[    1.204904] qbblk(timer): Enabled ipg clock
+[    1.236704] get_host_info: Found target host info
+[    1.236786] init_falcon_blk: Use interrupt : IRQ=286
+[    1.241728] GPT:Primary header thinks Alt. header is not at the end of the disk.
+[    1.241748] GPT:1 != 15269887
+[    1.241756] GPT:Alternate GPT header not at the end of the disk.
+[    1.241765] GPT:1 != 15269887
+[    1.241772] GPT: Use GNU Parted to correct GPT errors.
+[    1.241823]  mmcblk2: p1 p2 p3 p4 p5 p6 p7 p7
+[    1.247270] NET: Registered protocol family 26
+[    1.247304] Netfilter messages via NETLINK v0.30.
+[    1.247330] nfnl_acct: registering with nfnetlink.
+[    1.247397] nf_conntrack version 0.5.0 (7708 buckets, 30832 max)
+[    1.248279] ctnetlink v0.93: registering with nfnetlink.
+[    1.248665] nf_tables: (c) 2007-2009 Patrick McHardy <[REDACTED-EMAIL]>
+[    1.248686] nf_tables_compat: (c) 2012 Pablo Neira Ayuso <[REDACTED-EMAIL]>
+[    1.249517] xt_time: kernel timezone is -0000
+[    1.249550] IPVS: Registered protocols ()
+[    1.249591] IPVS: Connection hash table configured (size=4096, memory=32Kbytes)
+[    1.249740] IPVS: Creating netns size=872 id=0
+[    1.249796] IPVS: ipvs loaded.
+[    1.250318] ip_tables: (C) 2000-2006 Netfilter Core Team
+[    1.250494] ipt_CLUSTERIP: ClusterIP Version 0.8 loaded successfully
+[    1.250548] arp_tables: (C) 2002 David S. Miller
+[    1.250629] NET: Registered protocol family 17
+[    1.250653] can: controller area network core (rev 20120528 abi 9)
+[    1.250740] NET: Registered protocol family 29
+[    1.250758] can: raw protocol (rev 20120528)
+[    1.250772] can: broadcast manager protocol (rev 20120528 t)
+[    1.250793] can: netlink gateway (rev 20130117) max_hops=1
+[    1.251197] Bluetooth: RFCOMM TTY layer initialized
+[    1.251222] Bluetooth: RFCOMM socket layer initialized
+[    1.251263] Bluetooth: RFCOMM ver 1.11
+[    1.251288] Bluetooth: BNEP (Ethernet Emulation) ver 1.3
+[    1.251298] Bluetooth: BNEP filters: protocol multicast
+[    1.251316] Bluetooth: BNEP socket layer initialized
+[    1.251330] Bluetooth: HIDP (Human Interface Emulation) ver 1.2
+[    1.251346] Bluetooth: HIDP socket layer initialized
+[    1.251417] 8021q: 802.1Q VLAN Support v1.8
+[    1.251482] Key type dns_resolver registered
+[    1.252493] cpu cpu0: dev_pm_opp_get_opp_count: device OPP not found (-19)
+[    1.266752] wfo: device_index: 0, ccode_regrev_table_index: 0/4
+[    1.281700] input: gpio-keys as /devices/platform/gpio-keys/input/input4
+[    1.301724] max77796-rtc max77796-rtc: setting system clock to 2026-11-20 15:58:04 UTC (1795190284)
+[    1.349768] ALSA device list:
+[    1.349792]   No soundcards found.
+[    1.352775] Freeing unused kernel memory: 424K (80aba000 - 80b24000)
+[    1.388168] INFO:mount /dev/mmcblk2p4 to /mnt/wfm OK
+[    1.392513] INFO:find_file:165 Found 320_R198_AG3902_ED070KC2UA_TC.wrf.gz
+[    1.392567] INFO:find 1 waveform files
+[    1.392639] INFO:Loading: /lib/modules/mxc_epdc_v2_fb.ko waveform=320_R198_AG3902_ED070KC2UA_TC.wrf.gz
+[    1.396846] imx_epdc_v2_fb 306f0000.epdc: resolution 1264x1680, bpp 8
+[    1.396868] imx_epdc_v2_fb 306f0000.epdc: memory to allocate: 4587520
+[    1.400350] imx_epdc_v2_fb 306f0000.epdc: allocated at a0c87000:0x99800000
+[    1.402098] imx_epdc_v2_fb 306f0000.epdc: allocated 2293760 bytes @ 0x99000000
+[    1.403742] imx_epdc_v2_fb 306f0000.epdc: allocated 2293760 bytes @ 0x99400000
+[    1.416986] imx_epdc_v2_fb 306f0000.epdc: use reserved working buffer @ 0x9c000000
+[    1.463725] imx_epdc_v2_fb 306f0000.epdc: VDDH = 28000 mV
+[    1.465199] imx_epdc_v2_fb 306f0000.epdc: enable FLASH regulator = 3300 mV
+[    1.465235] imx_epdc_v2_fb 306f0000.epdc: ok to request xon pins 9
+[    1.467738] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_debug_proc: make proc for EPDC reg dump 
+[    1.467794] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_fb_init_hw: enter fw=imx/epdc/epdc_ED070KC1.fw
+[    1.467818] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_fb_probe: succeed and exit 
+[    1.474046] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_fb_fw_handler:  enter 
+[    1.474176] imx_epdc_v2_fb 306f0000.epdc: read_mnt_wfm_v2: waveform at /mnt/wfm/waveform_to_use/320_R198_AG3902_ED070KC2UA_TC.wrf.gz
+[    1.474192] imx_epdc_v2_fb 306f0000.epdc: read_mnt_wfm_v2: open file (/mnt/wfm/waveform_to_use/320_R198_AG3902_ED070KC2UA_TC.wrf.gz) ok size=119650
+[    1.475060] INFO:Loaded module /lib/modules/mxc_epdc_v2_fb.ko waveform=320_R198_AG3902_ED070KC2UA_TC.wrf.gz (189952 bytes)
+[    1.478973] imx_epdc_v2_fb 306f0000.epdc: read_mnt_wfm_v2: read file OK
+[    1.504673] imx_epdc_v2_fb 306f0000.epdc: trt entry #0 = 0x0
+[    1.504699] imx_epdc_v2_fb 306f0000.epdc: trt entry #1 = 0x3
+[    1.504710] imx_epdc_v2_fb 306f0000.epdc: trt entry #2 = 0x6
+[    1.504720] imx_epdc_v2_fb 306f0000.epdc: trt entry #3 = 0x9
+[    1.504730] imx_epdc_v2_fb 306f0000.epdc: trt entry #4 = 0xc
+[    1.504740] imx_epdc_v2_fb 306f0000.epdc: trt entry #5 = 0xf
+[    1.504750] imx_epdc_v2_fb 306f0000.epdc: trt entry #6 = 0x12
+[    1.504760] imx_epdc_v2_fb 306f0000.epdc: trt entry #7 = 0x15
+[    1.504770] imx_epdc_v2_fb 306f0000.epdc: trt entry #8 = 0x18
+[    1.504780] imx_epdc_v2_fb 306f0000.epdc: trt entry #9 = 0x1b
+[    1.504789] imx_epdc_v2_fb 306f0000.epdc: trt entry #10 = 0x1e
+[    1.504799] imx_epdc_v2_fb 306f0000.epdc: trt entry #11 = 0x21
+[    1.504809] imx_epdc_v2_fb 306f0000.epdc: trt entry #12 = 0x26
+[    1.504819] imx_epdc_v2_fb 306f0000.epdc: trt entry #13 = 0x2b
+[    1.507035] imx_epdc_v2_fb 306f0000.epdc: allocate 3620277 byte @ a3793000 for waveform
+[    1.510902] imx_epdc_v2_fb 306f0000.epdc: Waveform file supports advanced algorithms
+[    1.510924] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_waveform_proc: make proc for waveform
+[    1.511020] imx_epdc_v2_fb 306f0000.epdc: long 70 xswi 373d96
+[    1.511044] imx_epdc_v2_fb 306f0000.epdc: copy (373d96 - 373958) byte @ offset 373958 to acd buffer
+[    1.511074] imx_epdc_v2_fb 306f0000.epdc: copy (373958 - 373098) byte @ offset 373098 to vcd buffer
+[    1.511084] imx_epdc_v2_fb 306f0000.epdc: Retrieved voltage control information (0x8c0)
+[    1.511103] imx_epdc_v2_fb 306f0000.epdc: mxc_set_vcom: vcom_uV=-1350000
+[    1.514386] imx_epdc_v2_fb 306f0000.epdc: VCOM = -1346mV
+[    1.516578] INFO:eink initialized... (2150400 bytes)
+[    1.516765] INFO:is_production=1, is_unlocked=0, is_secure_cpu=1
+[    1.516793] INFO:Battery ID is valid
+[    1.519443] I2C read in POWER_SUPPLY_PROP_RU_CAP...
+[    1.521614] INFO:Battery percentage = 96
+[    1.522586] INFO:alloc_read_gpt_entries: count = 128 * 128 = 16384
+[    1.524295] INFO:check_and_create_gpt_partitions: checking userstore with gpt
+[    1.551834] imx_epdc_v2_fb 306f0000.epdc: Mode0 update - Waiting for LUT to complete...
+[    1.578492] INFO:Setup loop device /dev/loop0 for /dev/mmcblk2p7 + 8192
+[    1.581042] INFO:check_gpt: find userstore file system
+[    1.728487] INFO:Setup loop device /dev/loop0 for /dev/mmcblk2p7 + 8192
+[    1.733418] INFO:Checking for updates... (auto-pilot mode)
+[    1.733680] INFO:No update*.bin found; no update needed.
+[    1.858493] INFO:no updates found.
+[    2.758470] imx_epdc_v2_fb 306f0000.epdc: Mode0 init complete
+[    2.759725] imx_epdc_v2_fb 306f0000.epdc: mxc_epdc_hw_init:epdc_init done
+[    4.197075] kjournald starting.  Commit interval 5 seconds
+[    4.198385] EXT3-fs (mmcblk2p5): using internal journal
+[    4.198400] EXT3-fs (mmcblk2p5): mounted filesystem with ordered data mode
+[    4.476465] reboot: Kernel reboot syscall was invoked, magic1=0xfee1dead, magic2=0x28121969, cmd=0x0
+[    5.333753] random: head urandom read with 98 bits of entropy available
+[    5.498894] chgtyp=9
+[    5.514503] udevd (1253): /proc/1253/oom_adj is deprecated, please use /proc/1253/oom_score_adj instead.
+[    5.699888] I2C read in POWER_SUPPLY_PROP_RU_CAP...
+[    6.099337] batt temp = 192
+[    6.099362] thermal zone = THM_DTLS_NORMAL
+[    6.100682] CC write 0x001C = 933000uA
+[    6.101926] CV_PRM write 0x000E = 4200mV
+[    6.603750] random: nonblocking pool is initialized
+[    8.261912] falcon: module license 'newBSD' taints kernel.
+[    8.261935] Disabling lock debugging due to kernel taint
+[    8.263092] BIOS require 4587520 bytes buffer
+[    8.263108] Use pre-allocated buffer area
+[    8.347096] EXT3-fs (mmcblk2p3): mounted filesystem with ordered data mode
+[    8.348806] kjournald starting.  Commit interval 5 seconds
+[    8.369937] input: max44009_als as /devices/virtual/input/input5
+[    8.374314] gpio_max44009_als_int:1326, irq: 99
+[    8.376574] max44009_probe done
+[    8.384222] input: max44009_als1 as /devices/virtual/input/input6
+[    8.394362] gpio_max44009_als_int:1321, irq: 99
+[    8.394761] max44009_probe done
+[    8.545716] kjournald starting.  Commit interval 5 seconds
+[    8.547222] EXT3-fs (mmcblk2p6): using internal journal
+[    8.547236] EXT3-fs (mmcblk2p6): mounted filesystem with ordered data mode
+[    8.662231] EXT3-fs (mmcblk2p5): using internal journal
+[    9.152809] bma2x2 2-0018: obtained gpio for BMA2x2_NIRQ
+[    9.171601] bma2x2 2-0018: Bosch Sensortec Device detected, HW IC name: BMA222E
+[    9.192847] input: bma2x2 as /devices/virtual/input/input7
+[    9.195605] input: bma_interrupt as /devices/virtual/input/input8
+[    9.197279] ACC as /devices/virtual/bst/ACC
+[    9.197790] bma2x2 2-0018: bma2x2 sensor driver set place: p1
+[    9.197812] bma2x2 2-0018: BMA2x2 driver probe successfully
+[    9.275568] bma2x2_irq_work_func, status = 0x40
+[    9.276350] Power up orientation interrupt ignored
+[    9.450815] MAX77796-LSW1 is already off.
+[    9.450844] cyttsp5_i2c_adapter 1-0024: cyttsp5_init: INIT CYTTSP RST gpio=11 and IRQ gpio=10 r=0
+[   10.058554] cyttsp5_i2c_adapter 1-0024: cyttsp5_get_hid_descriptor_: failed to get HID descriptor length and version, rc=-110
+[   10.058584] cyttsp5_i2c_adapter 1-0024: cyttsp5_read_input: Error getting report, r=-11
+[   10.083085] cyttsp5_i2c_adapter 1-0024: cyttsp5_startup_: Error on getting HID descriptor r=-110
+[   10.299156] max77796-lsw max77796-lsw.1: no supply regulator
+[   10.368537] cyttsp5_i2c_adapter 1-0024: cyttsp5_xres: RESET CYTTSP gpio=11 r=0
+[   10.380112] cyttsp5_i2c_adapter 1-0024: cyttsp5_startup_: Operational mode
+[   10.380137] cyttsp5_i2c_adapter 1-0024: cyttsp5_startup_: Reading report descriptor
+[   11.229143] cyttsp5_i2c_adapter 1-0024: cyttsp5 Protocol Version: 1.6
+[   11.241164] input: cyttsp5_mt as /devices/platform/soc/30800000.aips-bus/30a30000.i2c/i2c-1/1-0024/input/input9
+[   13.492328] Mass Storage Function, version: 2009/09/11
+[   13.492363] LUN: removable file: (no medium)
+[   13.492507] LUN: removable file: (no medium)
+[   13.492519] Number of LUNs=1
+[   13.493636] Number of LUNs=1
+[   13.495030] g_mass_storage gadget: Internal Storage, version: 2009/09/11
+[   13.495048] g_mass_storage gadget: g_mass_storage ready
+[   13.495088] state=2
+[   13.697992] state=6
+[   13.831504] g_mass_storage gadget: high-speed config #1: Linux File-Backed Storage
+[   13.831527] state=7
+[   13.831626] send_online_uevent:1012 bitflags: 0x00, recovery_mode: 0
+[   14.490437] chgtyp=9, chg_det_ct=2
+[   15.820042] max44009_init_automode:1281
+[   15.821160] max44009_init_automode:1278
+[   16.070184] KERNEL: I pmic:fg newbatt::replaced new battery
+[   16.873130] misc als: 
+max44009_report_light_level:919: to upper layer lux=198
+[   16.875313] misc als1: 
+max44009_report_light_level:916: to upper layer lux=260
+[   17.118853] fsg_store_file:448, file=/dev/loop/0
+[   17.714247] max77796-lsw max77796-lsw.1: no supply regulator
+[   17.738521] cyttsp5_i2c_adapter 1-0024: _fast_startup: Beginning _fast_startup retry loop
+[   18.333995] imx_epdc_v2_fb 306f0000.epdc: Setting optimization level to 2
+[   18.334021] imx_epdc_v2_fb 306f0000.epdc: Setting auto update mode to 0
+[   18.538838] imx_epdc_v2_fb 306f0000.epdc: blank = 1 fb_data->blank=0
+[   20.163805] max77796-lsw max77796-lsw.1: no supply regulator
+[   20.188555] cyttsp5_i2c_adapter 1-0024: _fast_startup: Beginning _fast_startup retry loop
+[   20.394943] max77796-lsw max77796-lsw.1: no supply regulator
+[   20.418525] cyttsp5_i2c_adapter 1-0024: _fast_startup: Beginning _fast_startup retry loop
+[   20.452533] batmon in powerd calls max77696_fg_read_learned_all to read back below FG registers.
+[   20.454400] reg[0x10]=0x07a4
+[   20.454690] reg[0x23]=0x07f0
+[   20.454989] reg[0x17]=0x00b4
+[   20.455281] reg[0x38]=0x0042
+[   20.455564] reg[0x39]=0x1b24
+[   20.455846] reg[0x12]=0x2589
+[   20.456115] reg[0x22]=0x1289
+[   20.456414] reg[0x32]=0x0909
+[   20.456716] reg[0x42]=0x068c
+[   20.610439] I2C read in POWER_SUPPLY_PROP_RU_CAP...
+[   20.718779] imx_epdc_v2_fb 306f0000.epdc: blank = 0 fb_data->blank=0
+[   20.718801] cyttsp5_i2c_adapter 1-0024: fb_notifier_callback: UNBLANK!
+[   29.568272] dhd_module_init in
+[   29.568326] brcm_wlan_power: setting gpio #[67] on
+[   29.718669] found wifi platform device bcmdhd_wlan
+[   29.719490] dhd_module_init out
+[   29.800450] mmc0: new high speed SDIO card at address 0001
+[   29.802965] alloc static buf at 98f00000!
+[   29.809191] DHD: dongle ram size is set to 524288(orig 524288) at 0x0
+[   29.809393] wifi_platform_get_mac_addr
+[   29.813050] dhd_deferred_work_init: work queue initialized 
+[   29.953945] dhd_bus_init: enable 0x06, ready 0x06 (waited 0us)
+[   29.954292] bcmsdh_oob_intr_register OOB irq=116 flags=4 
+[   29.955350] wifi_platform_get_mac_addr
+[   29.958227] Firmware up: op_mode=0x0005, MAC=f0:88:01
+[   29.958800] dhd_preinit_ioctls:7841 wl ampdu_hostreorder failed -23
+[   30.008745] Firmware version = wl0: Mar 29 2021 18:14:28 version 7.45.91.12 (r728410) FWID 01-21e964a0
+[   30.012169] 
+Dongle Host Driver, version 1.363.110.23 (r)
+Compiled from 
+[   30.013052] Register interface [wlan0]  MAC: f0:88:01
+
+[   47.487974] EXT3-fs (mmcblk2p5): using internal journal
+[   86.297123] EXT3-fs (mmcblk2p5): using internal journal
+[  138.647510] state=8
+[  138.681610] turn off VBUS, hwid=5
+[  138.681732] chgtyp=0, USB charger is removed.
+[  140.678800] Disconnect....
+[  140.680014] send_offline_uevent:996 bitflags: 0x0a, unplug_state: 1, recovery_mode: 0
+[  141.537801] max44009_init_automode:1281
+[  141.547413] max44009_init_automode:1278
+[  142.225187] fsg_store_file:448, file=
+[  142.611483] Connecting with cc:69:ea ssid "3***s" len (5) channel=5
+
+[  142.620351] misc als: 
+max44009_report_light_level:919: to upper layer lux=165
+[  142.622525] misc als1: 
+max44009_report_light_level:916: to upper layer lux=235
+[  142.663426] wl_bss_connect_done succeeded with cc:69:ea
+[  142.733366] wl_bss_connect_done succeeded with cc:69:ea
+[  149.746248] CFG80211-ERROR) wl_cfg80211_reg_notifier : Set country code C* from User
+[  149.752862] CFG80211-ERROR) wl_is_linkdown : Link down Reason : WLC_E_LINK
+[  149.752896] link down if wlan0 may call cfg80211_disconnected. event : 16, reason=2 from cc:69:ea
+[  149.771027] WLDEV-ERROR) wldev_set_country : wldev_set_country: set country for C* as A* rev 287
+[  149.781228] cfg80211: Regulatory domain changed to country: C*
+[  149.781251] cfg80211:  DFS Master region: FCC
+[  149.781260] cfg80211:   (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp), (dfs_cac_time)
+[  149.781272] cfg80211:   (2402000 KHz - 2482000 KHz @ 40000 KHz), (N/A, 2000 mBm), (N/A)
+[  149.781285] cfg80211:   (5170000 KHz - 5250000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2300 mBm), (N/A)
+[  149.781298] cfg80211:   (5250000 KHz - 5330000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2300 mBm), (0 s)
+[  149.781308] cfg80211:   (5735000 KHz - 5835000 KHz @ 80000 KHz), (N/A, 3000 mBm), (N/A)
+[  149.781318] cfg80211:   (57240000 KHz - 59400000 KHz @ 2160000 KHz), (N/A, 2800 mBm), (N/A)
+[  149.781328] cfg80211:   (59400000 KHz - 63720000 KHz @ 2160000 KHz), (N/A, 4400 mBm), (N/A)
+[  149.781338] cfg80211:   (63720000 KHz - 65880000 KHz @ 2160000 KHz), (N/A, 2800 mBm), (N/A)
+[  149.790186] CFG80211-ERROR) wl_cfg80211_reg_notifier : reg_notifier for intiator:0 not supported : set default
+[  149.790212] CFG80211-ERROR) wl_cfg80211_reg_notifier : Set country code 0* from User
+[  149.808012] WLDEV-ERROR) wldev_set_country : wldev_set_country: set country for 0* as X* rev 990
+[  149.815821] cfg80211: World regulatory domain updated:
+[  149.815831] cfg80211:  DFS Master region: unset
+[  149.815838] cfg80211:   (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp), (dfs_cac_time)
+[  149.815850] cfg80211:   (2402000 KHz - 2472000 KHz @ 40000 KHz), (N/A, 2000 mBm), (N/A)
+[  149.815863] cfg80211:   (2457000 KHz - 2482000 KHz @ 20000 KHz, 92000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[  149.815873] cfg80211:   (2474000 KHz - 2494000 KHz @ 20000 KHz), (N/A, 2000 mBm), (N/A)
+[  149.815884] cfg80211:   (5170000 KHz - 5250000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[  149.815896] cfg80211:   (5250000 KHz - 5330000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (0 s)
+[  149.815907] cfg80211:   (5490000 KHz - 5730000 KHz @ 160000 KHz), (N/A, 2000 mBm), (0 s)
+[  149.815917] cfg80211:   (5735000 KHz - 5835000 KHz @ 80000 KHz), (N/A, 2000 mBm), (N/A)
+[  149.815926] cfg80211:   (57240000 KHz - 63720000 KHz @ 2160000 KHz), (N/A, 0 mBm), (N/A)
+[  149.817202] CFG80211-ERROR) wl_cfg80211_reg_notifier : Set country code C* from User
+[  149.834947] WLDEV-ERROR) wldev_set_country : wldev_set_country: set country for C* as A* rev 287
+[  149.847643] cfg80211: Regulatory domain changed to country: C*
+[  149.847670] cfg80211:  DFS Master region: FCC
+[  149.847678] cfg80211:   (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp), (dfs_cac_time)
+[  149.847690] cfg80211:   (2402000 KHz - 2482000 KHz @ 40000 KHz), (N/A, 2000 mBm), (N/A)
+[  149.847703] cfg80211:   (5170000 KHz - 5250000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2300 mBm), (N/A)
+[  149.847715] cfg80211:   (5250000 KHz - 5330000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2300 mBm), (0 s)
+[  149.847725] cfg80211:   (5735000 KHz - 5835000 KHz @ 80000 KHz), (N/A, 3000 mBm), (N/A)
+[  149.847735] cfg80211:   (57240000 KHz - 59400000 KHz @ 2160000 KHz), (N/A, 2800 mBm), (N/A)
+[  149.847745] cfg80211:   (59400000 KHz - 63720000 KHz @ 2160000 KHz), (N/A, 4400 mBm), (N/A)
+[  149.847755] cfg80211:   (63720000 KHz - 65880000 KHz @ 2160000 KHz), (N/A, 2800 mBm), (N/A)
+[  150.083129] Connecting with ff:ff:ff ssid "3***s" len (5) channel=0
+
+[  150.661913] wl_bss_connect_done succeeded with cc:69:ea
+[  150.720974] wl_bss_connect_done succeeded with cc:69:ea
+[  153.039318] misc als: 
+max44009_report_light_level:919: to upper layer lux=16
+[  153.041463] misc als1: 
+max44009_report_light_level:916: to upper layer lux=256
+[  154.144505] misc als: 
+max44009_report_light_level:919: to upper layer lux=60
+[  154.147782] misc als1: 
+max44009_report_light_level:916: to upper layer lux=255
+[  155.445036] misc als: 
+max44009_report_light_level:919: to upper layer lux=188
+[  155.447307] misc als1: 
+max44009_report_light_level:916: to upper layer lux=252
+[  165.061692] misc als: 
+max44009_report_light_level:919: to upper layer lux=84
+[  165.064038] misc als1: 
+max44009_report_light_level:916: to upper layer lux=252
+[  168.267499] misc als: 
+max44009_report_light_level:919: to upper layer lux=188
+[  168.269667] misc als1: 
+max44009_report_light_level:916: to upper layer lux=252

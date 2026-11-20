@@ -64,3 +64,5 @@ python3 tools/run-tests.py --filter koa2
 - Company policy and DLP are not worked around: repository files are edited and built inside WSL's ext4 only.
 
 The reviewed short staging report and kit hashes are published under reports/; full raw device evidence stays local.
+
+The user-authorized modules, de-identified logs and build materials are in [the materials folder](materials/2026-11-21/README.en.md); this explicit upload request updates the earlier local-only scope.

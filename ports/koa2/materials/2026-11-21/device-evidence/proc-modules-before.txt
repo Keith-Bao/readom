@@ -1,0 +1,12 @@
+bcmdhd 650945 0 - Live 0x7f09b000
+g_mass_storage 4203 0 - Live 0x7f095000
+usb_f_mass_storage 51107 2 g_mass_storage, Live 0x7f080000
+libcomposite 48895 2 g_mass_storage,usb_f_mass_storage, Live 0x7f06c000
+configfs 26509 3 usb_f_mass_storage,libcomposite, Live 0x7f060000
+cyttsp5_i2c 2569 0 - Live 0x7f05c000
+bma2x2 35571 0 - Live 0x7f04e000
+bstclass 3300 2 bma2x2, Live 0x7f04a000
+als1_max44009 19805 1 - Live 0x7f040000
+als_max44009 20195 2 als1_max44009, Live 0x7f036000
+falcon 18786 0 [permanent], Live 0x7f02d000 (PO)
+mxc_epdc_v2_fb 138292 3 - Live 0x7f000000

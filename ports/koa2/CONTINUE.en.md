@@ -55,9 +55,9 @@ Before a real handoff, define recovery, log collection and stop conditions at ea
 The user starts device tests by hand; no repeat hardware collection or staging run is needed now.
 See [the device procedure](device-runbook.en.md) and [stage gates](ROADMAP.en.md).
 
-## 5. Materials that are not uploaded
+## 5. Where the materials are now
 
-GitHub has source, status, the reviewed short device report and kit hashes, but no stock modules, complete dmesg, runtime DTB, toolchains or kit binaries.
-The home computer holds 63 stock modules; offline CRC checking is pending. Their absence does not block writing hardware code and host tests.
-The raw evidence locations are in [the test notes](reports/2026-11-21-stage-test/README.md).
-Arrange separate transfer only if later work requires them; do not add raw device data to the repository.
+At the user's request, the [materials folder](materials/2026-11-21/README.en.md) is committed to this branch: stock modules, de-identified complete dmesg, toolchain, kit, source archive parts and reference configuration arrive with Git.
+Its README includes SHA256 checks, source assembly and rebuilding commands.
+The stock runtime DTB is the only missing item; no separate backup was found, and the built DTB is not a substitute.
+Local raw logs remain unchanged; uploaded logs replace device and network identifiers while preserving the remaining sequence.

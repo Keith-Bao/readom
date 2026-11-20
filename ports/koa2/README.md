@@ -61,3 +61,5 @@ python3 tools/run-tests.py --filter koa2
 - 不绕过公司策略和 DLP：仓库文件只在 WSL 的 ext4 里改和构建。
 
 reports/ 下公开的是检查过的精简暂存报告与套件哈希；完整原始设备证据仍留本地。
+
+用户授权上传的模块、去标识日志与构建材料见[资料文件夹](materials/2026-11-21/README.md)；此前仅存本地的限制由此次明确授权更新。

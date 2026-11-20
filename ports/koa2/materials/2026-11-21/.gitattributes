@@ -1,0 +1,2 @@
+# Preserve generated output formatting, including trailing spaces.
+*.txt whitespace=-blank-at-eol,-blank-at-eof

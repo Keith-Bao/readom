@@ -1,0 +1,47 @@
+Readom KOA2 stage test v1 -- stages and checks only, NO jump
+Fri Nov 20 16:00:50 UTC 2026
+Linux kindle 4.1.15-lab126 #1 SMP PREEMPT Tue Aug 1 11:50:12 UTC 2023 armv7l GNU/Linux
+
+[identity]
+release=4.1.15-lab126
+version=#1 SMP PREEMPT Tue Aug 1 11:50:12 UTC 2023
+
+[kit]
+koa2_handoff_stage.ko: OK
+koa2-stage-client: OK
+zImage: OK
+initramfs.cpio.gz: OK
+stage-test.sh: OK
+
+[stock_modules]
+modules_copied=63
+
+[before]
+tainted=4097
+panic_on_oops=0
+panic=5
+MemFree:            6252 kB
+MemAvailable:     215952 kB
+Cached:           172916 kB
+
+[insmod]
+insmod_exit=0
+
+[device]
+crw-rw----    1 root     root       10,  55 Nov 20 16:00 /dev/koa2-handoff-stage
+
+[stage]
+state=2 plan_valid=1 execute_available=0 fdt_bytes=47972 payload_pages=1706
+collision_pages=230 list_pages=2 list_entries=1710 seal_stage=0 seal_result=0
+client_exit=0
+MemFree:           20784 kB
+MemAvailable:     215788 kB
+
+[rmmod]
+rmmod_exit=0
+
+[after]
+tainted=4097
+
+[complete]
+result=sealed_plan_valid
