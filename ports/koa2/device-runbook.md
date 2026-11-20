@@ -37,7 +37,8 @@ KUAL → Readom KOA2 Stage Test → Stage and check handoff (no jump)。
 2. 只读复制原厂 .ko；
 3. 记录 panic_on_oops、内存和 dmesg；
 4. insmod；
-5. 暂存 zImage、/sys/firmware/fdt 和 initramfs，然后封存；
+5. 暂存 zImage、/sys/firmware/fdt 和 initramfs，然后封存（封存包含改写 FDT、校验布局，
+   以及建出跳转阶段要走的复制表并审一遍——没有任何代码会走它）；
 6. rmmod，再记录一次。
 
 结果写在 `koa2-stage-test/<时间>/report.txt` 末尾的 `result=`：
@@ -45,7 +46,7 @@ KUAL → Readom KOA2 Stage Test → Stage and check handoff (no jump)。
 | result | 含义 |
 |---|---|
 | `insmod_refused` | 最可能的结果。模块是对 headless-smoke 树编译的，CRC 与原厂对不上，内核按规则拒绝，什么都没加载。拷回的原厂模块可以用来核对 CRC。 |
-| `sealed_plan_valid` | 模块被接受，暂存、FDT 改写和计划校验在设备上全部通过，并已卸载。 |
+| `sealed_plan_valid` | 模块被接受，暂存、FDT 改写、计划校验和复制表审计在设备上全部通过，并已卸载。报告里的 `list_pages`/`list_entries` 是那张表的规模。 |
 | `seal_failed` | 模块加载了，但封存被拒。报告里的 seal_stage 说明是哪一步。 |
 | `refused_*` | 身份或套件哈希不符，没有加载任何东西。 |
 
@@ -69,4 +70,17 @@ python3 ports/koa2/module-crcs.py check --stock $R/stock-modules --symvers ~/rea
 - 第 3 步是 `insmod_refused`：module-crcs 会列出不一致的符号。之后按 README「原厂内核的
   版本检查」处理：用原厂配置重编相关类型，或换掉相应的导入。再用
   `KOA2_STOCK_MODULES=$R/stock-modules` 重建套件，回到第 2 步。
-- 第 3 步是 `sealed_plan_valid`：下一个设备步骤是交接执行阶段，现在还没写，也不在这份清单里。
+- 第 3 步是 `sealed_plan_valid`：主机侧能验的都验完了。下一个设备步骤是交接执行阶段，
+  那需要先写静止顺序里真正碰硬件的 run/undo（quiesce.c 现在只有可测的顺序），并在当次读出
+  EPDC 帧缓冲地址加入排除区。跳转蹦床（jump.S）已写好并在 QEMU 的 Cortex-A7 上裸机跑过，
+  但没有编进任何模块，也没有在设备上执行过。
+
+## 还需要设备的事（都不在上面这次连接里）
+
+| 事 | 为什么要设备 |
+|---|---|
+| 标准 sdhci 驱动在这块 eMMC 上的速度模式与 tuning | 只能上机测 |
+| EPDC 帧缓冲每次启动的实际地址 | 动态分配，要当次读 |
+| 静止顺序每一步对硬件的作用 | quiesce.c 现在只验顺序和回滚 |
+| printk 缓冲能否活过 WDOG_B 复位 | 只能上机测 |
+| 交接执行（复制并跳转） | 以上都确认之后才谈 |
