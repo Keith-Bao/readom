@@ -56,6 +56,10 @@ TESTS = [
                          'boot/koa2/plan.c', 'boot/koa2/fdt-rewrite.c', 'boot/koa2/copylist.c',
                          'boot/handoff/sha256.c'], False),
     # The list the jump stage walks with the MMU off, checked by walking it.
+    # jump.S, on an emulated Cortex-A7 with the MMU off: the one part of the
+    # handoff that cannot be written in C. Skips itself without the cross
+    # compiler or QEMU.
+    ('koa2-jump-baremetal', 'python', ['boot/koa2/tests/baremetal/run.py'], True),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-module-crcs', 'python', ['tools/tests/test_koa2_module_crcs.py'], False),
     ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),

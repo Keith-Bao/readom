@@ -59,6 +59,11 @@
 - 复制表已写（boot/koa2/copylist.c，README「复制表」），测试 koa2-copylist 会按跳转阶段的方式
   走一遍写出来的表并核对每个字节。暂存模块封存时会建出真实的表并审一遍（seal_stage 10），
   但没有任何代码会走它。STATUS 多了 list_pages/list_entries。
+- 跳转蹦床已写（boot/koa2/jump.S，README「跳转蹦床」），没有编进暂存模块。
+  KOA2 不需要 PW3 那样的私有页表：2G/2G 下 lowmem 本来就是恒等映射。
+  测试 koa2-jump-baremetal 在 QEMU 的 Cortex-A7 上以裸机方式跑真正的 jump.S 和复制表：
+  正常路径里替身内核自己核对 r0/r1/r2，五种拒绝从 monitor 读参数块核对。
+  这只说明 ARMv7 上按设计运行，不说明真机外设行为；蹦床从未在设备上执行。
 - QEMU 整机启动这条路走不通并记录了原因：QEMU 6.2 的 i.MX7D 模型缺 OCRAM_S、DDR 低功耗
   OCRAM、GPCv2 core-1 上电握手和 DDR 控制器，绕过后 imx7_pm_common_init 又要用被去掉的 OCRAM，
   形成循环依赖。run-qemu-smoke.py 留作记录，不计入测试。
