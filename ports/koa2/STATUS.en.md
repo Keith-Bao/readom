@@ -8,7 +8,7 @@ Chinese: [STATUS.md](STATUS.md). The device procedure is
 
 The device staging test passed on 2026-11-21 (Asia/Shanghai): sealed_plan_valid.
 The module loaded, validated the layout, FDT rewrite and copy list, and unloaded.
-No new kernel has booted. The previous 59 host tests were not rerun this session.
+No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
 
 ## Where this sits right now
 
@@ -16,7 +16,7 @@ No new kernel has booted. The previous 59 host tests were not rerun this session
 |---|---|
 | What is next | Stop device testing; implement hardware quiesce run/undo and capture the live EPDC framebuffer exclusion |
 | Observed result | `sealed_plan_valid`; insmod_exit=0, client_exit=0, rmmod_exit=0 |
-| What follows that | 63 stock modules recovered; loading succeeded, so no retry for the predicted CRC mismatch |
+| What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
 | Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |
 
@@ -29,10 +29,23 @@ No new kernel has booted. The previous 59 host tests were not rerun this session
 | The FDT rewrite | `boot/koa2/fdt-rewrite.c` | `koa2-fdt-rewrite` | Passed in device staging |
 | The copy list and its audit | `boot/koa2/copylist.c` | `koa2-copylist` | Passed in device staging |
 | The staging module (no jump) | `boot/koa2/stage.c` | `koa2-stage` | Loaded, sealed and unloaded successfully |
-| Stock CRC checking | `ports/koa2/module-crcs.py` | `koa2-module-crcs` | 63 stock modules recovered; offline checking not yet run |
+| Stock CRC checking | `ports/koa2/module-crcs.py`, `koa2-stock-abi` | `koa2-module-crcs` | 63 stock modules checked offline: all 31 imports agree |
 | The jump trampoline | `boot/koa2/jump.S` | `koa2-jump-baremetal` | In no module, never executed |
 | The quiesce sequence | `boot/koa2/quiesce.c` | `koa2-quiesce` | Only the order; the hardware bodies are missing |
 | Build reproducibility | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | Not applicable |
+
+## The module ABI (settled 2026-11-21)
+
+Why `insmod` succeeded is now understood; see
+[stock-module-abi.md](stock-module-abi.en.md). modversions skips the release
+string, and the 31 symbols the module imports happen to carry the same CRCs as
+stock. The build tree and stock disagree on 12 of the 1129 symbols both know:
+nine are framebuffer symbols, from the panel being off behind the EPDC gap, and
+three come from `CONFIG_FALCON_WRAPPER` making `kernel/sched/core.c` include one
+more header. The module is now compiled against a new `out-module-abi` tree,
+where those three match stock; the payload is still `out-headless-smoke`.
+`cpu_down` is imported by no stock module, so it cannot be checked and only
+`insmod` on the device will tell.
 
 ## The current artifacts
 

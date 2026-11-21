@@ -4,6 +4,24 @@
 这是一份只追加的记录：写下来的那天知道什么就是什么，后来的更正写在新的条目里，
 不回头改旧条目。只有中文版，因为它是工作记录而不是说明。
 
+## 公司电脑续作（2026-11-21）
+
+- 拉取家里推上来的实机结果：暂存测试 `sealed_plan_valid`，payload 1706 页、避开 230 页、
+  复制表 2 页 1710 项、fdt_bytes 47972、`execute_available=0`、insmod/rmmod 都是 0。
+- 用设备拷回的 63 个原厂模块离线核对 CRC：31 个导入和 `module_layout` 全部一致，
+  所以之前"最可能 insmod_refused"的预期是错的，原因见 stock-module-abi.md。
+- 查明构建树与原厂 12 个符号不一致：9 个 framebuffer 来自关掉 EINK 面板；
+  3 个调度符号来自 `CONFIG_FALCON_WRAPPER`（`kernel/sched/core.c` 在该选项下 include
+  `falcon_storage.h`，genksyms 把它算进该文件导出符号的 CRC）。实验验证：打开后三者
+  变成原厂值，framebuffer 九个不变。
+- 新增 `build-stock-kernel.sh module-abi` 配置：headless-smoke 加 FALCON_WRAPPER，
+  只编 vmlinux+modules，专供模块编译针对；载荷仍用 out-headless-smoke。
+  套件脚本已按这个分工改好。
+- 新增测试 `koa2-stock-abi` 守住这些事实，并把"`cpu_down` 核对不了"写成用例。
+- `tools/private-data-allow.txt` 收录 materials 目录：29 处命中全是二进制里上游作者/厂商
+  的地址，设备标识不在其中（dmesg 上传前已去标识）。
+- 主机测试 60 项通过、0 项失败。
+
 ## 文档整理（2026-11-21）
 
 - 新增中英文换电脑继续入口，区分主机、模拟器和实机的证据与下一步。

@@ -7,10 +7,11 @@
 # usage: build-handoff-module.sh KERNEL_SRC KERNEL_OUT PAYLOAD_OUT [DEST]
 #   KERNEL_SRC/KERNEL_OUT  the tree the module is compiled against
 #   PAYLOAD_OUT            the build output of the new kernel it pins
-# The stock tree cannot be built yet (ports/koa2/epdc-source-gap.md), so today
-# both are the headless-smoke tree. A module built that way has the smoke
-# vermagic and will not load into the stock kernel; that is the point until
-# the stock symbol CRCs can be checked.
+# The stock tree itself cannot be built (ports/koa2/epdc-source-gap.md), so
+# KERNEL_OUT should be the module-abi tree, which agrees with stock on every
+# symbol the module imports (ports/koa2/stock-module-abi.md). The device
+# confirmed that on 2026-11-21 by loading a module built this way; the release
+# in its vermagic differs from stock, which modversions deliberately ignores.
 set -euo pipefail
 [[ $# -ge 3 ]] || { echo "usage: $0 KERNEL_SRC KERNEL_OUT PAYLOAD_OUT [DEST]" >&2; exit 2; }
 src=$1 out=$2 payload=$3 dest=${4:-$HOME/artifacts/koa2-handoff-module}

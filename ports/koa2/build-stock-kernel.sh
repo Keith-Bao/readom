@@ -4,16 +4,23 @@
 set -euo pipefail
 [[ $(uname -s) == Linux ]] || exit 1
 profile=${1:-stock}
-case "$profile" in stock|headless-smoke) ;; *) echo 'Expected stock or headless-smoke' >&2; exit 2 ;; esac
+# module-abi is the tree the handoff module is COMPILED AGAINST, not a kernel to
+# boot: headless-smoke plus CONFIG_FALCON_WRAPPER, which is what the stock
+# kernel has. The device's own modules proved why it matters (2026-11-21):
+# falcon_storage.h is included by kernel/sched/core.c under that option, so
+# without it set_cpus_allowed_ptr, sched_setscheduler and wake_up_process carry
+# CRCs the stock loader would reject. Its zImage is never used.
+case "$profile" in stock|headless-smoke|module-abi) ;; *) echo 'Expected stock, headless-smoke or module-abi' >&2; exit 2 ;; esac
 base=${KOA2_WORK_ROOT:-$HOME/readom-work}
 src=$base/linux-stock
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-if [[ $profile == headless-smoke ]]; then
+if [[ $profile == headless-smoke || $profile == module-abi ]]; then
     src=$base/linux-headless-smoke
     python3 "$script_dir/prepare-headless-source.py" "$base/linux-4.1.15.tar.gz" "$src"
 fi
 check_args=()
 [[ $profile == stock ]] || check_args+=(--headless-smoke)
+experimental=$profile
 python3 "$script_dir/check-kernel-source.py" "$src" "${check_args[@]}"
 out=$base/out-$profile
 art=$HOME/artifacts/$profile-kernel
@@ -48,11 +55,32 @@ if [[ $profile == headless-smoke ]] && { ! grep -q '^CONFIG_LOCALVERSION="-koa2-
     grep -q '^# CONFIG_FB_MXC_EINK_V2_PANEL is not set$' "$out/.config"
     echo 'EXPERIMENT ONLY: no EPDC display, no Android, not ready to boot.' > "$art/EXPERIMENT.txt"
 fi
+# zelda_defconfig already has FALCON_WRAPPER=y (it is the stock configuration),
+# so what this profile changes is the panel, and that is what it keys on.
+if [[ $profile == module-abi ]] && ! grep -q '^# CONFIG_FB_MXC_EINK_V2_PANEL is not set$' "$out/.config"; then
+    # The EINK panel stays off (its source is missing, ports/koa2/epdc-source-gap.md),
+    # so the nine framebuffer symbols still differ from stock; the module imports none.
+    "$src/scripts/config" --file "$out/.config" --enable FALCON_WRAPPER --enable FALCON_BLK         --disable FB_MXC_EINK_PANEL --disable FB_MXC_EINK_V2_PANEL --set-str LOCALVERSION '-koa2-headless-smoke'
+    make -C "$src" O="$out" olddefconfig 2>&1 | tee "$art/oldconfig.log"
+    grep -q '^CONFIG_FALCON_WRAPPER=y$' "$out/.config"
+    grep -q '^# CONFIG_FB_MXC_EINK_V2_PANEL is not set$' "$out/.config"
+    grep -q '^# CONFIG_FB_MXC_EINK_PANEL is not set$' "$out/.config"
+    echo 'ABI REFERENCE ONLY: compiled against, never booted. Its zImage is not a kernel to run.' > "$art/EXPERIMENT.txt"
+fi
 if [[ $profile == headless-smoke ]]; then
     grep -q '^# CONFIG_FB_MXC_EINK_V2_PANEL is not set$' "$out/.config"
     grep -q '^# CONFIG_FB_MXC_EINK_PANEL is not set$' "$out/.config"
     grep -q '^# CONFIG_FALCON_WRAPPER is not set$' "$out/.config"
     ! grep -q '^CONFIG_FALCON_BLK=y$' "$out/.config"
+fi
+if [[ $profile == module-abi ]]; then
+    # vmlinux and modules are all that Module.symvers needs.
+    make -C "$src" O="$out" -j4 vmlinux modules 2>&1 | tee "$art/build.log"
+    cp "$out/.config" "$art/kernel.config"
+    cp "$out/System.map" "$out/Module.symvers" "$art/"
+    find "$art" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$art/SHA256SUMS"
+    echo "module-abi tree ready: $out (compile against this, never boot it)"
+    exit 0
 fi
 make -C "$src" O="$out" -j4 zImage imx7d-zelda.dtb modules 2>&1 | tee "$art/build.log"
 if [[ $profile == headless-smoke ]] && ! grep -q -- '-koa2-headless-smoke' "$out/include/config/kernel.release"; then

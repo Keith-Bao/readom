@@ -41,3 +41,13 @@ ports/koa2/patches/0000-upstream-ioctl-audit.patch	pmoore@redhat.com
 ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	jeffv@google.com
 ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	nnk@google.com
 ports/koa2/patches/0001-upstream-selinux-ioctl-xperms.patch	pmoore@redhat.com
+
+# The Oasis 2 device materials of 2026-11-21 (ports/koa2/materials/): the 63
+# stock modules the Kindle copied back, the kernel archive, the toolchain, and
+# the test kit that was loaded. Every hit in them is an upstream author's or
+# vendor's address compiled into a binary -- Bosch, Parade, Realtek, ALSA, the
+# locale tables in libc -- which is public and nobody's private data. The
+# device's own identifiers are not here: the dmesg copies were redacted before
+# upload (ports/koa2/materials/2026-11-21/redactions.json) and the report
+# carries only the kernel identity and the test's own numbers.
+ports/koa2/materials/*	@

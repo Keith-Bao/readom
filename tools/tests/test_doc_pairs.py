@@ -86,6 +86,7 @@ STRICT = [('README.md', 'README.en.md'),
           ('ports/koa2/ROADMAP.md', 'ports/koa2/ROADMAP.en.md'),
           ('ports/koa2/STATUS.md', 'ports/koa2/STATUS.en.md'),
           ('ports/koa2/device-runbook.md', 'ports/koa2/device-runbook.en.md'),
+          ('ports/koa2/stock-module-abi.md', 'ports/koa2/stock-module-abi.en.md'),
           ('boot/koa2/README.md', 'boot/koa2/README.en.md')]
 PAIRS = STRICT
 PAIRED = {name for pair in PAIRS for name in pair}
