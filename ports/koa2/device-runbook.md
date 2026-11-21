@@ -187,6 +187,30 @@ KOA2_STOCK_MODULES=$R/stock-modules bash ports/koa2/build-stage-test-kit.sh
 这是它对任何崩溃都会做的事，与交接无关，见
 [boot-preflight-findings.md](boot-preflight-findings.md) 末节。
 
+## 8b. 静止空跑（下一次要在设备上做的事）
+
+暂存测试已经通过，所以设备上的下一步是这个：**停掉能停的设备，看一眼，再全部放回**。
+KUAL → Readom KOA2 Stage Test → **Quiesce dry run (stops devices, restores them)**。
+
+它不加载交接模块、不复制载荷、不跳转。做完之后原厂系统照常运行。
+
+依次停：EPDC（屏幕会停在最后一幅画面，这是正常的）、Wi-Fi、USB gadget、触摸和传感器；
+然后 sync 并把根文件系统只读重挂；然后把次核下线。检查完就按相反顺序全部放回。
+
+报告在 `koa2-quiesce-dryrun/<UTC时间>-<PID>/report.txt`，看最后的 `result=`：
+
+| result | 含义 | 下一步 |
+|---|---|---|
+| `quiesced_and_restored` | 这条路走得通：四个主设备都停下了，根文件系统只读，次核下线，然后全部放回 | 把报告拷回主机，看各步耗时，再谈交接执行 |
+| `incomplete_see_above` | 有东西没停下来。报告里 `IN_USE=`、`REMOVE_FAILED=`、`ROOTFS_REMOUNT_FAILED` 指出是哪个 | 停下分析。**不要重试**：某个驱动停不掉，交接就不能做 |
+| `refused_unknown_kernel` | 内核不是 `4.1.15-lab126` | 什么都没动 |
+
+无论成功还是失败，脚本都会把停掉的东西放回去（报告末尾的 `[restore]` 段），
+放回顺序是：先把根文件系统恢复可写，再重新加载驱动，最后让次核上线。
+万一有 `RELOAD_FAILED=` 或 `CPU1_STILL_DOWN`，重启一次设备就全好了——没有写过任何分区。
+
+Wi-Fi 和触摸会停几秒，这是预期的。屏幕在 EPDC 停掉之后不会再刷新，直到它被放回。
+
 ## 9. 还需要设备、但不在这次流程里的事
 
 | 事 | 为什么必须上机 |

@@ -205,6 +205,38 @@ A restart through the stock path writes printk to eMMC sector 0x9a400, as the
 stock kernel does for any crash. It has nothing to do with the handoff; see the
 last section of [boot-preflight-findings.md](boot-preflight-findings.md).
 
+## 8b. The quiesce dry run (the next thing to do on the device)
+
+The staging test has passed, so this is the next step on the device: **stop
+what can be stopped, look at it, and put it all back**. KUAL, then Readom KOA2
+Stage Test, then **Quiesce dry run (stops devices, restores them)**.
+
+It loads no handoff module, copies no payload and jumps nowhere. The stock
+system is running normally again when it finishes.
+
+In order it stops the EPDC (the screen keeps its last image, which is
+expected), Wi-Fi, the USB gadget, and touch and the sensors; then syncs and
+remounts the rootfs read-only; then takes the second core down. Having checked
+the result, it puts everything back in reverse.
+
+The report is `koa2-quiesce-dryrun/<UTC time>-<PID>/report.txt`; read `result=`
+at the end:
+
+| result | Meaning | Next |
+|---|---|---|
+| `quiesced_and_restored` | The path works: all four masters stopped, the rootfs went read-only, the second core went down, and all of it came back | Copy the report to the host, look at the timings, and only then discuss the handoff itself |
+| `incomplete_see_above` | Something did not stop. `IN_USE=`, `REMOVE_FAILED=` or `ROOTFS_REMOUNT_FAILED` in the report says which | Stop and work out why. **Do not retry**: if a driver cannot be stopped, the handoff cannot be done |
+| `refused_unknown_kernel` | The kernel is not `4.1.15-lab126` | Nothing was touched |
+
+Whether it succeeds or fails, the script puts back what it stopped (the
+`[restore]` section at the end of the report), in this order: the rootfs goes
+read-write first, then the drivers are reloaded, then the second core comes
+back online. If a `RELOAD_FAILED=` or `CPU1_STILL_DOWN` does appear, restarting
+the device fixes all of it: no partition was ever written.
+
+Wi-Fi and touch will be gone for a few seconds, which is expected. The screen
+stops refreshing once the EPDC is stopped, until it is put back.
+
 ## 9. Still needs the device, but not in this procedure
 
 | What | Why it needs hardware |
