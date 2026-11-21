@@ -12,7 +12,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 暂存测试已通过；停止设备推进，先实现静止顺序硬件 run/undo 与当次 EPDC 帧缓冲排除 |
+| 下一步是什么 | 在设备上跑一次静止空跑（`quiesce-dryrun.sh`，停设备再全部放回），确认这条路走得通和各步耗时 |
 | 实机结果 | `sealed_plan_valid`；insmod_exit=0、client_exit=0、rmmod_exit=0 |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)），原厂内核树编不出来 |
@@ -29,7 +29,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 | 暂存模块（无跳转） | `boot/koa2/stage.c` | `koa2-stage` | 加载、封存、卸载成功 |
 | 原厂 CRC 核对 | `ports/koa2/module-crcs.py` | `koa2-module-crcs`、`koa2-stock-abi` | 63 个原厂模块已离线核对：31 个导入全部一致 |
 | 跳转蹦床 | `boot/koa2/jump.S` | `koa2-jump-baremetal` | 未编进模块，未执行 |
-| 静止顺序 | `boot/koa2/quiesce.c` | `koa2-quiesce` | 只有顺序，缺硬件实现 |
+| 静止顺序 | `boot/koa2/quiesce.c`、`quiesce-verify.c` | `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-quiesce-dryrun` | 停设备改由用户空间做（见 [handoff-quiesce.md](handoff-quiesce.md) 第六节）；空跑脚本已在套件里，未在设备上跑过 |
 | 构建可复现性 | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | 不适用 |
 
 ## 模块 ABI（2026-11-21 查明）

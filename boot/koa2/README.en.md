@@ -313,5 +313,36 @@ The test koa2-quiesce tries a failure at **every** step and checks the order
 and count of the rollback, the record of a failing undo, and that both bad
 tables above are refused. None of it touches hardware.
 
-The real run and undo bodies are not written, because they need the device to
-verify, so the staging module does not carry this table.
+### Who stops the devices (the design changed on 2026-11-21)
+
+The plan had been for the module to stop them. Neither half of that works.
+**Almost nothing that stops a device can be checked**: the build tree does not
+export `clk_disable_unprepare`, `dmaengine_terminate_all` or
+`mmc_suspend_host`, and `lock_fb_info`'s CRC differs from stock, so a module
+that touched the framebuffer would be refused at load. And **a stopped
+device's registers cannot be read**: once its clock is gated, reading a
+peripheral register on i.MX7 hangs the bus rather than returning a value, so a
+check written that way would hang the device in exactly the case where
+quiescing had worked.
+
+So the stopping is done from userspace
+(`ports/koa2/stage-test/quiesce-dryrun.sh`) through the kernel's own driver
+removal and `/sys/.../cpu1/online` paths, which are written for it and are
+reversible. That also settled an older open item: the EPDC's remove path frees
+its DMA framebuffers, so there is no longer anything to read at handoff time
+and exclude. The eMMC is the exception, being the root filesystem: sync and a
+read-only remount is as far as it goes.
+
+The module only checks the result (`quiesce-verify.c`): one core online, none
+of the four drivers loaded, the rootfs read-only, and the watchdog fed within
+ten seconds, **reading no peripheral register**. That evidence is weaker than
+reading an engine's status register, which the comments say plainly, along with
+why "the engines are passive, so stopping their clients stops the traffic" is
+an argument and not a measurement. The test `koa2-quiesce-verify` watches one
+thing: that a machine which is not quiesced is never accepted, including the
+failure where the check passed because it did not look.
+
+`koa2-quiesce-dryrun` runs the real script against a simulated device and
+checks the order, that every device is put back, that the rootfs goes
+read-write before any reload, and the four refusals. See section six of
+[ports/koa2/handoff-quiesce.md](../../ports/koa2/handoff-quiesce.md).

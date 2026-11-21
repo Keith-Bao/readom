@@ -29,17 +29,18 @@ static void note(char kind, unsigned step)
 #define STEP(n) \
     static int run_##n(void *c) { (void)c; note('r', n); return t.fail_at == (n) ? -5 - (n) : 0; } \
     static int undo_##n(void *c) { (void)c; note('u', n); return t.undo_fail_at == (n) ? -100 : 0; }
-STEP(0) STEP(1) STEP(2) STEP(3) STEP(4) STEP(5) STEP(6) STEP(7) STEP(8) STEP(9)
+STEP(0) STEP(1) STEP(2) STEP(3) STEP(4) STEP(5) STEP(6) STEP(7) STEP(8) STEP(9) STEP(10)
 static void fill(struct koa2_quiesce *q)
 {
     static const char *const names[KOA2_Q_COUNT] = {
-        "validate", "epdc", "wifi", "usb", "sdma", "storage", "second core", "irq", "watchdog", "caches"
+        "validate", "epdc", "wifi", "usb", "input", "storage", "second core",
+        "verify", "irq", "watchdog", "caches"
     };
     int (*const runs[KOA2_Q_COUNT])(void *) = {
-        run_0, run_1, run_2, run_3, run_4, run_5, run_6, run_7, run_8, run_9
+        run_0, run_1, run_2, run_3, run_4, run_5, run_6, run_7, run_8, run_9, run_10
     };
     int (*const undos[KOA2_Q_COUNT])(void *) = {
-        undo_0, undo_1, undo_2, undo_3, undo_4, undo_5, undo_6, undo_7, undo_8, undo_9
+        undo_0, undo_1, undo_2, undo_3, undo_4, undo_5, undo_6, undo_7, undo_8, undo_9, undo_10
     };
     unsigned i;
     memset(q, 0, sizeof(*q));
@@ -61,12 +62,16 @@ int main(void)
     unsigned i;
     /* The table as the handoff will build it. */
     fill(&q);
-    assert(KOA2_Q_COUNT == 10 && KOA2_Q_IRREVERSIBLE == KOA2_Q_CACHES);
+    assert(KOA2_Q_COUNT == 11 && KOA2_Q_IRREVERSIBLE == KOA2_Q_CACHES);
+    /* The steps userspace does come before the ones the module does, so a
+     * failure in the module's half still unwinds the device's. */
+    assert(KOA2_Q_FIRST_IN_MODULE == KOA2_Q_VERIFY && KOA2_Q_VERIFY > KOA2_Q_SECOND_CORE);
+    assert(KOA2_Q_IRREVERSIBLE > KOA2_Q_FIRST_IN_MODULE);
     assert(koa2_quiesce_check(&q) == KOA2_OK);
     /* All the way through: every step once, in order, nothing undone. */
     reset(-1, -1);
     assert(koa2_quiesce_run(&q) == KOA2_OK);
-    assert(!strcmp(t.order, "r0r1r2r3r4r5r6r7r8r9"));
+    assert(!strcmp(t.order, "r0r1r2r3r4r5r6r7r8r9r:"));
     assert(q.done == KOA2_Q_COUNT && q.undone == 0 && q.failed_step == -1);
     /* A failure at each step: the ones before it are undone in reverse, and
      * the stock system is back. */

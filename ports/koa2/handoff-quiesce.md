@@ -85,3 +85,43 @@ CAAM `30900000` 在 DTB 里没有 status（视为启用），原厂日志里没�
 
 **新发现的约束**：EPDC 帧缓冲来自普通内存分配，地址每次启动可能不同。交接模块不能假定它们固定，
 应在运行时读 `/proc/iomem` 或 EPDC 驱动的分配记录，并把它们加入当次的排除区；或者确保 EPDC 先停。
+
+## 六、静止由谁来做（2026-11-21 查明，改了原本的设计）
+
+原本打算让交接模块自己停设备。做不到，也不该这么做，两个原因都是硬的：
+
+**一、能停设备的符号基本都核对不了。** 原厂内核开了 modversions，模块的每个导入都要
+CRC 对得上才能加载。拿设备上 63 个原厂模块核对（见 [stock-module-abi.md](stock-module-abi.md)）：
+`clk_disable_unprepare`、`dmaengine_terminate_all`、`mmc_suspend_host`、`usb_gadget_disconnect`、
+`device_shutdown`、`local_irq_disable` 这些构建树根本不导出；`dpm_suspend_start`、
+`device_release_driver`、`fb_set_suspend` 导出但没有任何原厂模块用过，CRC 无从核对；
+`lock_fb_info` 的 CRC **与原厂不一致**——模块一碰 framebuffer 就会被拒绝加载。
+
+**二、停下来的设备，寄存器读不得。** EPDC 驱动每次碰寄存器之前都先
+`clk_prepare_enable`，卸载时 `clk_disable_unprepare`。i.MX7 上时钟被 gate 之后读外设寄存器
+不是返回旧值，而是挂总线。所以"读 DMA 引擎状态寄存器确认它空了"这种检查，
+**恰恰会在静止成功的那一刻把设备挂死**。PW3 的 engine-guard 能那么写，是因为它在
+设备还活着的时候读；这里不行。
+
+所以改成：**停设备交给用户空间，走内核自己的驱动卸载和 CPU 下线路径**；
+模块只检查结果，而且只用原厂模块证实过 CRC 的符号。
+
+| 主设备 | 怎么停 | 停了之后 |
+|---|---|---|
+| EPDC + ePXP | `rmmod mxc_epdc_v2_fb` | 它的 remove 路径会等当前刷新完成、关面板电源、**释放 DMA 帧缓冲**。所以"交接当次要读出 EPDC 帧缓冲地址"这件事不必做了：那几段内存变回普通空闲页 |
+| Wi-Fi（usdhc1） | `rmmod bcmdhd` | SDIO 功能停止 |
+| USB gadget | `rmmod g_mass_storage` 等 | 断开 gadget、停控制器 |
+| 触摸、传感器 | `rmmod cyttsp5_i2c` 等 | 不再取中断 |
+| SDMA、APBH、PXP | 不能卸载（`=y` 编进内核） | 它们是被动引擎：只有客户请求时才搬数据，而客户就是上面那些驱动。停掉客户就没有流量——这是论证，不是测量 |
+| usdhc3（eMMC） | **停不了** | 它是根文件系统，用户空间自己跑在上面。只能 sync 并只读重挂，然后让之后的窗口尽量短 |
+| 次核 | `echo 0 > /sys/devices/system/cpu/cpu1/online` | 走的就是原厂 `cpu_down`，但不用导入它（它没有原厂 CRC，核对不了） |
+
+模块这一侧是 `boot/koa2/quiesce-verify.c`：一个核在线、四个驱动都不在、根文件系统只读、
+看门狗喂过不超过 10 秒。它**不读任何外设寄存器**。这些证据比读引擎状态弱，这一点写在
+代码注释里，不含糊。
+
+`ports/koa2/stage-test/quiesce-dryrun.sh` 在设备上做这件事然后**全部放回去**：
+不加载交接模块、不复制、不跳转。它量的是这条路在这台设备上能不能走通、各步要多久。
+测试 `koa2-quiesce-dryrun` 用模拟设备跑真脚本，核对四个主设备按顺序停下、
+每一个都被放回、根文件系统先恢复可写再重新加载模块，以及"模块被占用""rmmod 失败"
+"重挂失败""内核不对"四种拒绝。

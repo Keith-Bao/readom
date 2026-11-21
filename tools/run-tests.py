@@ -61,6 +61,10 @@ TESTS = [
     # compiler or QEMU.
     ('koa2-jump-baremetal', 'python', ['boot/koa2/tests/baremetal/run.py'], True),
     ('koa2-quiesce', 'c', ['boot/koa2/quiesce.c', 'boot/koa2/test-quiesce.c'], False),
+    ('koa2-quiesce-verify', 'c', ['boot/koa2/quiesce-verify.c', 'boot/koa2/test-quiesce-verify.c'], False),
+    # The script that stops the device's DMA masters and puts them back,
+    # run against a simulated device: the putting back is the point.
+    ('koa2-quiesce-dryrun', 'python', ['tools/tests/test_koa2_quiesce_dryrun.py'], False),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),
     ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),

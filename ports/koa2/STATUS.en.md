@@ -14,7 +14,7 @@ No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
 
 | Question | Answer |
 |---|---|
-| What is next | Stop device testing; implement hardware quiesce run/undo and capture the live EPDC framebuffer exclusion |
+| What is next | Run the quiesce dry run on the device (`quiesce-dryrun.sh`, which stops the devices and puts them all back), to see that the path works and how long each step takes |
 | Observed result | `sealed_plan_valid`; insmod_exit=0, client_exit=0, rmmod_exit=0 |
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
@@ -31,7 +31,7 @@ No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
 | The staging module (no jump) | `boot/koa2/stage.c` | `koa2-stage` | Loaded, sealed and unloaded successfully |
 | Stock CRC checking | `ports/koa2/module-crcs.py`, `koa2-stock-abi` | `koa2-module-crcs` | 63 stock modules checked offline: all 31 imports agree |
 | The jump trampoline | `boot/koa2/jump.S` | `koa2-jump-baremetal` | In no module, never executed |
-| The quiesce sequence | `boot/koa2/quiesce.c` | `koa2-quiesce` | Only the order; the hardware bodies are missing |
+| The quiesce sequence | `boot/koa2/quiesce.c`, `quiesce-verify.c` | `koa2-quiesce`, `koa2-quiesce-verify`, `koa2-quiesce-dryrun` | Stopping the devices moved to userspace (section six of [handoff-quiesce.md](handoff-quiesce.md)); the dry run is in the kit and has not been run on the device |
 | Build reproducibility | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | Not applicable |
 
 ## The module ABI (settled 2026-11-21)
