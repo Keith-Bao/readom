@@ -4,6 +4,27 @@
 这是一份只追加的记录：写下来的那天知道什么就是什么，后来的更正写在新的条目里，
 不回头改旧条目。只有中文版，因为它是工作记录而不是说明。
 
+## EPDC 缺口量化（2026-11-21）
+
+- 文档里"梳理 v2 全部外部调用"一直没做，所以替代实现的工作量没有数。量法：给缺失文件放一个
+  空文件，让编译器报缺的符号，然后**把空文件删掉**——它留在树里会让 check-kernel-source.py
+  对 stock 档位误判通过，编出一个没有波形解析、没有电压控制的显示驱动。
+- 结果：缺失文件要提供 **9 个函数**，另需 `#include <linux/proc_fs.h>`。
+  其中 5 个在面板供电和波形算法路径上（`read_mnt_wfm_v2`、`eink_get_wfm_voltage_control`、
+  `fetch_epdc_vdc_04_data`、`fetch_epdc_adc_06_data`、`mxc_set_vcom`），值错了有物理后果；
+  另外 4 个只影响日志和调试画面，可以先桩掉。这个区分之前没有。
+- `fetch_epdc_adc_06_data` 填的 `reagl_sft`/`reagl_asv` 直接喂 PxP 的 WFE-B 硬件；
+  `mxc_set_vcom` 用的是 IDME 里的 `idme_vcom_value`，每台设备不同。
+- **发现第二处缺口**：`include/linux/einkwf.h` 发布了并声明 `einkwf_panel_*` 9 个函数，
+  但整个包里没有任何 .c 实现它们。缺的不是一个文件，是两处。
+- **比原先记的乐观一处**：波形容器格式不在缺失文件里。`struct waveform_data_header`
+  定义在已发布的 v2 源码第 462 行，字段齐全（checksum、file_length、mc、trc、
+  advanced_wfm_flags、xwia/wmta 偏移）。真正未知只剩 0x04/0x06 两个子块的内部布局，
+  包里搜不到任何描述。
+- 新增测试 `koa2-epdc-gap`：守住"树里不能留空桩"（这个危险我自己制造过又删掉）、
+  stock 档位仍拒绝、headless-smoke 仍放行，以及文档里那两份函数清单还在。
+- 主机测试 64 项通过、0 项失败。
+
 ## 恢复路径分析与跳转标记（2026-11-21）
 
 - 补上 ROADMAP 里那条硬门槛要求的东西：交接失败怎么回来、怎么知道为什么

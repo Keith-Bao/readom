@@ -61,6 +61,7 @@ TESTS = [
     # compiler or QEMU.
     ('koa2-jump-baremetal', 'python', ['boot/koa2/tests/baremetal/run.py'], True),
     ('koa2-quiesce', 'c', ['boot/koa2/quiesce.c', 'boot/koa2/test-quiesce.c'], False),
+    ('koa2-epdc-gap', 'python', ['tools/tests/test_koa2_epdc_gap.py'], False),
     ('koa2-marker', 'c', ['boot/koa2/marker.c', 'boot/koa2/test-marker.c'], False),
     ('koa2-quiesce-verify', 'c', ['boot/koa2/quiesce-verify.c', 'boot/koa2/test-quiesce-verify.c'], False),
     # The script that stops the device's DMA masters and puts them back,
