@@ -22,4 +22,32 @@
  * caller decides where that goes. */
 size_t koa2_marker_format(char *out, size_t max, unsigned attempt,
                           unsigned long uptime_seconds, uint32_t entry, uint32_t fdt);
+
+/* Putting one into the printk buffer.
+ *
+ * It goes in the LAST KOA2_MARKER_SLOT bytes of the buffer's live half, which
+ * is the half the next boot saves as the previous boot's log. The slot is
+ * cleared first, so where the marker ends is unambiguous to whoever reads it.
+ * That costs up to KOA2_MARKER_SLOT bytes of this boot's own log, at the end of
+ * a boot that is about to stop having one.
+ *
+ * Nothing here locks against the kernel's own printk, which writes into the
+ * same half; logbuf_lock is private to printk.c and a module cannot take it. A
+ * printk landing in the slot damages the marker, so the magic leads -- enough
+ * survives to recognise -- and placing it again with a higher attempt is cheap.
+ *
+ * write_back is a parameter, and without it this refuses, because a watchdog
+ * reset on this SoC does not clean the caches: a marker still in a dirty cache
+ * line is a marker that was never written. See ports/koa2/recovery.md. */
+#define KOA2_MARKER_SLOT 256u
+struct koa2_marker_target {
+    char *buffer;       /* the live half of the printk buffer, as the kernel maps it */
+    size_t bytes;       /* how many bytes that half is */
+    uint32_t phys;      /* its physical address, which the write-back needs */
+};
+/* Returns the marker's length, or 0 having written nothing. */
+size_t koa2_marker_place(const struct koa2_marker_target *target, unsigned attempt,
+                         unsigned long uptime_seconds, uint32_t entry, uint32_t fdt,
+                         void (*write_back)(void *context, char *va, uint32_t phys, size_t bytes),
+                         void *context);
 #endif

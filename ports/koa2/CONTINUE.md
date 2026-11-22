@@ -45,8 +45,11 @@ execute_available=0，insmod_exit/client_exit/rmmod_exit 均为 0。
 
 现在不接设备能做的：
 
-1. 把跳转前的标记接到跳转阶段（格式化已实现，`boot/koa2/marker.c`）。
-   没有它，新内核在 printk 初始化前死掉和"跳转没发生"分辨不出来，见 [recovery.md](recovery.md) 第四节。
+1. ~~把跳转前的标记接到跳转阶段~~ **已完成（2026-11-22）**：写入在模块的 `K2S_MARK` 里
+   （`koa2_marker_place`），不是跳转。接的时候 [recovery.md](recovery.md) 第四节原来写的
+   三件事都要改：标记写在活动半区**末尾**、必须自己刷出缓存（看门狗复位不清缓存）、
+   `__arm_ioremap` 对 RAM 会拒绝所以用 `phys_to_virt`。符号上有两个坑会让模块直接加载失败，
+   `koa2-marker-wiring` 守着。设备上验证它活过复位要分两次做，见下面第四节。
 2. 继续调查 [EPDC 源码缺口](epdc-source-gap.md)。这是完整 Android 的独立阻塞，
    不会因暂存检查通过自动解决。
 3. 跳转阶段本身（`boot/koa2/jump.S` 已写并在 QEMU 裸机验证过，但没编进任何模块）——
@@ -64,10 +67,15 @@ python3 tools/tests/test_doc_links.py
 
 ## 4. 何时才需要 Kindle
 
-下一次上机做的是**静止空跑**（停设备再全部放回，不加载模块、不跳转），
-见 [device-runbook.md](device-runbook.md) 第 8b 节。
+下一次上机有两件，顺序随意，都不碰跳转：
+
+- **标记测试**（[device-runbook.md](device-runbook.md) 第 8c 节）：放一个标记、重启、
+  再读 `/proc/printkbuf` 确认它还在。它同时验证 [recovery.md](recovery.md) 第二节那个
+  只靠源码推断的结论——复位保留 DRAM。标记没活下来的话，那一节是错的。
+- **静止空跑**（第 8b 节）：停设备再全部放回，不加载模块、不跳转。
+
 真正交接前必须能说明恢复路径、日志获取方式和每一步的停止条件——
-恢复路径的分析已经写了（[recovery.md](recovery.md)），其中两项还没满足。
+恢复路径的分析已经写了（[recovery.md](recovery.md)），其中设备上的两项还没做。
 测试由用户手动发起；当前不需要重复硬件采集或暂存测试。
 设备流程在[实机操作手册](device-runbook.md)，阶段门槛在[路线图](ROADMAP.md)。
 

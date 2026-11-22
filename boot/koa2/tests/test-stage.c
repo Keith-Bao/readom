@@ -198,6 +198,56 @@ static void seal_stages(void)
     assert(call(K2S_DISCARD,NULL)==0 && kshim_live==0);
     kshim_next=0x90000000u;
 }
+/* K2S_MARK, the recoverability instrument: it writes one marker into the live
+ * half of the printk buffer and cleans it out, and it still cannot jump. */
+static void marking(size_t n)
+{
+    static unsigned char buffer[K2S_LOG_GOAL_SIZE];
+    struct k2s_mark m = {1,0};
+    struct k2s_status st;
+    const char *slot = (const char *)buffer + K2S_LOG_GOAL_SIZE - KOA2_MARKER_SLOT;
+    size_t i;
+    kshim_printk_buffer=buffer; kshim_printk_phys=K2S_LOG_GOAL;
+    kshim_printk_bytes=K2S_LOG_GOAL_SIZE;
+    memset(buffer,'L',sizeof(buffer));
+    kshim_write_backs=0;
+    /* Before a seal there is no plan, so no addresses to record: refused. */
+    assert(call(K2S_MARK,&m)==-EPERM && status().marked==0);
+    assert(run(fdt_fixture,n,initramfs,sizeof(initramfs))==0);
+    /* A reserved field that is not zero is a caller that means something this
+     * version does not implement. */
+    { struct k2s_mark bad={1,1}; assert(call(K2S_MARK,&bad)==-EINVAL); }
+    assert(call(K2S_MARK,&m)==0);
+    st=status();
+    assert(st.marked==1);
+    /* The marker is in the saved half, and names the sealed plan's own entry
+     * and FDT, which is what makes it worth reading after a reset. */
+    assert(!strcmp(slot,"KOA2_HANDOFF v1 attempt=1 uptime=0s entry=0x80d00000 fdt=0x81400000\n"));
+    /* It was cleaned out to DRAM, and the outer cache was given the slot's own
+     * physical address. Without this the marker can sit in a dirty line and not
+     * survive the watchdog reset it exists for. */
+    assert(kshim_write_backs==1);
+    assert(kshim_cleaned_phys==K2S_LOG_GOAL+K2S_LOG_GOAL_SIZE-KOA2_MARKER_SLOT);
+    /* Only the slot: the rest of this boot's log is still there. */
+    for(i=0;i<K2S_LOG_GOAL_SIZE-KOA2_MARKER_SLOT;++i) assert(buffer[i]=='L');
+    /* The uptime comes from the kernel clock, and a second attempt is
+     * distinguishable from the first -- the reason attempt exists. */
+    kshim_jiffies=4200;                      /* HZ 100: 42 seconds */
+    m.attempt=2;
+    assert(call(K2S_MARK,&m)==0 && status().marked==2);
+    assert(!strcmp(slot,"KOA2_HANDOFF v1 attempt=2 uptime=42s entry=0x80d00000 fdt=0x81400000\n"));
+    assert(kshim_write_backs==2);
+    kshim_jiffies=0;
+    /* Marking is not a jump and does not become one. */
+    assert(status().execute_available==0);
+    /* Discarding forgets the plan, so marking is refused again and the count
+     * goes back to zero. */
+    assert(call(K2S_DISCARD,NULL)==0);
+    st=status();
+    assert(st.marked==0 && st.state==K2S_EMPTY);
+    assert(call(K2S_MARK,&m)==-EPERM);
+    assert(kshim_live==0);
+}
 int main(int argc, char **argv)
 {
     struct k2s_status st; size_t n,i;
@@ -212,6 +262,7 @@ int main(int argc, char **argv)
     happy_path(n);
     begin_and_put_rules(n);
     seal_stages();
+    marking(n);
     closed();
     if(argc==2) {
         FILE *in=fopen(argv[1],"rb"); long bytes; unsigned char *real;
@@ -225,6 +276,8 @@ int main(int argc, char **argv)
     }
     kshim_exit(); assert(!kshim_misc);
     free(zimage);
-    puts("KOA2 stage module: identity gate, open rules, begin/put/seal, every seal stage, page ownership and release passed");
+    puts("KOA2 stage module: identity gate, open rules, begin/put/seal, every seal stage, "
+         "the marker (placed in the saved half, cleaned out, refused without a plan, still no jump), "
+         "page ownership and release passed");
     return 0;
 }

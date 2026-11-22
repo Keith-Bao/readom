@@ -80,9 +80,9 @@ still in `head.S`, or unable to read the FDT — then 0x9be00000 still holds the
 This is not a hypothetical worry: decompression and early boot are the most
 likely places to fail, and they fall exactly in this blind spot.
 
-The fix is cheap and is not implemented yet: **have the handoff module write a
-marker into the printk buffer before jumping** (say `KOA2_HANDOFF` with a
-counter and a timestamp). Then, after the reset:
+The fix is cheap and **is now wired up**: the handoff module's `K2S_MARK`
+writes a marker into the printk buffer
+(`KOA2_HANDOFF v1 attempt=N uptime=Ts entry=0x... fdt=0x...`). After the reset:
 
 | What `/proc/printkbuf` shows | How far it got |
 |---|---|
@@ -90,11 +90,45 @@ counter and a timestamp). Then, after the reset:
 | The marker alone | It jumped, but the new kernel died before printk came up |
 | The marker followed by a new kernel's log | The new kernel ran and died later, and the log says where |
 
-Formatting that marker is implemented (`boot/koa2/marker.c`, test
-`koa2-marker`), using only capabilities whose CRCs are already checked
-(`__arm_ioremap` is on the usable list), so it adds no new symbol risk. It is
-**not wired up yet**: writing it into the printk buffer belongs to the jump
-stage, and the jump stage is still in no module.
+Writing it is implemented (`koa2_marker_place`, `K2S_MARK` in the module, tests
+`koa2-marker`, `koa2-stage`, `koa2-marker-wiring`). It is **not** a jump and
+does not open the way to one: no payload is copied, no device is stopped, no
+core goes down, and `execute_available` stays 0. What it costs is the last 256
+bytes of one boot's kernel log.
+
+Three things about the wiring differ from what was written here before, and all
+three only showed up when the module was actually compiled and its CRCs checked:
+
+- **It goes at the end of the live half**, not the start. The live half is what
+  the next boot saves, and the start is exactly where printk itself begins
+  writing. The 256 bytes are cleared first, so a reader can tell where the
+  marker ends.
+- **It has to clean itself out of the caches.** A watchdog reset on this SoC
+  does not flush them — that is what PW3's
+  `1043-printk-ring-survives-watchdog-reset.patch` exists for — so a marker left
+  in a dirty line disappears in the very reset it was meant to explain.
+  `koa2_marker_place` refuses without a write-back: written but unable to get
+  out looks like success and is not.
+- **`__arm_ioremap`, named here before, cannot be used.** On RAM it does
+  `WARN_ON(pfn_valid(pfn))` and returns NULL, and this is RAM the kernel
+  reserved and mapped, so `pfn_valid` holds. `phys_to_virt` is used instead,
+  which imports nothing.
+
+The choice of symbols is not free either, and two of them were traps. Cleaning
+by address (`__cpuc_flush_dcache_area`) compiles to
+`v7_flush_kern_dcache_area`, which no stock module imports: its CRC cannot be
+checked, so the stock loader refuses the whole module. `get_jiffies_64()/HZ`
+pulls in `__aeabi_uldivmod`, which stock does not export at all and the build
+script refuses outright. What is used now is `flush_cache_all` (which compiles
+to `v7_flush_kern_cache_all`, imported by `mxc_epdc_v2_fb`) and the 32-bit
+`jiffies`. All 35 of the module's imports match stock CRCs, `passed: true`.
+`koa2-marker-wiring` keeps both traps from coming back.
+
+The one thing a marker has to prove on the device — that it survives a reset —
+can only be done in two halves: place one, restart, then read
+`/proc/printkbuf`, which publishes the previous boot's buffer. In KUAL those are
+"Marker test: place one" and "Marker test: check after restart"
+(`ports/koa2/stage-test/marker-test.sh`). Neither has been run on the device.
 
 ## 5. So these all have to hold before a jump is discussed
 
@@ -104,8 +138,14 @@ stage, and the jump stage is still in no module.
 | The watchdog ends a failed attempt within 60 seconds | Holds in source (WDE cannot be cleared) |
 | The reset is a Partial Restart and DRAM survives | Holds by reasoning from source, **unverified on the device** |
 | The printk buffer and ramoops are not overwritten by the handoff | Holds (in the persistent exclusions, with a test on it) |
-| A marker written before the jump, so an early failure is distinguishable | Formatting is implemented and tested; **the write is not wired up** (it belongs to the jump stage) |
+| A marker written before the jump, so an early failure is distinguishable | The write is wired up (`K2S_MARK`), host tests pass and every stock CRC matches; **no marker has been placed on the device, and none has been shown to survive a reset** |
 | Quiescing works and everything can be put back | The script is written, **never run on the device** (the dry run) |
 
-Those two "not"s are what to do next; a jump on the device should not be
-scheduled until they are done.
+What is left of those "not"s has to happen on the device, and neither part
+touches the jump: place a marker, restart, confirm it is still there
+(`marker-test.sh`), and the quiesce dry run (`quiesce-dryrun.sh`). A jump on the
+device should not be scheduled until they are done.
+
+That marker run also tests what section two only reasons about from source: that
+the reset is a Partial Restart and DRAM survives. If the marker does not
+survive, section two is wrong, and that matters more than the marker does.

@@ -237,6 +237,39 @@ the device fixes all of it: no partition was ever written.
 Wi-Fi and touch will be gone for a few seconds, which is expected. The screen
 stops refreshing once the EPDC is stopped, until it is put back.
 
+## 8c. The marker test (place one, restart, see that it is still there)
+
+This takes two runs, because what is being tested is whether a marker survives a
+reset. A marker cannot be read back in the boot that wrote it: `/proc/printkbuf`
+publishes the **previous** boot's buffer.
+
+It does not jump, copy a payload, write a partition or take a core down. What it
+costs is the last 256 bytes of one boot's kernel log. Section four of
+[recovery.md](recovery.en.md) says why it is needed.
+
+**Step one.** KUAL -> Readom KOA2 Stage Test -> **Marker test: place one (no jump)**.
+The report is `koa2-marker-test/<UTC time>-<PID>/report.txt`:
+
+| result | What it means | What to do |
+|---|---|---|
+| `marker_placed` | The marker was written into the printk buffer and cleaned out of the caches | Restart the device and do step two |
+| `mark_failed` | The module refused to write it (`client_exit` is not 0) | Stop and read the report; do not retry |
+| `insmod_refused` | The module did not load, which has nothing to do with the marker | Section 6 |
+| `refused_unknown_kernel` | The kernel is not `4.1.15-lab126` | Nothing was touched |
+
+**Step two: restart the Kindle**, then KUAL -> **Marker test: check after restart**.
+An ordinary restart is enough; there is no need to pull power or wait for the watchdog.
+
+| result | What it means | What it tells you |
+|---|---|---|
+| `marker_survived` | The previous boot's buffer holds the `KOA2_HANDOFF` line | The marker path works, and section two of [recovery.md](recovery.en.md) (the reset preserves DRAM) is confirmed on the device |
+| `marker_absent` | Not found | **Stop.** Either the marker never reached DRAM, or the reset does not preserve it -- and the second of those means the reasoning in section two is wrong, which matters far more than the marker does. Do not push towards a jump on this |
+| `refused_no_printkbuf` | There is no `/proc/printkbuf` | The kernel has no `CONFIG_LAB126_PRINTK_BUFFER`, so the whole log route does not hold |
+
+Step two keeps only the lines containing `KOA2_HANDOFF` in its report. The
+previous boot's full log is the device's own: it is read, then deleted, and never
+goes into Git.
+
 ## 9. Still needs the device, but not in this procedure
 
 | What | Why it needs hardware |

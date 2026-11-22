@@ -31,6 +31,26 @@ void __free_page(struct page *p)
     *at=p->next;
     free(p->data); free(p); kshim_live--;
 }
+/* The clock, a stand-in for the Lab126 printk buffer, and the cache
+ * maintenance. */
+unsigned long kshim_jiffies;
+unsigned char *kshim_printk_buffer;
+u64 kshim_printk_phys;
+size_t kshim_printk_bytes;
+unsigned kshim_write_backs;
+u64 kshim_cleaned_phys;
+/* Only the buffer the test set up. Any other physical address is one the module
+ * had no business turning into a pointer, so fail loudly instead of handing
+ * back something that happens to work. */
+void *kshim_phys_to_virt(u64 phys)
+{
+    if(kshim_printk_buffer && phys>=kshim_printk_phys && phys<kshim_printk_phys+kshim_printk_bytes)
+        return kshim_printk_buffer+(size_t)(phys-kshim_printk_phys);
+    abort();
+}
+void flush_cache_all(void) { kshim_write_backs++; }
+void outer_clean_range(u64 start, u64 end) { kshim_cleaned_phys=start; (void)end; }
+int printk(const char *format, ...) { (void)format; return 0; }
 u64 kshim_virt_to_phys(const void *v)
 {
     struct page *p;

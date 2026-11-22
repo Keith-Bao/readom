@@ -54,7 +54,7 @@ TESTS = [
     ('koa2-stage', 'c', ['-Iboot/koa2/tests/kshim', '-Iboot/koa2/tests', '-Iboot/koa2', '-Iboot/handoff',
                          'boot/koa2/tests/test-stage.c', 'boot/koa2/tests/kshim/kshim.c', 'boot/koa2/contract.c',
                          'boot/koa2/plan.c', 'boot/koa2/fdt-rewrite.c', 'boot/koa2/copylist.c',
-                         'boot/handoff/sha256.c'], False),
+                         'boot/koa2/marker.c', 'boot/handoff/sha256.c'], False),
     # The list the jump stage walks with the MMU off, checked by walking it.
     # jump.S, on an emulated Cortex-A7 with the MMU off: the one part of the
     # handoff that cannot be written in C. Skips itself without the cross
@@ -63,6 +63,8 @@ TESTS = [
     ('koa2-quiesce', 'c', ['boot/koa2/quiesce.c', 'boot/koa2/test-quiesce.c'], False),
     ('koa2-epdc-gap', 'python', ['tools/tests/test_koa2_epdc_gap.py'], False),
     ('koa2-marker', 'c', ['boot/koa2/marker.c', 'boot/koa2/test-marker.c'], False),
+    # The marker is only useful if it reaches DRAM and the module still loads.
+    ('koa2-marker-wiring', 'python', ['tools/tests/test_koa2_marker_wiring.py'], False),
     ('koa2-quiesce-verify', 'c', ['boot/koa2/quiesce-verify.c', 'boot/koa2/test-quiesce-verify.c'], False),
     # The script that stops the device's DMA masters and puts them back,
     # run against a simulated device: the putting back is the point.

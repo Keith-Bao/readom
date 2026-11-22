@@ -8,13 +8,15 @@ Chinese: [STATUS.md](STATUS.md). The device procedure is
 
 The device staging test passed on 2026-11-21 (Asia/Shanghai): sealed_plan_valid.
 The module loaded, validated the layout, FDT rewrite and copy list, and unloaded.
-No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
+No new kernel has booted. On 2026-11-22 the pre-jump marker's write was wired
+into the module (`K2S_MARK`); it is not a jump and does not open the way to one.
+65 host tests pass and none fail.
 
 ## Where this sits right now
 
 | Question | Answer |
 |---|---|
-| What is next | Run the quiesce dry run on the device (`quiesce-dryrun.sh`, which stops the devices and puts them all back), to see that the path works and how long each step takes |
+| What is next | Two things on the device, neither touching the jump: place a marker, restart, confirm it is still there (`marker-test.sh`, which also tests whether the reset really does preserve DRAM), and the quiesce dry run (`quiesce-dryrun.sh`, which stops the devices and puts them all back) |
 | Observed result | `sealed_plan_valid`; insmod_exit=0, client_exit=0, rmmod_exit=0 |
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
@@ -33,6 +35,7 @@ No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
 | Stock CRC checking | `ports/koa2/module-crcs.py`, `koa2-stock-abi` | `koa2-module-crcs` | 63 stock modules checked offline: all 31 imports agree |
 | The jump trampoline | `boot/koa2/jump.S` | `koa2-jump-baremetal` | In no module, never executed |
 | The quiesce sequence | `boot/koa2/quiesce.c`, `quiesce-verify.c` | `koa2-quiesce`, `koa2-quiesce-verify`, `koa2-quiesce-dryrun` | Stopping the devices moved to userspace (section six of [handoff-quiesce.md](handoff-quiesce.md)); the dry run is in the kit and has not been run on the device |
+| The pre-jump marker | `boot/koa2/marker.c`, `K2S_MARK` in the module | `koa2-marker`, `koa2-marker-wiring`, `koa2-stage` | All 35 imports match stock CRCs; no marker placed on the device yet |
 | Build reproducibility | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | Not applicable |
 
 ## The module ABI (settled 2026-11-21)

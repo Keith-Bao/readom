@@ -51,7 +51,7 @@ The first two are done, and not the way they were planned. Section six of
 
 What can be done now without the device:
 
-1. Wire the pre-jump marker into the jump stage (formatting is implemented, `boot/koa2/marker.c`). Without it, a new kernel dying before printk comes up is indistinguishable from a jump that never happened; section four of [recovery.md](recovery.md).
+1. ~~Wire the pre-jump marker into the jump stage~~ **done (2026-11-22)**: the write lives in the module's `K2S_MARK` (`koa2_marker_place`), and is not a jump. Wiring it corrected three things section four of [recovery.md](recovery.md) used to say: the marker goes at the **end** of the live half, it has to clean itself out of the caches (a watchdog reset does not), and `__arm_ioremap` refuses RAM, so `phys_to_virt` is used. Two symbol choices there make the module fail to load outright; `koa2-marker-wiring` guards both. Proving on the device that a marker survives a reset takes two runs, see section four below.
 2. Investigate the [EPDC source gap](epdc-source-gap.md). This independently blocks full Android and is not solved by passing staging.
 3. The jump stage itself (`boot/koa2/jump.S` is written and verified bare-metal in QEMU, but is in no module). Before wiring it in, everything in section five of [recovery.md](recovery.md) has to hold.
 4. Run the tests below for any change. Record passes, failures and skips separately; missing dependencies are not passes.
@@ -67,12 +67,21 @@ Keep the staging and execution entry points separate; do not simply make the sta
 
 ## 4. When the Kindle is needed again
 
-The next thing to do on the device is the **quiesce dry run**, which stops the
-devices and puts them all back, loading no module and jumping nowhere: section
-8b of [the device procedure](device-runbook.en.md).
+The next trip to the device has two things on it, in either order, and neither
+touches the jump:
+
+- **The marker test**, section 8c of [the device procedure](device-runbook.en.md):
+  place a marker, restart, then read `/proc/printkbuf` to see that it is still
+  there. It also tests what section two of [recovery.md](recovery.en.md) only
+  reasons about from source -- that the reset preserves DRAM. If the marker does
+  not survive, that section is wrong.
+- **The quiesce dry run**, section 8b: stop the devices and put them all back,
+  loading no module and jumping nowhere.
+
 Before a real handoff, recovery, log collection and the stop conditions at each
 step have to be stated -- the recovery analysis is written
-([recovery.md](recovery.en.md)), and two of its conditions are not met yet.
+([recovery.md](recovery.en.md)), and the two conditions left are both on the
+device.
 The user starts device tests by hand; no repeat hardware collection or staging run is needed now.
 See [the device procedure](device-runbook.en.md) and [stage gates](ROADMAP.en.md).
 

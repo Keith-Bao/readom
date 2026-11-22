@@ -28,6 +28,7 @@ struct k2s_status {
     k2s_u32 list_pages, list_entries;
     signed int seal_stage, seal_result;  /* which check of seal() failed last, and its code */
     k2s_u32 plan_valid, execute_available;
+    k2s_u32 marked;      /* markers placed since the seal; execute_available stays 0 */
 };
 #define K2S_BEGIN _IOW('K',0x31,struct k2s_begin)
 #define K2S_PUT _IOW('K',0x32,struct k2s_put)
@@ -45,4 +46,18 @@ struct k2s_status {
 #define K2S_STAGE_PLAN 8
 #define K2S_STAGE_PAGES 9
 #define K2S_STAGE_COPYLIST 10
+/* K2S_MARK writes one marker line into the live half of the Lab126 printk
+ * buffer and cleans it out to DRAM, so that a jump which dies before the new
+ * kernel's printk can be told apart from a jump that never happened at all
+ * (ports/koa2/recovery.md section 4).
+ *
+ * It is not a jump and does not enable one: nothing is copied to a destination,
+ * no device is stopped, no core goes down, and execute_available stays 0. What
+ * it costs is the last 256 bytes of this boot's kernel log.
+ *
+ * It needs a sealed plan, because the entry and FDT addresses it records are
+ * that plan's. attempt is the caller's own counter, so that repeated attempts
+ * can be told apart in the buffer afterwards. */
+struct k2s_mark { k2s_u32 attempt, reserved; };
+#define K2S_MARK _IOW('K',0x36,struct k2s_mark)
 #endif

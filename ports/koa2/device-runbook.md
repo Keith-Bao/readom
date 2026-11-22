@@ -211,6 +211,36 @@ KUAL → Readom KOA2 Stage Test → **Quiesce dry run (stops devices, restores t
 
 Wi-Fi 和触摸会停几秒，这是预期的。屏幕在 EPDC 停掉之后不会再刷新，直到它被放回。
 
+## 8c. 标记测试（放一个标记，重启，确认它还在）
+
+这件事要分两次，因为要测的正是"标记能不能活过复位"。同一次启动里读不到自己写的标记：
+`/proc/printkbuf` 发布的是**上一次**启动的缓冲。
+
+它不跳转、不复制载荷、不写分区、不下核。代价是这一次启动的内核日志最后 256 字节。
+为什么需要它，见 [recovery.md](recovery.md) 第四节。
+
+**第一步。** KUAL → Readom KOA2 Stage Test → **Marker test: place one (no jump)**。
+报告在 `koa2-marker-test/<UTC时间>-<PID>/report.txt`：
+
+| result | 含义 | 下一步 |
+|---|---|---|
+| `marker_placed` | 标记写进了 printk 缓冲并刷出了缓存 | 重启设备，做第二步 |
+| `mark_failed` | 模块拒绝写（`client_exit` 非 0） | 停下看报告，不要重试 |
+| `insmod_refused` | 模块没加载，和标记无关 | 按第 6 节处理 |
+| `refused_unknown_kernel` | 内核不是 `4.1.15-lab126` | 什么都没动 |
+
+**第二步：重启 Kindle**，然后 KUAL → **Marker test: check after restart**。
+正常重启就行，不必拔电或等看门狗。
+
+| result | 含义 | 说明了什么 |
+|---|---|---|
+| `marker_survived` | 上一次启动的缓冲里有 `KOA2_HANDOFF` 那一行 | 标记这条路通了，而且 [recovery.md](recovery.md) 第二节（复位保留 DRAM）得到了实机确认 |
+| `marker_absent` | 没找到 | **停下**。要么标记没真正落到 DRAM，要么复位并不保留 DRAM——后者意味着第二节的推断是错的，比标记本身要紧得多，不要在这上面继续往跳转推进 |
+| `refused_no_printkbuf` | 没有 `/proc/printkbuf` | 内核没带 `CONFIG_LAB126_PRINTK_BUFFER`，整条日志路线不成立 |
+
+第二步只把含 `KOA2_HANDOFF` 的行留在报告里。上一次启动的完整日志是设备自己的，
+读完即删，不进 Git。
+
 ## 9. 还需要设备、但不在这次流程里的事
 
 | 事 | 为什么必须上机 |

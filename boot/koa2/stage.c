@@ -22,12 +22,16 @@
 #include <linux/capability.h>
 #include <linux/uaccess.h>
 #include <linux/utsname.h>
+#include <linux/jiffies.h>
 #include <asm/memory.h>
+#include <asm/cacheflush.h>
+#include <asm/outercache.h>
 #include "stage-abi.h"
 #include "contract.h"
 #include "plan.h"
 #include "fdt-rewrite.h"
 #include "copylist.h"
+#include "marker.h"
 #include "sha256.h"
 #include "target-lock.h"
 
@@ -67,7 +71,7 @@ struct store {
     struct allocation *owned, *rejected;
     unsigned int count, collisions;
     int seal_stage, seal_result;
-    unsigned int fdt_bytes, plan_valid;
+    unsigned int fdt_bytes, plan_valid, marked;
     unsigned int list_first, list_pages, list_entries;   /* the audited copy list */
     struct koa2_plan plan;         /* filled by seal(); no addresses leave the module */
 };
@@ -98,7 +102,7 @@ static void discard(struct store *s)
     vfree(s->owned); vfree(s->rejected);
     s->owned=s->rejected=NULL; s->count=s->collisions=0;
     wipe(s->slot,sizeof(s->slot)); memset(&s->plan,0,sizeof(s->plan));
-    s->fdt_bytes=s->plan_valid=0; s->state=K2S_EMPTY;
+    s->fdt_bytes=s->plan_valid=s->marked=0; s->state=K2S_EMPTY;
     s->list_first=s->list_pages=s->list_entries=0;
 }
 /* The ranges a staged page must avoid: the running stock kernel's low memory
@@ -253,6 +257,72 @@ out:
     vfree(list_virtual); vfree(list_physical);
     return result;
 }
+/* The Lab126 printk buffer as printk.c lays it out: LOG_GOAL_SIZE of live
+ * buffer at LOG_GOAL_LOCATION, then as much again holding the previous boot's
+ * copy, which is what /proc/printkbuf publishes. The marker goes in the live
+ * half, because that is the half the next boot saves. Both halves are in the
+ * handoff's persistent exclusions (plan.c), so the copy never lands on them. */
+#define K2S_LOG_GOAL 0x9be00000u
+#define K2S_LOG_GOAL_SIZE 0x00040000u
+/* Clean the marker out to DRAM. A watchdog reset here does not flush the caches
+ * -- that is what the PW3 printk write-back patch exists for -- so a marker
+ * left in a dirty line would be gone after the very reset it exists for.
+ *
+ * This flushes the whole cache rather than the marker's own lines, for a
+ * version-check reason and not a technical one: by-address cleaning compiles to
+ * v7_flush_kern_dcache_area, which no stock module imports, so its CRC cannot
+ * be checked and the stock loader refuses the module (ports/koa2/module-crcs.py
+ * reports it as unknown). flush_cache_all compiles to v7_flush_kern_cache_all,
+ * which mxc_epdc_v2_fb imports, so it can be checked. Flushing everything costs
+ * milliseconds once, at the end of a boot that is about to end anyway.
+ *
+ * outer_clean_range compiles to nothing where there is no outer cache, which is
+ * this SoC: no L2C-310 on i.MX7D, and the device's own boot log mentions none.
+ * It is here so that the code does not silently depend on that. */
+static void marker_write_back(void *context, char *va, u32 phys, size_t bytes)
+{
+    (void)context; (void)va;
+    flush_cache_all();
+    outer_clean_range(phys,phys+bytes);
+}
+/* Writes one marker. Still no jump: nothing is copied to a destination, no
+ * device is stopped and no core goes down. */
+static int mark(struct store *s, void __user *arg)
+{
+    struct k2s_mark m;
+    struct koa2_marker_target target;
+    unsigned long seconds;
+    size_t n;
+    if(s->state!=K2S_SEALED || !s->plan_valid) return -EPERM;
+    if(copy_from_user(&m,arg,sizeof(m))) return -EFAULT;
+    if(m.reserved) return -EINVAL;
+    /* The marker records the sealed plan's own entry and FDT addresses. */
+    if(s->plan.segment_count<2) return -EPERM;
+    /* The buffer is lowmem the stock kernel reserved and mapped, so its linear
+     * address is where printk writes. __arm_ioremap would refuse it (pfn_valid
+     * holds for reserved RAM), which is why this is phys_to_virt. */
+    target.buffer=(char *)phys_to_virt(K2S_LOG_GOAL);
+    target.bytes=K2S_LOG_GOAL_SIZE;
+    target.phys=K2S_LOG_GOAL;
+    /* Seconds since boot: the clock the log's own timestamps count, so the
+     * marker can be placed among the messages around it. This is the 32-bit
+     * jiffies on purpose -- get_jiffies_64 divided by HZ calls
+     * __aeabi_uldivmod, which the stock kernel does not export, and the build
+     * refuses such a module. It wraps after about 497 days at HZ 100; a device
+     * up that long would report a small uptime, which costs nothing here
+     * because what the marker has to show is that it was written at all. */
+    seconds=(unsigned long)jiffies/HZ;
+    n=koa2_marker_place(&target,m.attempt,seconds,
+                        (u32)s->plan.segments[0].dest,(u32)s->plan.segments[1].dest,
+                        marker_write_back,NULL);
+    if(!n) return -EIO;
+    s->marked++;
+    /* In the log as well, so the placement is visible in dmesg while the stock
+     * system is still up. */
+    printk(KERN_INFO "koa2-handoff-stage: marker %u placed, %u bytes\n",m.attempt,(unsigned)n);
+    return 0;
+}
+
 static int seal_fail(struct store *s, int stage, int result, int rc)
 {
     s->seal_stage=stage; s->seal_result=result;
@@ -371,6 +441,7 @@ static long stage_ioctl(struct file *file, unsigned int command, unsigned long a
     case K2S_BEGIN: rc=begin(s,(void __user *)arg); break;
     case K2S_PUT: rc=put(s,(void __user *)arg); break;
     case K2S_SEAL: rc=arg?-EINVAL:seal(s); break;
+    case K2S_MARK: rc=mark(s,(void __user *)arg); break;
     case K2S_DISCARD: if(arg) { rc=-EINVAL; break; } discard(s); rc=0; break;
     case K2S_STATUS:
         memset(&status,0,sizeof(status));
@@ -383,6 +454,7 @@ static long stage_ioctl(struct file *file, unsigned int command, unsigned long a
         status.list_pages=s->list_pages; status.list_entries=s->list_entries;
         status.seal_stage=s->seal_stage; status.seal_result=s->seal_result;
         status.plan_valid=s->plan_valid; status.execute_available=0;
+        status.marked=s->marked;
         rc=copy_to_user((void __user *)arg,&status,sizeof(status))?-EFAULT:0; break;
     default: rc=-ENOTTY;
     }
@@ -418,7 +490,8 @@ static int __init stage_init(void)
     const struct new_utsname *u=init_utsname();
     BUILD_BUG_ON(sizeof(struct k2s_begin)!=116);
     BUILD_BUG_ON(sizeof(struct k2s_put)!=24);
-    BUILD_BUG_ON(sizeof(struct k2s_status)!=68);
+    BUILD_BUG_ON(sizeof(struct k2s_status)!=72);
+    BUILD_BUG_ON(sizeof(struct k2s_mark)!=8);
     BUILD_BUG_ON(sizeof(K2S_BOOTARGS)>KOA2_BOOTARGS_MAX+1);
     /* Only the stock kernel the measurements came from, with the split they assume. */
     if(strcmp(u->release,K2S_STOCK_RELEASE) || strcmp(u->version,K2S_STOCK_VERSION) ||

@@ -6,13 +6,15 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 ## 一句话
 
 2026-11-21，实机暂存测试通过（sealed_plan_valid），模块成功加载并卸载。
-布局、FDT 改写和复制表审计通过；尚未启动新内核。主机 60 项通过、0 项失败（2026-11-21 重跑）。
+布局、FDT 改写和复制表审计通过；尚未启动新内核。
+2026-11-22 跳转标记的写入已接上模块（`K2S_MARK`），不是跳转，也没打开跳转。
+主机 65 项通过、0 项失败。
 
 ## 眼下的位置
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 在设备上跑一次静止空跑（`quiesce-dryrun.sh`，停设备再全部放回），确认这条路走得通和各步耗时 |
+| 下一步是什么 | 设备上两件事，都不碰跳转：放一个标记、重启、确认它还在（`marker-test.sh`，顺带验证复位是否真的保留 DRAM），以及静止空跑（`quiesce-dryrun.sh`，停设备再全部放回） |
 | 实机结果 | `sealed_plan_valid`；insmod_exit=0、client_exit=0、rmmod_exit=0 |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)），原厂内核树编不出来 |
@@ -29,6 +31,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 | 复制表与审计 | `boot/koa2/copylist.c` | `koa2-copylist` | 实机暂存检查通过 |
 | 暂存模块（无跳转） | `boot/koa2/stage.c` | `koa2-stage` | 加载、封存、卸载成功 |
 | 原厂 CRC 核对 | `ports/koa2/module-crcs.py` | `koa2-module-crcs`、`koa2-stock-abi` | 63 个原厂模块已离线核对：31 个导入全部一致 |
+| 跳转前标记 | `boot/koa2/marker.c`、模块侧 `K2S_MARK` | `koa2-marker`、`koa2-marker-wiring`、`koa2-stage` | 35 个导入与原厂 CRC 全部一致；未在设备上放过标记 |
 | 跳转蹦床 | `boot/koa2/jump.S` | `koa2-jump-baremetal` | 未编进模块，未执行 |
 | 静止顺序 | `boot/koa2/quiesce.c`、`quiesce-verify.c` | `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-quiesce-dryrun` | 停设备改由用户空间做（见 [handoff-quiesce.md](handoff-quiesce.md) 第六节）；空跑脚本已在套件里，未在设备上跑过 |
 | 构建可复现性 | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | 不适用 |

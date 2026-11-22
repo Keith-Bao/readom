@@ -65,6 +65,23 @@ typedef struct { int counter; } atomic_t;
 static inline int atomic_cmpxchg(atomic_t *a, int old, int new_value)
 { int was=a->counter; if(was==old) a->counter=new_value; return was; }
 static inline void atomic_set(atomic_t *a, int v) { a->counter=v; }
+/* The clock, the printk buffer and the cache maintenance the marker path uses,
+ * so the host test runs stage.c's own code rather than a copy of it. The test
+ * owns the buffer and can count what was cleaned. */
+#define HZ 100
+#define KERN_INFO ""
+extern unsigned long kshim_jiffies;
+#define jiffies kshim_jiffies
+int printk(const char *format, ...);
+extern unsigned char *kshim_printk_buffer;    /* stands in for the Lab126 buffer */
+extern u64 kshim_printk_phys;
+extern size_t kshim_printk_bytes;
+void *kshim_phys_to_virt(u64 phys);
+#define phys_to_virt(p) kshim_phys_to_virt(p)
+extern unsigned kshim_write_backs;            /* cache flushes the module asked for */
+extern u64 kshim_cleaned_phys;                /* what it handed the outer cache */
+void flush_cache_all(void);
+void outer_clean_range(u64 start, u64 end);
 struct new_utsname { char release[65], version[65], machine[65]; };
 extern struct new_utsname kshim_uts;
 static inline const struct new_utsname *init_utsname(void) { return &kshim_uts; }
