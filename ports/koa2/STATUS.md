@@ -17,6 +17,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)），原厂内核树编不出来 |
 | 有没有不可逆的操作 | 没有。本次已加载并卸载暂存模块；未执行跳转或分区写入 |
+| 跳转失败能回来吗 | 源码分析见 [recovery.md](recovery.md)：看门狗 60 秒兜底，日志经 printk 缓冲跨复位；其中两项还没满足 |
 
 ## 交接各件的状态
 

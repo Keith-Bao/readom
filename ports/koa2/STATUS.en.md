@@ -19,6 +19,7 @@ No new kernel has booted. 60 host tests pass and none fail (rerun 2026-11-21).
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
 | Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |
+| Can a failed jump come back | The analysis is [recovery.md](recovery.en.md): the watchdog ends it within 60 seconds and the log survives in the printk buffer; two of its conditions are not met yet |
 
 ## The handoff piece by piece
 

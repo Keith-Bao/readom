@@ -63,4 +63,4 @@ No protective check is deleted, no incompatible module is forced in, and
 nothing is written to a raw partition, IDME, a key or calibration data. If the
 handoff cannot be shown to be recoverable, work on the device stops, and the
 source and the evidence of the blockage are handed over without claiming
-completion.
+completion. That argument is [recovery.md](recovery.en.md).

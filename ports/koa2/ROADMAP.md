@@ -58,3 +58,4 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 用户负责管理员操作/重启、Kindle 启动和恢复、应用登录；不购买云资源。
 不删除保护检查、不强制加载不兼容模块、不写原始分区/IDME/密钥/校准。
 无法证明交接可恢复时停止真机推进，交付源码和阻塞证据，不宣称完成。
+恢复路径的分析见 [recovery.md](recovery.md)。

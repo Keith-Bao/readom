@@ -34,10 +34,27 @@ The accompanying [SHA256SUMS](reports/2026-11-21-stage-test/SHA256SUMS) identifi
 
 ## 3. Work that needs no device
 
-1. Audit and implement hardware run/undo in the order in boot/koa2/quiesce.h. Define entry points, completion conditions, timeouts and recovery. quiesce.c currently holds only the ordering and rollback framework.
-2. Design the path to read and exclude live EPDC framebuffer addresses. Historical addresses are not constants; real values and hardware stop behaviour need later device validation.
-3. Add relevant host failure-path tests and run the KOA2 tests below. Record passes, failures and skips separately; missing dependencies are not passes.
-4. Investigate the [EPDC source gap](epdc-source-gap.md). This independently blocks full Android and is not solved by passing staging.
+The first two are done, and not the way they were planned. Section six of
+[handoff-quiesce.md](handoff-quiesce.md) says why:
+
+- **The devices are not stopped from the module.** Almost nothing that stops one
+  can be checked (`lock_fb_info`'s CRC differs from stock, so touching the
+  framebuffer would be refused at load), and once a clock is gated, reading a
+  peripheral register hangs the bus -- so "read the engine's status and confirm
+  it is idle" would hang the device in exactly the case where quiescing had
+  worked. It is done from userspace instead, through the kernel's own removal
+  and hotplug paths (`stage-test/quiesce-dryrun.sh`), and the module only
+  checks the result (`quiesce-verify.c`).
+- **The EPDC exclusion is no longer needed.** The EPDC's remove path frees those
+  DMA framebuffers, so once it is unloaded they are ordinary free pages and
+  there is nothing to exclude.
+
+What can be done now without the device:
+
+1. Wire the pre-jump marker into the jump stage (formatting is implemented, `boot/koa2/marker.c`). Without it, a new kernel dying before printk comes up is indistinguishable from a jump that never happened; section four of [recovery.md](recovery.md).
+2. Investigate the [EPDC source gap](epdc-source-gap.md). This independently blocks full Android and is not solved by passing staging.
+3. The jump stage itself (`boot/koa2/jump.S` is written and verified bare-metal in QEMU, but is in no module). Before wiring it in, everything in section five of [recovery.md](recovery.md) has to hold.
+4. Run the tests below for any change. Record passes, failures and skips separately; missing dependencies are not passes.
 
 ```bash
 python3 tools/run-tests.py --filter koa2
@@ -50,8 +67,12 @@ Keep the staging and execution entry points separate; do not simply make the sta
 
 ## 4. When the Kindle is needed again
 
-Once hardware run/undo and live exclusions are implemented and host checks pass, prepare a narrowly scoped device test.
-Before a real handoff, define recovery, log collection and stop conditions at each step.
+The next thing to do on the device is the **quiesce dry run**, which stops the
+devices and puts them all back, loading no module and jumping nowhere: section
+8b of [the device procedure](device-runbook.en.md).
+Before a real handoff, recovery, log collection and the stop conditions at each
+step have to be stated -- the recovery analysis is written
+([recovery.md](recovery.en.md)), and two of its conditions are not met yet.
 The user starts device tests by hand; no repeat hardware collection or staging run is needed now.
 See [the device procedure](device-runbook.en.md) and [stage gates](ROADMAP.en.md).
 
