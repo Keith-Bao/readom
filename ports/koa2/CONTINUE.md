@@ -52,6 +52,9 @@ execute_available=0，insmod_exit/client_exit/rmmod_exit 均为 0。
    `koa2-marker-wiring` 守着。设备上验证它活过复位要分两次做，见下面第四节。
 2. 继续调查 [EPDC 源码缺口](epdc-source-gap.md)。这是完整 Android 的独立阻塞，
    不会因暂存检查通过自动解决。
+   2026-11-23 进展：两块在这一份波形里的大小和位置已经从设备日志读出；5 个不能桩的函数里，
+   3 个错了会伤硬件，其中包括值最好拿的 `mxc_set_vcom`；夜间模式（`GCK16`/`GLKW16`）由
+   用户空间触发，第一版要在提交入口拒掉；`einkwf_panel_*` 没有调用者。下一步见该文件末尾。
 3. 跳转阶段本身（`boot/koa2/jump.S` 已写并在 QEMU 裸机验证过，但没编进任何模块）——
    接入之前要先满足 [recovery.md](recovery.md) 第五节的全部条件。
 4. 任何改动都跑下面的测试；记录通过、失败和跳过，不能把缺依赖的跳过算通过。
