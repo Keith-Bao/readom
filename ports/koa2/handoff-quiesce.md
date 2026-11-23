@@ -155,3 +155,11 @@ KUAL 的 **Inspect Xorg touch configuration** 只读检查这三项。报告记�
 2026-11-24 真机检查确认：Xorg 打开了 `/dev/input/event9`（`cyttsp5_mt`，I²C `1-0024`），加载了 `evdev_drv.so`，日志显示 `Automatically adding devices`。这份报告未识别出触摸设备的添加来源，也未读到相应的 udev 输入属性。现有证据支持调查热插拔路径，尚未证明 Xorg 会重新打开重载后出现的触摸节点。
 
 保留输入节点是另一条待查路径。发布源码提供触摸驱动的 IRQ 控制和 suspend/resume 回调，但驱动还有独立的 watchdog 工作队列。单独停 IRQ 不足以证明 I²C 已静止，不能用这个状态替代交接校验。下一步在主机端审计原厂休眠是否能停止相关工作并保留输入节点，再决定如何验证触摸恢复。
+
+#### 原厂休眠路径审计（2026-11-24）
+
+校验源码包后核对了 Zelda 设备树和 CYTTSP5 驱动。`tsc@24` 的 `cy,flags = <6>` 启用了 `POWEROFF_ON_SLEEP`，`easy_wakeup_gesture` 为 `0`。`cyttsp5_core_sleep_()` 同步取消 watchdog 工作及 startup 工作，再走触摸控制器断电路径。唤醒恢复供电、IRQ 和控制器初始化。触摸的 framebuffer 休眠/唤醒回调只暂停报告并调整运行时电源引用；休眠路径不注销输入设备，所以源码允许 Xorg 保留现有句柄。
+
+完成条件仍需独立验证。断电路径用 `disable_irq_nosync()`，没有等待已在运行的 IRQ 处理完成。断电返回错误时，驱动也写入 `SS_SLEEP_ON`，因此 `sleep_status=off` 无法证明断电成功。运行时休眠能返回 `-EAGAIN`，整机 suspend 回调却忽略了触摸休眠的返回值。现有交接校验继续要求满足原条件。
+
+接下来先观测一次原厂正常休眠和唤醒。比较同一次开机内触摸节点的 inode、Xorg 进程和打开的句柄，并在醒来后确认接触事件与原厂界面响应。结合 PM 日志和计数器区分实际休眠和单纯息屏。这项验证可以回答节点是否保留、界面是否恢复；I²C 停止活动仍需要独立证据。暂不写触摸调试接口，也不再卸载触摸驱动。

@@ -34,7 +34,7 @@ The accompanying [SHA256SUMS](reports/2026-11-21-stage-test/SHA256SUMS) identifi
 
 ## 3. Work that needs no device
 
-1. Trace how the stock system initializes and restores touch and USB storage. For touch, verify that `cyttsp5_mt` is registered again and produces events. For USB, verify the stock module parameters and that the host can see storage again. Preserve the root filesystem's original mount mode.
+1. The isolated USB reload and Windows readback passed. For touch, first check whether stock sleep and wake preserve the input node and Xorg handle. Verify contact events and UI response after wake. I²C quiescence for handoff still needs independent evidence. See the [touch sleep audit](handoff-quiesce.md).
 2. Continue investigating the [EPDC source gap](epdc-source-gap.md). EPDC stayed busy during the device dry run, so we have no evidence that its DMA framebuffers can be freed at this stage.
 3. Keep staging and execution separate. The handoff gates are in section five of [recovery.md](recovery.en.md).
 4. Run the host tests below after changes. Record passes, failures and skips separately.
