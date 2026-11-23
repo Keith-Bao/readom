@@ -28,8 +28,47 @@ check_touch() {
     printf '%s\n' 'touch=touch_device_missing'
 }
 
+previous_boot_recovery() {
+    printf '\n[previous_boot_recovery]\n'
+    if [ ! -r /proc/printkbuf ]; then
+        printf '%s\n' 'previous_boot_result=buffer_unavailable'
+        return
+    fi
+    tr '\000' '\n' < /proc/printkbuf | awk '
+        match($0, /\[ *[0-9]+\.[0-9]+\]/) {
+            ++lines
+            time = substr($0, RSTART, RLENGTH)
+            message = substr($0, RSTART + RLENGTH)
+            if (message ~ /no file given for LUN[0-9]+/) {
+                kind = "usb_lun_missing_medium"
+            } else if (message ~ /g_mass_storage gadget: g_mass_storage ready/) {
+                kind = "usb_gadget_ready"
+            } else if (message ~ /input: cyttsp5_mt as /) {
+                kind = "touch_input_registered"
+            } else if (message ~ /cyttsp5.*failed to get HID descriptor/) {
+                kind = "touch_hid_descriptor_failed"
+            } else if (message ~ /cyttsp5.*Operational mode/) {
+                kind = "touch_operational_mode"
+            } else if (message ~ /fsg_store_file:[0-9]+, file=/) {
+                kind = message ~ /file=[[:space:]]*$/ ? "usb_medium_cleared" : "usb_medium_configured"
+            } else {
+                next
+            }
+            print "previous_boot_event=" kind, time
+            ++events
+        }
+        END {
+            print "previous_boot_log_lines=" lines + 0
+            print "previous_boot_recovery_events=" events + 0
+            if (lines < 20)
+                print "previous_boot_result=buffer_unreadable"
+            else
+                print "previous_boot_result=log_filtered"
+        }'
+}
+
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v3'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v4'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
@@ -75,6 +114,9 @@ check_touch() {
             [ -r "$controller/state" ] || continue
             printf 'usb_udc=%s state=%s\n' "${controller##*/}" "$(cat "$controller/state")"
         done
+        if [ "${1:-}" = previous-boot ]; then
+            previous_boot_recovery
+        fi
 
         printf '\n%s\n' 'result=quiesce_blocked_pending_restore'
     fi

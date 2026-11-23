@@ -4,6 +4,8 @@
 
 更新后的套件还提供 **Check live touch (tap screen)**。启动后 10 秒内轻点屏幕一次。探针以只读方式打开当前的 `cyttsp5_mt` 事件节点，报告 `touch_contact_observed` 表示收到了完整的接触事件帧。超时只表示该窗口未观察到触摸。探针不会保存坐标，预检报告仍以 `quiesce_blocked_pending_restore` 结尾。USB 部分记录原厂存储模块的 LUN 参数和控制器状态，电脑识别并读取 Kindle 盘需独立确认。
 
+若空跑后已经重启，可用 **Read previous boot recovery log** 检查上一次启动的内核日志。报告只记录已知触摸和 USB 消息的类别及时间。先采集再考虑重启，因为缓冲只保留上一次启动。未发现错误行时，仍需检查日志是否读到，以及是否确实来自失败那次启动。
+
 这份文件是给**接手执行的人或 agent** 看的，不需要读过之前的对话。按顺序做，
 每一步都写清楚了要什么、会得到什么、出问题怎么办。英文版见
 [device-runbook.en.md](device-runbook.en.md)。

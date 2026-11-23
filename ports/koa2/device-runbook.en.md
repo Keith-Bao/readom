@@ -4,6 +4,8 @@
 
 The updated kit also has **Check live touch (tap screen)**. Tap once within ten seconds. The probe opens the current `cyttsp5_mt` event device read-only. `touch_contact_observed` records a complete contact frame, and a timeout means that no contact was observed in that window. The probe saves no coordinates. The preflight still ends with `quiesce_blocked_pending_restore`. The USB section records the stock storage module's LUN parameters and USB controller state. Verify host detection and readable storage separately.
 
+After restarting from a dry run, use **Read previous boot recovery log** to check the previous boot's kernel log. The report keeps only the categories and timestamps of recognized touch and USB messages. Collect it before restarting again because the buffer covers only the previous boot. If an error is absent, check that the buffer was readable and covers the failed boot.
+
 This file is for **whoever runs the test**, human or agent, and assumes no
 earlier conversation. Work through it in order; each step says what it needs,
 what it gives back, and what to do when it goes wrong. Chinese version:

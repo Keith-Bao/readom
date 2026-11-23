@@ -19,7 +19,7 @@ def shell_path(path):
     return str(path)
 
 
-def check_preflight(release, expected_result, touch=False):
+def check_preflight(release, expected_result, touch=False, previous_log=None):
     with tempfile.TemporaryDirectory(dir=ROOT if os.name == "nt" else None) as temp:
         root = Path(temp)
         files = {
@@ -39,6 +39,8 @@ def check_preflight(release, expected_result, touch=False):
             path.write_text(content, newline="\n")
         (root / "mnt/us/documents").mkdir(parents=True)
         (root / "sys/bus/i2c/drivers/cyttsp5_i2c_adapter/1-0024").mkdir(parents=True)
+        if previous_log is not None:
+            (root / "proc/printkbuf").write_bytes(previous_log)
         fake_set = shell_path(root)
         commands = f'''uname() {{ printf '%s\\n' '{release}'; }}
 rmmod() {{ echo rmmod >> "{fake_set}/mutations"; }}
@@ -60,6 +62,8 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
         command = [shell, shell_path(script)]
         if touch:
             command.append("touch")
+        elif previous_log is not None:
+            command.append("previous-boot")
         subprocess.run(command, check=True, timeout=20)
         base = root / "mnt/us/koa2-quiesce-dryrun"
         report = (base / (base / "LAST_RUN.txt").read_text().strip() / "report.txt").read_text()
@@ -76,6 +80,14 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
             assert "usb_udc=ci_hdrc.0 state=not attached" in report, report
             assert ("touch=touch_contact_observed" in report) == touch, report
             assert "/dev/mmcblk2p7" not in report, report
+            if previous_log:
+                assert "previous_boot_event=usb_lun_missing_medium [ 23.001]" in report, report
+                assert "previous_boot_event=touch_input_registered [ 24.001]" in report, report
+                assert "previous_boot_event=usb_medium_configured [ 25.001]" in report, report
+                assert "previous_boot_result=log_filtered" in report, report
+                assert "/private/runtime" not in report, report
+            elif previous_log is not None:
+                assert "previous_boot_result=buffer_unreadable" in report, report
         else:
             assert "[drivers]" not in report, report
 
@@ -123,6 +135,13 @@ int main(void)
 
 check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore")
 check_preflight("4.9.0-other", "refused_unknown_kernel")
+check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", previous_log=b"")
+check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", previous_log=(
+    b"[ 1.001] ignored\n" * 20 +
+    b"\0 [ 23.001] no file given for LUN0\n"
+    b"[ 24.001] input: cyttsp5_mt as /private/runtime/input\n"
+    b"[ 25.001] fsg_store_file:448, file=/private/runtime/medium\n"
+))
 if os.name != "nt":
     check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", touch=True)
     compiler = shutil.which("cc")

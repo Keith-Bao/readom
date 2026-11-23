@@ -126,6 +126,6 @@ CRC 对得上才能加载。拿设备上 63 个原厂模块核对（见 [stock-m
 
 ### 原厂恢复路径审计
 
-- **USB**：原厂 `g_mass_storage` 调用 `fsg_config_from_params()` 生成 LUN。无显式 `luns` 时，它以 `file_count` 或 1 为默认数目。若 LUN 既没有后备介质也未标为可移除，`fsg_common_create_lun()` 返回 `-EINVAL`。这与旧空跑的无参重载报错一致。原厂启动日志记录了两条 `LUN: removable file: (no medium)`，只读预检在另一次启动读到 `file` 为空、`removable=Y`。这两条证据不足以复原当次完整参数，也没有记录失败时的内核报错。先采实际 LUN 参数和 UDC 状态，并查明原厂如何从无介质状态切换到电脑可读的存储。恢复验收包括电脑重新读到 Kindle 盘。
-- **触摸**：原厂驱动的 I²C probe 会调用 `cyttsp5_probe()`；正常启动日志先有 HID 超时，重试后才注册 `cyttsp5_mt`。模块重新加载只是恢复的一步。新增被动探针检查 `cyttsp5_mt` 的接触事件和对应的 `SYN_REPORT`，忽略丢包后的半帧，报告不含坐标。先在正常系统采基线。仍需查明卸载后的重新绑定和原厂输入服务如何重连。
+- **USB**：原厂 `g_mass_storage` 调用 `fsg_config_from_params()` 生成 LUN。无显式 `luns` 时，它以 `file_count` 或 1 为默认数目。若 LUN 既没有后备介质也未标为可移除，`fsg_common_create_lun()` 返回 `-EINVAL`。这与旧空跑的无参重载报错一致。原厂日志中的两条空介质记录后面各有 `Number of LUNs=1`。正常重启后的两次只读预检读到 `luns=0`、`file` 为空、`removable=Y`，其中 `luns=0` 是自动选择，并非没有 LUN。历史日志显示 UDC 上线后原厂软件才把 `/dev/loop/0` 交给 LUN，断开后又清空。模块加载参数和插线后的介质切换是两步。待从上一次启动日志确认旧空跑的具体 errno 来源。恢复验收包括电脑重新读到 Kindle 盘。
+- **触摸**：原厂驱动的 I²C probe 会调用 `cyttsp5_probe()`；正常启动日志先有 HID 超时，重试后才注册 `cyttsp5_mt`。模块重新加载只是恢复的一步。新增被动探针检查 `cyttsp5_mt` 的接触事件和对应的 `SYN_REPORT`，忽略丢包后的半帧，报告不含坐标。正常系统上已两次收到完整接触帧，I²C 绑定均为 `1-0024`。仍需查明卸载后重新绑定是否成功，以及原厂输入服务如何重连。
 - **整机空跑**：保持暂停。EPDC 仍被占用，恢复流程尚未证实。后续逐个外设独立验证，保留测试前的根文件系统模式。
