@@ -48,13 +48,22 @@ modprobe() {{ echo modprobe >> "{fake_set}/mutations"; }}
 mount() {{ echo mount >> "{fake_set}/mutations"; }}
 '''
         text = SCRIPT.read_text()
-        for prefix in ("/mnt/us", "/proc/", "/sys/"):
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/"):
             text = text.replace(prefix, fake_set + prefix)
         script = root / "preflight.sh"
         script.write_text(commands + text, newline="\n")
         if touch:
+            node = root / "dev/input/event3"
+            node.parent.mkdir(parents=True)
+            node.touch()
+            reader = root / "proc/111"
+            (reader / "fd").mkdir(parents=True)
+            (reader / "comm").write_text("stock-input\n")
+            (reader / "fd/6").symlink_to(node)
+            (reader / "fd/7").symlink_to(node)
+            (reader / "fd/8").symlink_to(root / "removed-node")
             probe = root / "touch-events"
-            probe.write_text('#!/bin/sh\n[ "$1" = /dev/input/event3 ] || exit 2\necho touch_contact_observed\n', newline="\n")
+            probe.write_text(f'#!/bin/sh\n[ "$1" = "{fake_set}/dev/input/event3" ] || exit 2\necho touch_contact_observed\n', newline="\n")
             probe.chmod(0o755)
             digest = hashlib.sha256(probe.read_bytes()).hexdigest()
             (root / "SHA256SUMS").write_text(f"{digest}  touch-events\n", newline="\n")
@@ -79,6 +88,9 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
             assert "usb_luns=2" in report, report
             assert "usb_udc=ci_hdrc.0 state=not attached" in report, report
             assert ("touch=touch_contact_observed" in report) == touch, report
+            if touch:
+                assert "touch_reader_pid=111 comm=stock-input" in report, report
+                assert "touch_readers_observed=1" in report, report
             assert "/dev/mmcblk2p7" not in report, report
             if previous_log:
                 assert "previous_boot_event=usb_lun_missing_medium [ 23.001]" in report, report

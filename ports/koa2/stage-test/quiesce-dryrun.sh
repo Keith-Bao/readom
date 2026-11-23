@@ -9,6 +9,22 @@ mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 LOG="$DIR/report.txt"
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
 
+check_touch_readers() {
+    node=$1
+    found=0
+    for process in /proc/[0-9]*; do
+        [ -r "$process/comm" ] || continue
+        for fd in "$process"/fd/*; do
+            [ "$fd" -ef "$node" ] || continue
+            name=$(tr -cd '[:alnum:]_. -' < "$process/comm" 2>/dev/null) || continue
+            printf 'touch_reader_pid=%s comm=%s\n' "${process##*/}" "$name"
+            found=$((found + 1))
+            break
+        done
+    done
+    printf 'touch_readers_observed=%s\n' "$found"
+}
+
 check_touch() {
     if [ ! -x "$HERE/touch-events" ]; then
         printf '%s\n' 'touch=touch_probe_missing'
@@ -21,8 +37,10 @@ check_touch() {
     for event in /sys/class/input/event*; do
         [ -r "$event/device/name" ] || continue
         [ "$(cat "$event/device/name")" = cyttsp5_mt ] || continue
-        result=$("$HERE/touch-events" "/dev/input/${event##*/}")
+        node="/dev/input/${event##*/}"
+        result=$("$HERE/touch-events" "$node")
         printf 'touch=%s\n' "${result:-touch_probe_failed}"
+        check_touch_readers "$node"
         return
     done
     printf '%s\n' 'touch=touch_device_missing'
@@ -68,7 +86,7 @@ previous_boot_recovery() {
 }
 
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v4'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v5'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
