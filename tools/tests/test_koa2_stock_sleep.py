@@ -26,6 +26,8 @@ def check_result(expected, after_total, rebooted=False, reader_changed=False,
             'proc/111/stat': process_stat(12345),
             'proc/sys/kernel/random/boot_id': 'known-boot\n',
             'suspend-ms': '5000\n',
+            'sys/kernel/debug/suspend_stats': 'success: 0\nfail: 0\n',
+            'messages': '[10] cyttsp5: fb_notifier_callback: UNBLANK!\n',
         }
         for name, content in files.items():
             path = root / name
@@ -38,7 +40,7 @@ def check_result(expected, after_total, rebooted=False, reader_changed=False,
         script = root / 'stock-sleep.sh'
         text = re.sub(r'/mnt/us|/proc/|/sys/|/dev/input/',
                       lambda match: str(root) + match[0], SCRIPT.read_text())
-        script.write_text("uname() { echo 4.1.15-lab126; }\n" + text)
+        script.write_text(f'uname() {{ echo 4.1.15-lab126; }}\ndmesg() {{ cat "{root}/messages"; }}\n' + text)
         helper = root / 'touch-events'
         helper.write_text(f'''#!/bin/sh
 if [ "$1" = --suspend-total-ms ]; then
@@ -60,6 +62,8 @@ exit {0 if contact else 1}
         pending = base / 'STOCK_SLEEP_PENDING.txt'
         report = base / pending.read_text().strip() / 'report.txt'
         (root / 'suspend-ms').write_text(str(after_total) + '\n')
+        (root / 'sys/kernel/debug/suspend_stats').write_text('success: 1\nfail: 0\n')
+        (root / 'messages').write_text('[10] cyttsp5: fb_notifier_callback: POWERDOWN!\n')
         if rebooted:
             (root / 'proc/sys/kernel/random/boot_id').write_text('new-boot\n')
         if reader_changed:
@@ -71,6 +75,10 @@ exit {0 if contact else 1}
         subprocess.run(['sh', str(script), 'after'], check=True, timeout=10)
         lines = report.read_text().splitlines()
         assert lines[-1] == 'result=' + expected, lines
+        assert 'before_pm_success=0' in lines and 'after_pm_success=1' in lines
+        assert 'before_fb_unblank=1' in lines and 'after_fb_blank=1' in lines
+        if not rebooted:
+            assert ('after_touch=observed' if contact else 'after_touch=unconfirmed') in lines
         assert not pending.exists() and not (base / '.sleep-running').exists()
 
 

@@ -54,8 +54,8 @@ python3 tools/tests/test_doc_links.py
 当前无需再操作 Kindle。恢复路径和主机测试就绪后，再按设备分别安排验证。空跑与新内核交接暂缓。设备入口见[实机操作手册](device-runbook.md)。
 
 ### 下一次真机操作
-主机模拟和 ARM 编译已通过。当前 Kindle 仍是旧版套件，因为自动审批服务达到用量上限，安装命令未执行。先用 `ports/koa2/build-stage-test-kit.sh` 在 WSL 构建套件，复制到 Kindle 的 `extensions/readom-koa2-stage-test`，并在设备盘校验 `SHA256SUMS`。
-安全弹出并拔线，在 KUAL 选择 **Stock sleep: record before**；正常锁屏约两分钟，唤醒后选择 **Stock sleep: check after (tap screen)**，十秒内点屏并确认原厂界面有响应，再接回电脑取同一份报告。预期结果是 `stock_sleep_touch_observed`。它验证正常休眠前后输入节点及读者快照一致、醒后有触摸事件。交接所需的 I²C 静止仍待独立验证，继续暂停整机空跑和内核跳转。
+主机模拟和 ARM 编译已通过。首轮两分钟锁屏未观测到系统休眠。新脚本还读取现有挂起计数和筛选后的电源日志，醒后独立记录触摸。需要重装时用 `ports/koa2/build-stage-test-kit.sh` 在 WSL 构建套件，复制到 Kindle 的 `extensions/readom-koa2-stage-test`，并在设备盘校验 `SHA256SUMS`。
+安全弹出并拔线，在 KUAL 选择 **Stock sleep: record before**；正常锁屏并保持拔线约 30 分钟，唤醒后选择 **Stock sleep: check after (tap screen)**，十秒内点屏并确认原厂界面有响应，再接回电脑取同一份报告。预期结果是 `stock_sleep_touch_observed`。它验证正常休眠前后输入节点及读者快照一致、醒后有触摸事件。交接所需的 I²C 静止仍待独立验证，继续暂停整机空跑和内核跳转。
 
 ## 5. 资料已经上传到哪里
 

@@ -261,6 +261,6 @@ Wi-Fi 和触摸会停几秒，这是预期的。屏幕在 EPDC 停掉之后不�
 
 ## 原厂触摸休眠/唤醒核对
 
-安全弹出并拔掉 USB，保持原厂系统。在 KUAL 的 Readom KOA2 Stage Test 中选择 **Stock sleep: record before**。等待几秒，再按电源键正常锁屏并等待约两分钟，用电源键唤醒。回到 KUAL 选择 **Stock sleep: check after (tap screen)**，十秒内轻点屏幕并确认原厂界面有响应。结束后接回电脑。两个步骤更新同一份 `koa2-quiesce-dryrun/<运行编号>/report.txt`。
+安全弹出并拔掉 USB，保持原厂系统。在 KUAL 的 Readom KOA2 Stage Test 中选择 **Stock sleep: record before**。等待几秒，再按电源键正常锁屏并保持拔线约 30 分钟，用电源键唤醒。回到 KUAL 选择 **Stock sleep: check after (tap screen)**，十秒内轻点屏幕并确认原厂界面有响应。结束后接回电脑。两个步骤更新同一份 `koa2-quiesce-dryrun/<运行编号>/report.txt`。
 
 报告要求同一次开机、系统累计休眠时间实际增加至少一秒、触摸节点 inode 与 Xorg 读者标记相同，并收到完整接触帧。`stock_sleep_not_observed` 表示尚无证据表明系统进入休眠。节点和读者标记只证明两次快照观察一致，I²C 静止仍需独立验证。

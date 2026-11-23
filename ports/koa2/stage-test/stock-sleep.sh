@@ -42,6 +42,31 @@ field() {
     awk -v key="$1=" 'index($0, key) == 1 {print substr($0, length(key) + 1); exit}' "$LOG"
 }
 
+power_evidence() {
+    stats=/sys/kernel/debug/suspend_stats
+    if [ -r "$stats" ]; then
+        awk -v phase="$1" '$1 ~ /^(success|fail):$/ && $2 ~ /^[0-9]+$/ {
+            sub(/:$/, "", $1); print phase "_pm_" $1 "=" $2
+        }' "$stats"
+    else
+        printf '%s_pm_stats=unavailable\n' "$1"
+    fi
+    dmesg 2>/dev/null | awk -v phase="$1" '
+        /cyttsp5.*fb_notifier_callback: POWERDOWN!/ {++blank}
+        /cyttsp5.*fb_notifier_callback: UNBLANK!/ {++unblank}
+        /PM: Entering .* sleep/ {++entry}
+        /PM: Finishing wakeup/ {++wake}
+        /PM: (late suspend of devices failed|noirq suspend of devices failed|Some devices failed to suspend)/ {++fail}
+        END {
+            if (!NR) { print phase "_pm_log=unavailable"; exit }
+            print phase "_fb_blank=" blank + 0
+            print phase "_fb_unblank=" unblank + 0
+            print phase "_pm_entry=" entry + 0
+            print phase "_pm_wake=" wake + 0
+            print phase "_pm_errors=" fail + 0
+        }'
+}
+
 finish() {
     printf 'result=%s\n' "$1" >> "$LOG"
     printf 'Stock sleep check: %s\n' "$1"
@@ -64,11 +89,12 @@ case "${1:-}" in
         RUN=$(date -u +%Y%m%d-%H%M%S)-$$
         mkdir "$BASE/$RUN" || exit 1
         LOG="$BASE/$RUN/report.txt"
-        printf '%s\n' 'Readom KOA2 stock sleep observation v1' > "$LOG" || exit 1
+        printf '%s\n' 'Readom KOA2 stock sleep observation v2' > "$LOG" || exit 1
         if ! snapshot before >> "$LOG" 2>&1; then
             finish stock_sleep_baseline_unavailable
             exit 1
         fi
+        power_evidence before >> "$LOG"
         printf '%s\n' "$RUN" > "$PENDING" || exit 1
         ;;
     after)
@@ -76,6 +102,7 @@ case "${1:-}" in
         printf '%s\n' "$RUN" | grep -Eq '^[0-9]{8}-[0-9]{6}-[0-9]+$' || exit 1
         LOG="$BASE/$RUN/report.txt"
         [ -f "$LOG" ] || exit 1
+        power_evidence after >> "$LOG"
         if ! snapshot after >> "$LOG" 2>&1; then
             finish stock_sleep_input_unavailable
         elif [ "$boot" != "$(field before_boot)" ]; then
@@ -84,12 +111,17 @@ case "${1:-}" in
             delta=$(awk -v before="$(field before_suspend_total_ms)" -v after="$total" \
                 'BEGIN {if (before ~ /^[0-9]+$/) printf "%.0f\n", after - before}')
             printf 'suspend_delta_ms=%s\n' "$delta" >> "$LOG"
+            contact=unconfirmed
+            if "$HERE/touch-events" "$node" >> "$LOG" 2>&1; then
+                contact=observed
+            fi
+            printf 'after_touch=%s\n' "$contact" >> "$LOG"
             if ! awk -v delta="$delta" 'BEGIN {exit !(delta >= 1000)}'; then
                 finish stock_sleep_not_observed
             elif [ "$node" != "$(field before_node)" ] || [ "$identity" != "$(field before_inode)" ] ||
                 [ "$reader" != "$(field before_reader)" ]; then
                 finish stock_sleep_input_changed
-            elif "$HERE/touch-events" "$node" >> "$LOG" 2>&1; then
+            elif [ "$contact" = observed ]; then
                 finish stock_sleep_touch_observed
             else
                 finish stock_sleep_touch_unconfirmed
