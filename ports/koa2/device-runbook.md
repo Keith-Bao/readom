@@ -1,5 +1,7 @@
 # 设备测试流程（Oasis 2）
 
+> 2026-11-23 真机空跑后触摸未恢复，USB gadget 重载失败，EPDC 保持占用。禁用旧版空跑和真机跳转。新版 KUAL 入口 **Quiesce preflight (read-only)** 只采集驱动、输入设备、USB、根文件系统和 CPU 状态，正常报告以 `quiesce_blocked_pending_restore` 结尾。下文的停用步骤只用于解读旧版报告。
+
 这份文件是给**接手执行的人或 agent** 看的，不需要读过之前的对话。按顺序做，
 每一步都写清楚了要什么、会得到什么、出问题怎么办。英文版见
 [device-runbook.en.md](device-runbook.en.md)。

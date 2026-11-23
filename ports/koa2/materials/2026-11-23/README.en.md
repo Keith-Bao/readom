@@ -1,5 +1,7 @@
 # The two things to test on the device (2026-11-23 kit)
 
+> This directory archives the original 2026-11-23 kit. The original quiesce dry run left touch unresponsive and has been retired. See the [current device procedure](../../device-runbook.en.md).
+
 This file is the operating sheet for the evening. Hold the Kindle and work
 through it in order; no other document is needed, and neither WSL nor a rebuild.
 Chinese: [README.md](README.md).

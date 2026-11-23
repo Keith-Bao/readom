@@ -325,13 +325,11 @@ peripheral register on i.MX7 hangs the bus rather than returning a value, so a
 check written that way would hang the device in exactly the case where
 quiescing had worked.
 
-So the stopping is done from userspace
-(`ports/koa2/stage-test/quiesce-dryrun.sh`) through the kernel's own driver
-removal and `/sys/.../cpu1/online` paths, which are written for it and are
-reversible. That also settled an older open item: the EPDC's remove path frees
-its DMA framebuffers, so there is no longer anything to read at handoff time
-and exclude. The eMMC is the exception, being the root filesystem: sync and a
-read-only remount is as far as it goes.
+The original plan used driver removal and `/sys/.../cpu1/online` from userspace.
+On hardware, EPDC stayed busy and USB and touch did not recover in place. The
+EPDC remove path frees the DMA framebuffers only if the driver can be unloaded.
+The eMMC carries the root filesystem, so the procedure must handle sync and
+preserve the original mount mode.
 
 The module only checks the result (`quiesce-verify.c`): one core online, none
 of the four drivers loaded, the rootfs read-only, and the watchdog fed within
@@ -342,7 +340,6 @@ an argument and not a measurement. The test `koa2-quiesce-verify` watches one
 thing: that a machine which is not quiesced is never accepted, including the
 failure where the check passed because it did not look.
 
-`koa2-quiesce-dryrun` runs the real script against a simulated device and
-checks the order, that every device is put back, that the rootfs goes
-read-write before any reload, and the four refusals. See section six of
+`koa2-quiesce-dryrun` runs the read-only preflight against a simulated device
+and checks that collection leaves the device state unchanged. See section six of
 [ports/koa2/handoff-quiesce.md](../../ports/koa2/handoff-quiesce.md).

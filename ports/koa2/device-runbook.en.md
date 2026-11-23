@@ -1,5 +1,7 @@
 # Device test procedure (Oasis 2)
 
+> On 2026-11-23, touch did not recover after the dry run, USB gadget reload failed, and the EPDC driver stayed busy. Do not run the original dry run or attempt a handoff. The updated **Quiesce preflight (read-only)** KUAL entry records driver, input, USB, root filesystem, and CPU state. Its expected result is `quiesce_blocked_pending_restore`. The stop steps below describe the original test for interpreting its reports.
+
 This file is for **whoever runs the test**, human or agent, and assumes no
 earlier conversation. Work through it in order; each step says what it needs,
 what it gives back, and what to do when it goes wrong. Chinese version:

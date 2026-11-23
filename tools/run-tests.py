@@ -70,8 +70,7 @@ TESTS = [
     # preserving DRAM.
     ('koa2-marker-check', 'python', ['tools/tests/test_koa2_marker_check.py'], False),
     ('koa2-quiesce-verify', 'c', ['boot/koa2/quiesce-verify.c', 'boot/koa2/test-quiesce-verify.c'], False),
-    # The script that stops the device's DMA masters and puts them back,
-    # run against a simulated device: the putting back is the point.
+    # Run the read-only KOA2 preflight against a simulated stock system.
     ('koa2-quiesce-dryrun', 'python', ['tools/tests/test_koa2_quiesce_dryrun.py'], False),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),

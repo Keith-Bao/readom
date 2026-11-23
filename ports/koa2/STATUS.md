@@ -11,14 +11,16 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 主机 18 项 KOA2 测试通过、0 项失败。
 2026-11-23 读标记的脚本改用 `tr` 取文本并要求读取自证成功：原来用 `strings`，
 这台机器没有该 applet 的证据，缺失时会误报成 `marker_absent`。
-今晚要跑的套件和操作单在[资料目录](materials/2026-11-23/README.md)。
+旧版套件和当时的操作单存档在[资料目录](materials/2026-11-23/README.md)。
+
+2026-11-23 实机确认标记能跨正常重启。旧空跑未完成：EPDC 仍被占用，USB gadget 重载报错，触摸在强制重启后恢复。只读预检确认原厂触摸输入设备和 USB 模块已出现。
 
 ## 眼下的位置
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 设备上两件事，都不碰跳转：放一个标记、重启、确认它还在（`marker-test.sh`，顺带验证复位是否真的保留 DRAM），以及静止空跑（`quiesce-dryrun.sh`，停设备再全部放回） |
-| 实机结果 | `sealed_plan_valid`；insmod_exit=0、client_exit=0、rmmod_exit=0 |
+| 下一步是什么 | 先审计原厂触摸和 USB 恢复路径，补齐恢复检查，再决定是否重做空跑 |
+| 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；空跑 `incomplete_see_above` |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)），原厂内核树编不出来 |
 | 有没有不可逆的操作 | 没有。本次已加载并卸载暂存模块；未执行跳转或分区写入 |
@@ -34,9 +36,9 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 | 复制表与审计 | `boot/koa2/copylist.c` | `koa2-copylist` | 实机暂存检查通过 |
 | 暂存模块（无跳转） | `boot/koa2/stage.c` | `koa2-stage` | 加载、封存、卸载成功 |
 | 原厂 CRC 核对 | `ports/koa2/module-crcs.py` | `koa2-module-crcs`、`koa2-stock-abi` | 63 个原厂模块已离线核对：31 个导入全部一致 |
-| 跳转前标记 | `boot/koa2/marker.c`、模块侧 `K2S_MARK` | `koa2-marker`、`koa2-marker-wiring`、`koa2-stage` | 35 个导入与原厂 CRC 全部一致；未在设备上放过标记 |
+| 跳转前标记 | `boot/koa2/marker.c`、模块侧 `K2S_MARK` | `koa2-marker`、`koa2-marker-wiring`、`koa2-stage` | 实机放置后跨正常重启读回 |
 | 跳转蹦床 | `boot/koa2/jump.S` | `koa2-jump-baremetal` | 未编进模块，未执行 |
-| 静止顺序 | `boot/koa2/quiesce.c`、`quiesce-verify.c` | `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-quiesce-dryrun` | 停设备改由用户空间做（见 [handoff-quiesce.md](handoff-quiesce.md) 第六节）；空跑脚本已在套件里，未在设备上跑过 |
+| 静止顺序 | `boot/koa2/quiesce.c`、`quiesce-verify.c` | `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-quiesce-dryrun` | 旧版空跑失败，已用只读预检替换设备入口 |
 | 构建可复现性 | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | 不适用 |
 
 ## 模块 ABI（2026-11-21 查明）

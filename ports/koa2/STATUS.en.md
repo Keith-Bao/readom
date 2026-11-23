@@ -14,15 +14,17 @@ into the module (`K2S_MARK`); it is not a jump and does not open the way to one.
 On 2026-11-23 the script that reads the marker back moved to `tr` and now
 requires the read to prove itself: it used `strings`, which this device is not
 known to have, and a missing applet read as `marker_absent`.
-The kit for tonight and its operating sheet are in
+The original kit and its operating sheet are archived in
 [the materials folder](materials/2026-11-23/README.en.md).
+
+On 2026-11-23 the marker survived a normal restart. The original dry run was incomplete. EPDC stayed busy, USB gadget reload failed, and touch recovered after a forced restart. The read-only preflight confirmed the stock touch input device and USB module were present.
 
 ## Where this sits right now
 
 | Question | Answer |
 |---|---|
-| What is next | Two things on the device, neither touching the jump: place a marker, restart, confirm it is still there (`marker-test.sh`, which also tests whether the reset really does preserve DRAM), and the quiesce dry run (`quiesce-dryrun.sh`, which stops the devices and puts them all back) |
-| Observed result | `sealed_plan_valid`; insmod_exit=0, client_exit=0, rmmod_exit=0 |
+| What is next | Audit how stock touch and USB are restored and add recovery checks before deciding whether to rerun quiesce |
+| Observed result | Staging `sealed_plan_valid`, restart marker `marker_survived`, dry run `incomplete_see_above` |
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
 | Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |
@@ -39,8 +41,8 @@ The kit for tonight and its operating sheet are in
 | The staging module (no jump) | `boot/koa2/stage.c` | `koa2-stage` | Loaded, sealed and unloaded successfully |
 | Stock CRC checking | `ports/koa2/module-crcs.py`, `koa2-stock-abi` | `koa2-module-crcs` | 63 stock modules checked offline: all 31 imports agree |
 | The jump trampoline | `boot/koa2/jump.S` | `koa2-jump-baremetal` | In no module, never executed |
-| The quiesce sequence | `boot/koa2/quiesce.c`, `quiesce-verify.c` | `koa2-quiesce`, `koa2-quiesce-verify`, `koa2-quiesce-dryrun` | Stopping the devices moved to userspace (section six of [handoff-quiesce.md](handoff-quiesce.md)); the dry run is in the kit and has not been run on the device |
-| The pre-jump marker | `boot/koa2/marker.c`, `K2S_MARK` in the module | `koa2-marker`, `koa2-marker-wiring`, `koa2-stage` | All 35 imports match stock CRCs; no marker placed on the device yet |
+| The quiesce sequence | `boot/koa2/quiesce.c`, `quiesce-verify.c` | `koa2-quiesce`, `koa2-quiesce-verify`, `koa2-quiesce-dryrun` | The original dry run failed. The device entry now runs a read-only preflight. |
+| The pre-jump marker | `boot/koa2/marker.c`, `K2S_MARK` in the module | `koa2-marker`, `koa2-marker-wiring`, `koa2-stage` | Placed and recovered across a normal restart on the device |
 | Build reproducibility | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | Not applicable |
 
 ## The module ABI (settled 2026-11-21)

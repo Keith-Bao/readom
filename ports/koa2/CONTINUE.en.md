@@ -34,27 +34,10 @@ The accompanying [SHA256SUMS](reports/2026-11-21-stage-test/SHA256SUMS) identifi
 
 ## 3. Work that needs no device
 
-The first two are done, and not the way they were planned. Section six of
-[handoff-quiesce.md](handoff-quiesce.md) says why:
-
-- **The devices are not stopped from the module.** Almost nothing that stops one
-  can be checked (`lock_fb_info`'s CRC differs from stock, so touching the
-  framebuffer would be refused at load), and once a clock is gated, reading a
-  peripheral register hangs the bus -- so "read the engine's status and confirm
-  it is idle" would hang the device in exactly the case where quiescing had
-  worked. It is done from userspace instead, through the kernel's own removal
-  and hotplug paths (`stage-test/quiesce-dryrun.sh`), and the module only
-  checks the result (`quiesce-verify.c`).
-- **The EPDC exclusion is no longer needed.** The EPDC's remove path frees those
-  DMA framebuffers, so once it is unloaded they are ordinary free pages and
-  there is nothing to exclude.
-
-What can be done now without the device:
-
-1. ~~Wire the pre-jump marker into the jump stage~~ **done (2026-11-22)**: the write lives in the module's `K2S_MARK` (`koa2_marker_place`), and is not a jump. Wiring it corrected three things section four of [recovery.md](recovery.md) used to say: the marker goes at the **end** of the live half, it has to clean itself out of the caches (a watchdog reset does not), and `__arm_ioremap` refuses RAM, so `phys_to_virt` is used. Two symbol choices there make the module fail to load outright; `koa2-marker-wiring` guards both. Proving on the device that a marker survives a reset takes two runs, see section four below.
-2. Investigate the [EPDC source gap](epdc-source-gap.md). This independently blocks full Android and is not solved by passing staging. Progress on 2026-11-23: the size and position of both blocks in this one waveform are read from the device log; of the 5 functions that cannot be stubbed, 3 reach the hardware when wrong, including `mxc_set_vcom`, whose value is the easiest to get; night mode (`GCK16`/`GLKW16`) is chosen from userspace, so a first version refuses those two waveforms where updates are submitted; `einkwf_panel_*` has no callers. The next steps are at the end of that file.
-3. The jump stage itself (`boot/koa2/jump.S` is written and verified bare-metal in QEMU, but is in no module). Before wiring it in, everything in section five of [recovery.md](recovery.md) has to hold.
-4. Run the tests below for any change. Record passes, failures and skips separately; missing dependencies are not passes.
+1. Trace how the stock system initializes and restores touch and USB storage. For touch, verify that `cyttsp5_mt` is registered again and produces events. For USB, verify the stock module parameters and that the host can see storage again. Preserve the root filesystem's original mount mode.
+2. Continue investigating the [EPDC source gap](epdc-source-gap.md). EPDC stayed busy during the device dry run, so we have no evidence that its DMA framebuffers can be freed at this stage.
+3. Keep staging and execution separate. The handoff gates are in section five of [recovery.md](recovery.en.md).
+4. Run the host tests below after changes. Record passes, failures and skips separately.
 
 ```bash
 python3 tools/run-tests.py --filter koa2
@@ -63,31 +46,16 @@ python3 tools/tests/test_doc_links.py
 ```
 
 See [the build environment](build-environment.md). Kernel sources, cross toolchains, build outputs and the WSL virtual disk do not arrive with a Git pull.
-Keep the staging and execution entry points separate; do not simply make the staging module jump.
 
 ## 4. When the Kindle is needed again
 
-The next trip to the device has two things on it, in either order, and neither
-touches the jump:
+The restart marker test passed on 2026-11-23. In the original dry run, EPDC stayed busy, USB storage failed to reload, and touch recovered after a forced restart. The replacement KUAL entry is a read-only preflight, which has recorded the stock state after restart.
 
-- **The marker test**, section 8c of [the device procedure](device-runbook.en.md):
-  place a marker, restart, then read `/proc/printkbuf` to see that it is still
-  there. It also tests what section two of [recovery.md](recovery.en.md) only
-  reasons about from source -- that the reset preserves DRAM. If the marker does
-  not survive, that section is wrong.
-- **The quiesce dry run**, section 8b: stop the devices and put them all back,
-  loading no module and jumping nowhere.
-
-Before a real handoff, recovery, log collection and the stop conditions at each
-step have to be stated -- the recovery analysis is written
-([recovery.md](recovery.en.md)), and the two conditions left are both on the
-device.
-The user starts device tests by hand; no repeat hardware collection or staging run is needed now.
-See [the device procedure](device-runbook.en.md) and [stage gates](ROADMAP.en.md).
+The Kindle is idle for now. Once the recovery paths and host tests are ready, validate each peripheral separately. The dry run and handoff are on hold. See [the device procedure](device-runbook.en.md) for the KUAL entry.
 
 ## 5. Where the materials are now
 
-The kit for the next trip to the device and its operating sheet are in
+The original kit and its operating sheet are archived in
 [the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the
 ten-file KUAL kit, the module's imports and CRC result, and a step-by-step sheet
 for the marker test and the quiesce dry run.
