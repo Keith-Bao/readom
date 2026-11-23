@@ -74,6 +74,7 @@ TESTS = [
     ('koa2-quiesce-dryrun', 'python', ['tools/tests/test_koa2_quiesce_dryrun.py'], False),
     ('koa2-usb-lun', 'python', ['tools/tests/test_koa2_usb_lun.py'], False),
     ('koa2-usb-reload', 'python', ['tools/tests/test_koa2_usb_reload.py'], False),
+    ('koa2-stock-sleep', 'python', ['tools/tests/test_koa2_stock_sleep.py'], True),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),
     ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),

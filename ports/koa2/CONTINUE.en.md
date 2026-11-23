@@ -53,6 +53,10 @@ The restart marker test passed on 2026-11-23. In the original dry run, EPDC stay
 
 The Kindle is idle for now. Once the recovery paths and host tests are ready, validate each peripheral separately. The dry run and handoff are on hold. See [the device procedure](device-runbook.en.md) for the KUAL entry.
 
+### Next device session
+Host simulations and ARM compilation passed. The device still has the previous kit because automatic approval review hit its usage limit and the installation command did not run. Build with `ports/koa2/build-stage-test-kit.sh` in WSL, copy the kit into `extensions/readom-koa2-stage-test`, and verify `SHA256SUMS` on the Kindle volume.
+Eject and unplug USB. In KUAL choose **Stock sleep: record before**, lock normally for about two minutes, wake, then choose **Stock sleep: check after (tap screen)**. Tap within ten seconds, check that the stock UI responds, and reconnect to retrieve the single report. Expect `stock_sleep_touch_observed`. I²C quiescence still needs independent evidence. Keep full quiesce and kernel handoff on hold.
+
 ## 5. Where the materials are now
 
 The original kit and its operating sheet are archived in

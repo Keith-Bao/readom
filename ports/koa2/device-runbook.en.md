@@ -287,3 +287,9 @@ goes into Git.
 | What each quiesce step does to the hardware | Only the order and the rollback are checked today |
 | Whether the printk buffer survives a WDOG_B reset | Only measurable on the device |
 | The handoff itself (copy and jump) | Not until all of the above is settled |
+
+## Stock touchscreen sleep and wake check
+
+Safely eject and unplug USB, staying in the stock system. In KUAL under Readom KOA2 Stage Test, choose **Stock sleep: record before**. Wait a few seconds, press the power button to lock normally, wait about two minutes, then press power to wake. In KUAL choose **Stock sleep: check after (tap screen)**, tap within ten seconds and check that the stock UI responds. Reconnect after the check. Both steps update the same `koa2-quiesce-dryrun/<run ID>/report.txt`.
+
+A valid report requires the same boot, at least one extra second of cumulative system suspension, matching touch node inode and Xorg reader marker, and a complete contact frame. `stock_sleep_not_observed` means system suspension was not demonstrated. The matching node and reader are observations at two points in time. I²C quiescence still requires independent evidence.

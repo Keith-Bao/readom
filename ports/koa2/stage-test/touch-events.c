@@ -35,11 +35,11 @@ static bool touch_reported(struct touch_frame *frame, const struct input_event *
     return false;
 }
 
-static int64_t monotonic_ms(void)
+static int64_t clock_ms(clockid_t clock)
 {
     struct timespec now;
 
-    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
+    if (clock_gettime(clock, &now) < 0)
         return -1;
     return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
 }
@@ -48,13 +48,13 @@ static const char *observe_touch(int fd)
 {
     struct pollfd reader = {.fd = fd, .events = POLLIN};
     struct touch_frame frame = {0};
-    int64_t start = monotonic_ms();
+    int64_t start = clock_ms(CLOCK_MONOTONIC);
 
     if (start < 0)
         return "touch_clock_error";
     for (;;) {
         struct input_event events[16];
-        int64_t now = monotonic_ms();
+        int64_t now = clock_ms(CLOCK_MONOTONIC);
         ssize_t count;
         int ready;
 
@@ -89,6 +89,16 @@ int main(int argc, char **argv)
 
     if (argc != 2)
         return 2;
+    if (strcmp(argv[1], "--suspend-total-ms") == 0) {
+        int64_t monotonic = clock_ms(CLOCK_MONOTONIC);
+        int64_t boottime = clock_ms(CLOCK_BOOTTIME);
+        int64_t after = clock_ms(CLOCK_MONOTONIC);
+
+        if (monotonic < 0 || boottime < monotonic || after < monotonic || after - monotonic > 100)
+            return 1;
+        printf("%lld\n", (long long)(boottime - monotonic));
+        return 0;
+    }
     fd = open(argv[1], O_RDONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
         puts("touch_open_failed");
