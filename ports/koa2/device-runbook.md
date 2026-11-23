@@ -2,6 +2,8 @@
 
 > 2026-11-23 真机空跑后触摸未恢复，USB gadget 重载失败，EPDC 保持占用。禁用旧版空跑和真机跳转。新版 KUAL 入口 **Quiesce preflight (read-only)** 只采集驱动、输入设备、USB、根文件系统和 CPU 状态，正常报告以 `quiesce_blocked_pending_restore` 结尾。下文的停用步骤只用于解读旧版报告。
 
+更新后的套件还提供 **Check live touch (tap screen)**。启动后 10 秒内轻点屏幕一次。探针以只读方式打开当前的 `cyttsp5_mt` 事件节点，报告 `touch_contact_observed` 表示收到了完整的接触事件帧。超时只表示该窗口未观察到触摸。探针不会保存坐标，预检报告仍以 `quiesce_blocked_pending_restore` 结尾。USB 部分记录原厂存储模块的 LUN 参数和控制器状态，电脑识别并读取 Kindle 盘需独立确认。
+
 这份文件是给**接手执行的人或 agent** 看的，不需要读过之前的对话。按顺序做，
 每一步都写清楚了要什么、会得到什么、出问题怎么办。英文版见
 [device-runbook.en.md](device-runbook.en.md)。

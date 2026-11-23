@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run the KOA2 quiesce preflight against a simulated stock system."""
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -18,7 +19,7 @@ def shell_path(path):
     return str(path)
 
 
-def check_preflight(release, expected_result):
+def check_preflight(release, expected_result, touch=False):
     with tempfile.TemporaryDirectory(dir=ROOT if os.name == "nt" else None) as temp:
         root = Path(temp)
         files = {
@@ -29,6 +30,8 @@ def check_preflight(release, expected_result):
             "sys/devices/system/cpu/cpu1/online": "1\n",
             "sys/class/input/event3/device/name": "cyttsp5_mt\n",
             "sys/module/g_mass_storage/parameters/file": "/dev/mmcblk2p7\n",
+            "sys/module/g_mass_storage/parameters/luns": "2\n",
+            "sys/class/udc/ci_hdrc.0/state": "not attached\n",
         }
         for name, content in files.items():
             path = root / name
@@ -47,8 +50,17 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
             text = text.replace(prefix, fake_set + prefix)
         script = root / "preflight.sh"
         script.write_text(commands + text, newline="\n")
+        if touch:
+            probe = root / "touch-events"
+            probe.write_text('#!/bin/sh\n[ "$1" = /dev/input/event3 ] || exit 2\necho touch_contact_observed\n', newline="\n")
+            probe.chmod(0o755)
+            digest = hashlib.sha256(probe.read_bytes()).hexdigest()
+            (root / "SHA256SUMS").write_text(f"{digest}  touch-events\n", newline="\n")
         shell = str(GIT_BASH) if os.name == "nt" and GIT_BASH.exists() else shutil.which("sh")
-        subprocess.run([shell, shell_path(script)], check=True, timeout=20)
+        command = [shell, shell_path(script)]
+        if touch:
+            command.append("touch")
+        subprocess.run(command, check=True, timeout=20)
         base = root / "mnt/us/koa2-quiesce-dryrun"
         report = (base / (base / "LAST_RUN.txt").read_text().strip() / "report.txt").read_text()
         assert report.splitlines()[-1] == f"result={expected_result}", report
@@ -60,11 +72,60 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
             assert "input=event3 name=cyttsp5_mt" in report, report
             assert "touch_i2c_binding=1-0024" in report, report
             assert "usb_backing_file=configured" in report, report
+            assert "usb_luns=2" in report, report
+            assert "usb_udc=ci_hdrc.0 state=not attached" in report, report
+            assert ("touch=touch_contact_observed" in report) == touch, report
             assert "/dev/mmcblk2p7" not in report, report
         else:
             assert "[drivers]" not in report, report
 
 
+def check_touch_frames(compiler):
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        source = root / "frames.c"
+        binary = root / "frames"
+        source.write_text('''
+#define main touch_probe_main
+#include "touch-events.c"
+#undef main
+#include <assert.h>
+
+static bool event(struct touch_frame *frame, unsigned type, unsigned code, int value)
+{
+    const struct input_event input = {.type = type, .code = code, .value = value};
+    return touch_reported(frame, &input);
+}
+
+int main(void)
+{
+    struct touch_frame frame = {0};
+
+    assert(!event(&frame, EV_ABS, ABS_MT_TRACKING_ID, -1));
+    assert(!event(&frame, EV_ABS, ABS_MT_POSITION_X, 120));
+    assert(!event(&frame, EV_SYN, SYN_REPORT, 0));
+    assert(!event(&frame, EV_ABS, ABS_MT_TRACKING_ID, 1));
+    assert(!event(&frame, EV_SYN, SYN_DROPPED, 0));
+    assert(!event(&frame, EV_KEY, BTN_TOUCH, 1));
+    assert(!event(&frame, EV_SYN, SYN_REPORT, 0));
+    assert(!event(&frame, EV_ABS, ABS_MT_TRACKING_ID, 2));
+    assert(event(&frame, EV_SYN, SYN_REPORT, 0));
+    assert(!event(&frame, EV_SYN, SYN_REPORT, 0));
+    assert(!event(&frame, EV_KEY, BTN_TOUCH, 1));
+    assert(event(&frame, EV_SYN, SYN_REPORT, 0));
+    return 0;
+}
+''', encoding="utf-8")
+        subprocess.run([compiler, "-std=c11", "-Wall", "-Wextra", "-Werror",
+                        "-I", str(SCRIPT.parent), str(source), "-o", str(binary)], check=True)
+        subprocess.run([str(binary)], check=True, timeout=5)
+
+
 check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore")
 check_preflight("4.9.0-other", "refused_unknown_kernel")
+if os.name != "nt":
+    check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", touch=True)
+    compiler = shutil.which("cc")
+    if compiler:
+        check_touch_frames(compiler)
 print("KOA2 quiesce preflight: recorded stock state without changing it and refused another kernel")

@@ -2,6 +2,8 @@
 
 > On 2026-11-23, touch did not recover after the dry run, USB gadget reload failed, and the EPDC driver stayed busy. Do not run the original dry run or attempt a handoff. The updated **Quiesce preflight (read-only)** KUAL entry records driver, input, USB, root filesystem, and CPU state. Its expected result is `quiesce_blocked_pending_restore`. The stop steps below describe the original test for interpreting its reports.
 
+The updated kit also has **Check live touch (tap screen)**. Tap once within ten seconds. The probe opens the current `cyttsp5_mt` event device read-only. `touch_contact_observed` records a complete contact frame, and a timeout means that no contact was observed in that window. The probe saves no coordinates. The preflight still ends with `quiesce_blocked_pending_restore`. The USB section records the stock storage module's LUN parameters and USB controller state. Verify host detection and readable storage separately.
+
 This file is for **whoever runs the test**, human or agent, and assumes no
 earlier conversation. Work through it in order; each step says what it needs,
 what it gives back, and what to do when it goes wrong. Chinese version:

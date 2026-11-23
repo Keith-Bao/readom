@@ -7,9 +7,29 @@ RUN=$(date -u +%Y%m%d-%H%M%S)-$$
 DIR="$BASE/$RUN"
 mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 LOG="$DIR/report.txt"
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+
+check_touch() {
+    if [ ! -x "$HERE/touch-events" ]; then
+        printf '%s\n' 'touch=touch_probe_missing'
+        return
+    fi
+    if ! (cd "$HERE" && grep '  touch-events$' SHA256SUMS | sha256sum -c - >/dev/null 2>&1); then
+        printf '%s\n' 'touch=touch_probe_checksum_failed'
+        return
+    fi
+    for event in /sys/class/input/event*; do
+        [ -r "$event/device/name" ] || continue
+        [ "$(cat "$event/device/name")" = cyttsp5_mt ] || continue
+        result=$("$HERE/touch-events" "/dev/input/${event##*/}")
+        printf 'touch=%s\n' "${result:-touch_probe_failed}"
+        return
+    done
+    printf '%s\n' 'touch=touch_device_missing'
+}
 
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v2'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v3'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
@@ -33,9 +53,12 @@ LOG="$DIR/report.txt"
             [ -d "$device" ] || continue
             printf 'touch_i2c_binding=%s\n' "${device##*/}"
         done
+        if [ "${1:-}" = touch ]; then
+            check_touch
+        fi
 
         printf '\n[usb]\n'
-        for parameter in file ro removable stall; do
+        for parameter in file luns ro removable cdrom nofua stall recovery_mode; do
             value="/sys/module/g_mass_storage/parameters/$parameter"
             [ -r "$value" ] || continue
             if [ "$parameter" = file ]; then
@@ -47,6 +70,10 @@ LOG="$DIR/report.txt"
             else
                 printf 'usb_%s=%s\n' "$parameter" "$(cat "$value")"
             fi
+        done
+        for controller in /sys/class/udc/*; do
+            [ -r "$controller/state" ] || continue
+            printf 'usb_udc=%s state=%s\n' "${controller##*/}" "$(cat "$controller/state")"
         done
 
         printf '\n%s\n' 'result=quiesce_blocked_pending_restore'
