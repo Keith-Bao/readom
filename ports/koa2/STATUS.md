@@ -8,7 +8,10 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 2026-11-21，实机暂存测试通过（sealed_plan_valid），模块成功加载并卸载。
 布局、FDT 改写和复制表审计通过；尚未启动新内核。
 2026-11-22 跳转标记的写入已接上模块（`K2S_MARK`），不是跳转，也没打开跳转。
-主机 65 项通过、0 项失败。
+主机 18 项 KOA2 测试通过、0 项失败。
+2026-11-23 读标记的脚本改用 `tr` 取文本并要求读取自证成功：原来用 `strings`，
+这台机器没有该 applet 的证据，缺失时会误报成 `marker_absent`。
+今晚要跑的套件和操作单在[资料目录](materials/2026-11-23/README.md)。
 
 ## 眼下的位置
 

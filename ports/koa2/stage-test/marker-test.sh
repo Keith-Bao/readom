@@ -51,13 +51,28 @@ if [ "$WHAT" = check ]; then
     [ -r /proc/printkbuf ] || finish refused_no_printkbuf
     dd if=/proc/printkbuf of="$DIR/previous-boot.bin" bs=4096 2>> "$LOG"
     say "bytes=$(wc -c < "$DIR/previous-boot.bin")"
-    # Keep only the marker lines: the rest of that log is the device s own and
-    # is not ours to upload.
-    strings "$DIR/previous-boot.bin" 2>/dev/null | grep KOA2_HANDOFF > "$DIR/markers.txt"
+    # The text comes out with tr, not strings. The boot preflight already read
+    # this buffer on this device that way, while nothing says this busybox has a
+    # strings applet at all -- and a missing applet produces an empty result,
+    # which is precisely what a marker that did not survive looks like.
+    tr '\000' '\n' < "$DIR/previous-boot.bin" > "$DIR/previous-boot.txt" 2>> "$LOG"
+    # The read has to be shown to have worked before its silence means anything.
+    # Every boot of this kernel leaves hundreds of bracketed timestamps in here,
+    # so finding none of them says the buffer was not read, not that the marker
+    # is gone. grep -c prints 0 and exits 1 when it matches nothing, so the
+    # count is taken on its own and the exit status left alone.
+    LINES=$(grep -c '\[ *[0-9][0-9]*\.[0-9]' "$DIR/previous-boot.txt" 2>/dev/null)
+    [ -n "$LINES" ] || LINES=0
+    say "previous_boot_log_lines=$LINES"
+    # Only the marker lines are kept: the rest of that log is the device s own
+    # and is not ours to upload.
+    grep KOA2_HANDOFF "$DIR/previous-boot.txt" > "$DIR/markers.txt" 2>/dev/null || true
     say "markers_found=$(wc -l < "$DIR/markers.txt")"
     cat "$DIR/markers.txt" >> "$LOG"
-    rm -f "$DIR/previous-boot.bin"
-    if [ -s "$DIR/markers.txt" ]; then finish marker_survived; else finish marker_absent; fi
+    rm -f "$DIR/previous-boot.bin" "$DIR/previous-boot.txt"
+    if [ -s "$DIR/markers.txt" ]; then finish marker_survived; fi
+    [ "$LINES" -ge 20 ] || finish refused_buffer_unreadable
+    finish marker_absent
 fi
 
 [ "$WHAT" = place ] || finish refused_unknown_argument

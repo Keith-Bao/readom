@@ -87,6 +87,10 @@ See [the device procedure](device-runbook.en.md) and [stage gates](ROADMAP.en.md
 
 ## 5. Where the materials are now
 
+The kit for the next trip to the device and its operating sheet are in
+[the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the
+ten-file KUAL kit, the module's imports and CRC result, and a step-by-step sheet
+for the marker test and the quiesce dry run.
 At the user's request, the [materials folder](materials/2026-11-21/README.en.md) is committed to this branch: stock modules, de-identified complete dmesg, toolchain, kit, source archive parts and reference configuration arrive with Git.
 Its README includes SHA256 checks, source assembly and rebuilding commands.
 The stock runtime DTB is the only missing item; no separate backup was found, and the built DTB is not a substitute.

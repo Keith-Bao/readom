@@ -10,7 +10,12 @@ The device staging test passed on 2026-11-21 (Asia/Shanghai): sealed_plan_valid.
 The module loaded, validated the layout, FDT rewrite and copy list, and unloaded.
 No new kernel has booted. On 2026-11-22 the pre-jump marker's write was wired
 into the module (`K2S_MARK`); it is not a jump and does not open the way to one.
-65 host tests pass and none fail.
+18 KOA2 host tests pass and none fail.
+On 2026-11-23 the script that reads the marker back moved to `tr` and now
+requires the read to prove itself: it used `strings`, which this device is not
+known to have, and a missing applet read as `marker_absent`.
+The kit for tonight and its operating sheet are in
+[the materials folder](materials/2026-11-23/README.en.md).
 
 ## Where this sits right now
 

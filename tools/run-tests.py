@@ -65,6 +65,10 @@ TESTS = [
     ('koa2-marker', 'c', ['boot/koa2/marker.c', 'boot/koa2/test-marker.c'], False),
     # The marker is only useful if it reaches DRAM and the module still loads.
     ('koa2-marker-wiring', 'python', ['tools/tests/test_koa2_marker_wiring.py'], False),
+    # Reading the marker back after a restart. An empty result must mean an
+    # absent marker and nothing else: the runbook reads it as the reset not
+    # preserving DRAM.
+    ('koa2-marker-check', 'python', ['tools/tests/test_koa2_marker_check.py'], False),
     ('koa2-quiesce-verify', 'c', ['boot/koa2/quiesce-verify.c', 'boot/koa2/test-quiesce-verify.c'], False),
     # The script that stops the device's DMA masters and puts them back,
     # run against a simulated device: the putting back is the point.
