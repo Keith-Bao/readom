@@ -11,11 +11,12 @@ English: [CONTINUE.en.md](CONTINUE.en.md)。
 ```bash
 cd ~/readom-work/readom
 git status --short --branch
-git switch port/koa2
-git pull --ff-only origin port/koa2
+git fetch origin
+git switch port/koa2-quiesce-preflight
+git pull --ff-only
 ```
 
-首次获取时，在 WSL 中从 Keith-Bao/readom 克隆并选择 port/koa2 分支。
+首次获取时，在 WSL 中从 Keith-Bao/readom 克隆并选择 port/koa2-quiesce-preflight 分支。
 如果 status 显示未提交修改或 pull 拒绝，先保存并检查差异，不 reset、不强行覆盖。
 仓库目录位置是约定；不同电脑可自行调整。
 先看[当前状态](STATUS.md)，再看[交接实现](../../boot/koa2/README.md)和[静止顺序审计](handoff-quiesce.md)。
@@ -34,10 +35,10 @@ execute_available=0，insmod_exit/client_exit/rmmod_exit 均为 0。
 
 ## 3. 不接设备先做什么
 
-1. USB 单项重载及 Windows 读盘已验证。触摸优先验证原厂休眠和唤醒能否保留输入节点与 Xorg 句柄，并以醒来后的触摸事件和界面响应为准。交接所需的 I²C 静止仍须独立验证。见[触摸休眠审计](handoff-quiesce.md)。
-2. 继续调查 [EPDC 源码缺口](epdc-source-gap.md)。真机空跑时 EPDC 驱动仍被占用，目前没有证据表明它可以在此阶段释放 DMA 帧缓冲。
-3. 继续保留暂存和执行的独立入口。交接验证条件见 [recovery.md](recovery.md) 第五节。
-4. 改动后运行以下主机测试，分别记录通过、失败和跳过。
+1. **触摸 I²C**：用已校验的原厂源码追踪 `cyttsp5_core_sleep_()`、IRQ 处理、watchdog 和 startup 工作队列。设计能排空在途 IRQ/I²C、独立确认停机并可唤醒的方案，保留 evdev 节点和 Xorg。补齐断电失败、超时和回滚测试。不能用 `sleep_status=off` 或普通休眠结果放宽 `quiesce-verify.c`。
+2. **EPDC**：对照 [EPDC 源码缺口](epdc-source-gap.md) 和原厂日志设计只读采集，定位 framebuffer 打开者、驱动引用和待完成刷新。此前模块有 3 个引用，先论证如何释放引用和处置 DMA 帧缓冲，再设计单项停用。
+3. **交接验证**：保持暂存和执行入口分开。按 [recovery.md](recovery.md) 检查回退和早期日志条件。QEMU 裸机跳转测试在当前分支和基线都缺串口输出，排查模拟环境，不能算通过。
+4. 按下列命令跑主机测试，分别记录通过、失败和跳过。
 
 ```bash
 python3 tools/run-tests.py --filter koa2
@@ -49,13 +50,9 @@ python3 tools/tests/test_doc_links.py
 
 ## 4. 何时才需要 Kindle
 
-2026-11-23 的重启标记测试通过。旧版静止空跑时 EPDC 保持占用，USB 存储重载失败，触摸在强制重启后才恢复。新版 KUAL 入口为只读预检，已用它记录正常启动时的状态。
+已确认：暂存通过，标记跨正常重启保存，USB 单项重载后 Windows 能读盘。2026-11-24 原厂休眠报告为 `stock_sleep_touch_observed`，记录 2 次成功挂起、0 次失败和 3,602,010 ms 累计休眠增量。醒后触摸节点与 Xorg 句柄标记一致，探针收到完整接触事件。原始报告已在家里电脑校验留存，设备上的测试入口和副本已清理。详见[真机结果及审计](handoff-quiesce.md)。
 
-当前无需再操作 Kindle。恢复路径和主机测试就绪后，再按设备分别安排验证。空跑与新内核交接暂缓。设备入口见[实机操作手册](device-runbook.md)。
-
-### 下一次真机操作
-主机模拟和 ARM 编译已通过。首轮两分钟锁屏未观测到系统休眠。新脚本还读取现有挂起计数和筛选后的电源日志，醒后独立记录触摸。需要重装时用 `ports/koa2/build-stage-test-kit.sh` 在 WSL 构建套件，复制到 Kindle 的 `extensions/readom-koa2-stage-test`，并在设备盘校验 `SHA256SUMS`。
-安全弹出并拔线，在 KUAL 选择 **Stock sleep: record before**；正常锁屏并保持拔线约 30 分钟，唤醒后选择 **Stock sleep: check after (tap screen)**，十秒内点屏并确认原厂界面有响应，再接回电脑取同一份报告。预期结果是 `stock_sleep_touch_observed`。它验证正常休眠前后输入节点及读者快照一致、醒后有触摸事件。交接所需的 I²C 静止仍待独立验证，继续暂停整机空跑和内核跳转。
+**公司阶段可以不接 Kindle。** 等主机侧的触摸和 EPDC 方案、模拟测试和回滚流程就绪，再准备一次真机批次。优先做只读采集，然后按证据安排单项测试。每项报告取回并校验后，从设备清理对应入口和副本。整机空跑、新内核跳转暂缓。
 
 ## 5. 资料已经上传到哪里
 

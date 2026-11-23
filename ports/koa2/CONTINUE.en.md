@@ -11,11 +11,12 @@ Work inside WSL's Linux filesystem. Check an existing checkout before updating:
 ```bash
 cd ~/readom-work/readom
 git status --short --branch
-git switch port/koa2
-git pull --ff-only origin port/koa2
+git fetch origin
+git switch port/koa2-quiesce-preflight
+git pull --ff-only
 ```
 
-For a first checkout, clone Keith-Bao/readom inside WSL and select port/koa2.
+For a first checkout, clone Keith-Bao/readom inside WSL and select port/koa2-quiesce-preflight.
 If status shows local edits or pull refuses, preserve and inspect them; do not reset or overwrite them.
 The workspace path is a convention and can differ between computers.
 Read [current status](STATUS.en.md), [the handoff implementation](../../boot/koa2/README.en.md) and [the quiesce audit](handoff-quiesce.md).
@@ -34,10 +35,10 @@ The accompanying [SHA256SUMS](reports/2026-11-21-stage-test/SHA256SUMS) identifi
 
 ## 3. Work that needs no device
 
-1. The isolated USB reload and Windows readback passed. For touch, first check whether stock sleep and wake preserve the input node and Xorg handle. Verify contact events and UI response after wake. I²C quiescence for handoff still needs independent evidence. See the [touch sleep audit](handoff-quiesce.md).
-2. Continue investigating the [EPDC source gap](epdc-source-gap.md). EPDC stayed busy during the device dry run, so we have no evidence that its DMA framebuffers can be freed at this stage.
-3. Keep staging and execution separate. The handoff gates are in section five of [recovery.md](recovery.en.md).
-4. Run the host tests below after changes. Record passes, failures and skips separately.
+1. **Touch I²C.** Trace `cyttsp5_core_sleep_()`, IRQ handling, the watchdog and startup work in verified stock sources. Design a reversible way to drain in-flight IRQ/I²C activity and confirm quiescence without losing evdev or Xorg. Cover power-off failures, timeouts and rollback. Do not relax `quiesce-verify.c` based on `sleep_status=off` or normal suspend.
+2. **EPDC.** Use the [source gap audit](epdc-source-gap.md) and stock logs to design read-only observations of framebuffer users, driver references and pending updates. The module still had three references. Establish how to release those and handle DMA buffers before testing an isolated stop.
+3. **Handoff checks.** Keep staging separate from execution. Review recovery and early logging in [recovery.md](recovery.en.md). The bare-metal QEMU test lacks serial output on both this work and its baseline. Diagnose the emulator and keep it marked as failing.
+4. Run the host tests below and record passes, failures and skips separately.
 
 ```bash
 python3 tools/run-tests.py --filter koa2
@@ -49,13 +50,9 @@ See [the build environment](build-environment.md). Kernel sources, cross toolcha
 
 ## 4. When the Kindle is needed again
 
-The restart marker test passed on 2026-11-23. In the original dry run, EPDC stayed busy, USB storage failed to reload, and touch recovered after a forced restart. The replacement KUAL entry is a read-only preflight, which has recorded the stock state after restart.
+Staging passed, the marker survived a normal restart, and Windows could read the Kindle after the isolated USB reload. The 2026-11-24 stock sleep report returned `stock_sleep_touch_observed` with two successful suspends, zero failures, and 3,602,010 ms of cumulative sleep. The touch node and Xorg handle markers matched, and the probe received a complete contact frame after wake. The raw report is verified on the home computer, and the device entries and copies have been removed. See the [device results and audit](handoff-quiesce.md).
 
-The Kindle is idle for now. Once the recovery paths and host tests are ready, validate each peripheral separately. The dry run and handoff are on hold. See [the device procedure](device-runbook.en.md) for the KUAL entry.
-
-### Next device session
-Host simulations and ARM compilation passed. The first two-minute check did not detect system suspension. The updated script records available suspend counters, filtered power events and touch independently. If reinstalling, build with `ports/koa2/build-stage-test-kit.sh` in WSL, copy the kit into `extensions/readom-koa2-stage-test`, and verify `SHA256SUMS` on the Kindle volume.
-Eject and unplug USB. In KUAL choose **Stock sleep: record before**, lock normally and leave USB unplugged for about 30 minutes, wake, then choose **Stock sleep: check after (tap screen)**. Tap within ten seconds, check that the stock UI responds, and reconnect to retrieve the single report. Expect `stock_sleep_touch_observed`. I²C quiescence still needs independent evidence. Keep full quiesce and kernel handoff on hold.
+**No Kindle is needed at work.** Prepare the next device batch after the touch and EPDC designs, host tests and recovery steps are ready. Start with read-only collection and use the results to schedule isolated tests. Verify each copied report before removing its device entry and copy. Keep the full dry run and kernel handoff on hold.
 
 ## 5. Where the materials are now
 
