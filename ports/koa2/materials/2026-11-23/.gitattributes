@@ -1,0 +1,17 @@
+# This folder is checked out and copied straight onto a Kindle, so every file
+# in it has to arrive byte for byte as it was built -- the device scripts verify
+# SHA256SUMS before they load anything.
+#
+# On Windows with core.autocrlf=true (the default of the Git for Windows
+# installer, and set on the laptop this port is built from) a text file is
+# checked out with CRLF. That was tested on 2026-11-23 with the sparse clone
+# this folder's README recommends: SHA256SUMS came out CRLF, every name in it
+# gained a trailing \r, and `sha256sum -c` failed on all seven files -- the step
+# the instructions tell the reader to trust before copying anything to the
+# device. menu.json would be worse: KUAL parses it on the Kindle.
+#
+# The binaries are already safe (Git does not touch what it detects as binary)
+# and ports/koa2/.gitattributes pins *.sh, but SHA256SUMS, menu.json, config.xml
+# and the two READMEs were covered by nothing.
+* -text
+*.md text eol=lf
