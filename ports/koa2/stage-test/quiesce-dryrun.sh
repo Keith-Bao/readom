@@ -9,8 +9,36 @@ mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 LOG="$DIR/report.txt"
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
 
+xorg_touch_info() {
+    process=$1
+    awk '$NF ~ /\/(evdev|libinput|void|tslib)_drv\.so$/ {
+        sub(/^.*\//, "", $NF)
+        if (!seen[$NF]++) print "xorg_input_module=" $NF
+    }' "$process/maps" 2>/dev/null
+
+    log=/var/log/Xorg.0.log
+    for fd in "$process"/fd/*; do
+        target=$(readlink "$fd" 2>/dev/null) || continue
+        case "$target" in
+            /var/log/Xorg*.log|/tmp/Xorg*.log) log=$target; break ;;
+        esac
+    done
+    if [ ! -r "$log" ]; then
+        printf '%s\n' 'xorg_log=unavailable'
+        return
+    fi
+    printf '%s\n' 'xorg_log=readable'
+    awk '
+        tolower($0) ~ /not automatically adding devices/ { print "xorg_auto_add=disabled"; next }
+        tolower($0) ~ /automatically adding devices/ { print "xorg_auto_add=enabled" }
+        tolower($0) ~ /config\/udev: adding input device.*cyttsp5_mt/ { print "xorg_touch_added_by=udev" }
+        tolower($0) ~ /config\/hal: adding input device.*cyttsp5_mt/ { print "xorg_touch_added_by=hal" }
+    ' "$log"
+}
+
 check_touch_readers() {
     node=$1
+    inspect_xorg=${2:-}
     found=0
     for process in /proc/[0-9]*; do
         [ -r "$process/comm" ] || continue
@@ -18,11 +46,33 @@ check_touch_readers() {
             [ "$fd" -ef "$node" ] || continue
             name=$(tr -cd '[:alnum:]_. -' < "$process/comm" 2>/dev/null) || continue
             printf 'touch_reader_pid=%s comm=%s\n' "${process##*/}" "$name"
+            if [ "$inspect_xorg" = xorg ] && [ "$name" = Xorg ]; then
+                xorg_touch_info "$process"
+            fi
             found=$((found + 1))
             break
         done
     done
     printf 'touch_readers_observed=%s\n' "$found"
+}
+
+check_xorg_touch() {
+    printf '\n[xorg_touch]\n'
+    for event in /sys/class/input/event*; do
+        [ -r "$event/device/name" ] || continue
+        [ "$(cat "$event/device/name")" = cyttsp5_mt ] || continue
+        node="/dev/input/${event##*/}"
+        printf 'xorg_touch_event=%s\n' "${event##*/}"
+        check_touch_readers "$node" xorg
+        if command -v udevadm >/dev/null 2>&1; then
+            udevadm info --query=property --name "$node" 2>/dev/null |
+                awk '/^ID_INPUT(_TOUCHSCREEN)?=[01]$/ {print "touch_udev_" $0}'
+        else
+            printf '%s\n' 'touch_udevadm=unavailable'
+        fi
+        return
+    done
+    printf '%s\n' 'xorg_touch_event=missing'
 }
 
 check_touch() {
@@ -86,7 +136,7 @@ previous_boot_recovery() {
 }
 
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v5'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v6'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
@@ -112,6 +162,8 @@ previous_boot_recovery() {
         done
         if [ "${1:-}" = touch ]; then
             check_touch
+        elif [ "${1:-}" = xorg ]; then
+            check_xorg_touch
         fi
 
         printf '\n[usb]\n'

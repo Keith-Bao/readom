@@ -19,7 +19,7 @@ def shell_path(path):
     return str(path)
 
 
-def check_preflight(release, expected_result, touch=False, previous_log=None):
+def check_preflight(release, expected_result, touch=False, previous_log=None, xorg=False):
     with tempfile.TemporaryDirectory(dir=ROOT if os.name == "nt" else None) as temp:
         root = Path(temp)
         files = {
@@ -48,31 +48,44 @@ modprobe() {{ echo modprobe >> "{fake_set}/mutations"; }}
 mount() {{ echo mount >> "{fake_set}/mutations"; }}
 '''
         text = SCRIPT.read_text()
-        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/"):
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/"):
             text = text.replace(prefix, fake_set + prefix)
         script = root / "preflight.sh"
-        script.write_text(commands + text, newline="\n")
-        if touch:
+        if touch or xorg:
             node = root / "dev/input/event3"
             node.parent.mkdir(parents=True)
             node.touch()
             reader = root / "proc/111"
             (reader / "fd").mkdir(parents=True)
-            (reader / "comm").write_text("stock-input\n")
+            (reader / "comm").write_text("Xorg\n" if xorg else "stock-input\n")
             (reader / "fd/6").symlink_to(node)
             (reader / "fd/7").symlink_to(node)
             (reader / "fd/8").symlink_to(root / "removed-node")
+        if touch:
             probe = root / "touch-events"
             probe.write_text(f'#!/bin/sh\n[ "$1" = "{fake_set}/dev/input/event3" ] || exit 2\necho touch_contact_observed\n', newline="\n")
             probe.chmod(0o755)
             digest = hashlib.sha256(probe.read_bytes()).hexdigest()
             (root / "SHA256SUMS").write_text(f"{digest}  touch-events\n", newline="\n")
+        if xorg:
+            (reader / "maps").write_text("123-456 r-xp 00000000 00:00 0 /stock/evdev_drv.so\n")
+            logs = root / "var/log"
+            logs.mkdir(parents=True)
+            (logs / "Xorg.0.log").write_text(
+                "[30.00] (**) Not automatically adding devices\n"
+                "[31.00] (II) config/udev: Adding input device cyttsp5_mt (/dev/input/event3)\n"
+                "[32.00] this unrelated line must stay private\n"
+            )
+            commands += "udevadm() { printf '%s\\n' ID_INPUT=1 ID_INPUT_TOUCHSCREEN=1 ID_SERIAL=private; }\n"
+        script.write_text(commands + text, newline="\n")
         shell = str(GIT_BASH) if os.name == "nt" and GIT_BASH.exists() else shutil.which("sh")
         command = [shell, shell_path(script)]
         if touch:
             command.append("touch")
         elif previous_log is not None:
             command.append("previous-boot")
+        elif xorg:
+            command.append("xorg")
         subprocess.run(command, check=True, timeout=20)
         base = root / "mnt/us/koa2-quiesce-dryrun"
         report = (base / (base / "LAST_RUN.txt").read_text().strip() / "report.txt").read_text()
@@ -91,6 +104,12 @@ mount() {{ echo mount >> "{fake_set}/mutations"; }}
             if touch:
                 assert "touch_reader_pid=111 comm=stock-input" in report, report
                 assert "touch_readers_observed=1" in report, report
+            if xorg:
+                for expected in ("touch_reader_pid=111 comm=Xorg", "xorg_input_module=evdev_drv.so",
+                                 "xorg_auto_add=disabled", "xorg_touch_added_by=udev",
+                                 "touch_udev_ID_INPUT_TOUCHSCREEN=1"):
+                    assert expected in report, report
+                assert "private" not in report, report
             assert "/dev/mmcblk2p7" not in report, report
             if previous_log:
                 assert "previous_boot_event=usb_lun_missing_medium [ 23.001]" in report, report
@@ -156,6 +175,7 @@ check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", previous_log
 ))
 if os.name != "nt":
     check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", touch=True)
+    check_preflight("4.1.15-lab126", "quiesce_blocked_pending_restore", xorg=True)
     compiler = shutil.which("cc")
     if compiler:
         check_touch_frames(compiler)
