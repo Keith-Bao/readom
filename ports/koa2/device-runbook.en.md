@@ -6,6 +6,8 @@ The updated kit also has **Check live touch (tap screen)**. Tap once within ten 
 
 After restarting from a dry run, use **Read previous boot recovery log** to check the previous boot's kernel log. The report keeps only the categories and timestamps of recognized touch and USB messages. Collect it before restarting again because the buffer covers only the previous boot. If an error is absent, check that the buffer was readable and covers the failed boot.
 
+**Isolated USB reload.** Safely eject and unplug USB, then run **USB only: reload storage (unplug USB first)** in KUAL. The script unloads only `g_mass_storage` when the stock kernel, idle LUN, module and disconnected UDC all match. It preserves the dependencies and reloads with the stock parameters. Wait about 30 seconds before reconnecting. The report is `koa2-usb-reload/<UTC time>-<PID>/report.txt`. The isolated USB test passes only when the report says `usb_idle_rebound_host_check_pending` and the host can read the Kindle volume again. If the host still cannot see it after 30 seconds, restart to restore stock USB, save the report, and stop.
+
 This file is for **whoever runs the test**, human or agent, and assumes no
 earlier conversation. Work through it in order; each step says what it needs,
 what it gives back, and what to do when it goes wrong. Chinese version:

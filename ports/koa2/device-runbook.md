@@ -6,6 +6,8 @@
 
 若空跑后已经重启，可用 **Read previous boot recovery log** 检查上一次启动的内核日志。报告只记录已知触摸和 USB 消息的类别及时间。先采集再考虑重启，因为缓冲只保留上一次启动。未发现错误行时，仍需检查日志是否读到，以及是否确实来自失败那次启动。
 
+**USB 单项重载。** 安全弹出并拔掉 USB 线，然后在 KUAL 中运行 **USB only: reload storage (unplug USB first)**。仅当原厂内核、模块、空介质 LUN 和断开的 UDC 状态都吻合时，脚本才卸载 `g_mass_storage`，保留依赖模块并带着原参数重载。等待约 30 秒再插线。报告在 `koa2-usb-reload/<UTC时间>-<PID>/report.txt`。只有报告给出 `usb_idle_rebound_host_check_pending` 且电脑能重新读到 Kindle 盘，才算本次 USB 单项通过。若 30 秒后电脑仍识别不到 Kindle，重启以恢复原厂 USB，保留失败报告，不要重试。
+
 这份文件是给**接手执行的人或 agent** 看的，不需要读过之前的对话。按顺序做，
 每一步都写清楚了要什么、会得到什么、出问题怎么办。英文版见
 [device-runbook.en.md](device-runbook.en.md)。
