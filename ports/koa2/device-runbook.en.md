@@ -293,3 +293,7 @@ goes into Git.
 Safely eject and unplug USB, staying in the stock system. In KUAL under Readom KOA2 Stage Test, choose **Stock sleep: record before**. Wait a few seconds, press the power button to lock normally, leave it unplugged for about 30 minutes, then press power to wake. In KUAL choose **Stock sleep: check after (tap screen)**, tap within ten seconds and check that the stock UI responds. Reconnect after the check. Both steps update the same `koa2-quiesce-dryrun/<run ID>/report.txt`.
 
 A valid report requires the same boot, at least one extra second of cumulative system suspension, matching touch node inode and Xorg reader marker, and a complete contact frame. `stock_sleep_not_observed` means system suspension was not demonstrated. The matching node and reader are observations at two points in time. I²C quiescence still requires independent evidence.
+
+### Device cleanup after a test
+
+Keep only the current batch's entries on the Kindle. After each test, copy its report to the computer and verify the copy before removing the device entry, its dedicated files and its local report. Keep shared files used by pending tests.
