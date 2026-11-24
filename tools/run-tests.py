@@ -77,6 +77,8 @@ TESTS = [
     ('koa2-stock-sleep', 'python', ['tools/tests/test_koa2_stock_sleep.py'], True),
     # Touch put to sleep by its own stock driver, with the bus shown quiet.
     ('koa2-touch-quiesce', 'python', ['tools/tests/test_koa2_touch_quiesce.py'], True),
+    # Secondary core offline/online isolated verification.
+    ('koa2-cpu1-quiesce', 'python', ['tools/tests/test_koa2_cpu1_quiesce.py'], False),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),
     ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),
@@ -86,6 +88,8 @@ TESTS = [
     ('koa2-initramfs-repro', 'python', ['tools/tests/test_koa2_smoke_initramfs_repro.py'], False),
     # Keep the Lab126 printk buffer flushed across hardware watchdog resets.
     ('koa2-printk-writeback', 'python', ['tools/tests/test_koa2_printk_writeback.py'], False),
+    # Safe v1 EPDC Lab126 contract (isolated from stock tree).
+    ('koa2-epdc-v1', 'python', ['tools/tests/test_koa2_epdc_v1.py'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

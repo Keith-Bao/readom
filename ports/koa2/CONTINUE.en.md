@@ -56,7 +56,7 @@ Staging passed, the marker survived a normal restart, and Windows could read the
 
 ## 5. Where the materials are now
 
-**Next device batch**: the [2026-11-24 kit and sheet](materials/2026-11-24/README.en.md) (read-only EPDC users, touch-only sleep and wake), already built and ready to copy to the Kindle.
+**Next device batch**: the [2026-11-24 kit and sheet](materials/2026-11-24/README.en.md) (read-only EPDC users, Wi-Fi users and runtime DTB backup, CPU1-only offline/online, and touch-only sleep/wake — 5 items total), rebuilt with the printk cache write-back kernel and verified (12 SHA256 entries), ready to copy to the Kindle.
 
 The original kit and its operating sheet are archived in
 [the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the

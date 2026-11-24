@@ -407,3 +407,9 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 ## 2026-11-24 实验内核 printk 缓冲 D-cache 回写（主机）
 
 在 `ports/koa2/prepare-headless-source.py` 中为 `kernel/printk/printk.c` 的 `log_goal_first`（`0x9be00000`）补充 `log_goal_write_back()`（`__cpuc_flush_dcache_area` + `outer_clean_range`），覆盖 `setup_log_buf()` 的备份复制、清零与每次 `log_store()` 写入；新增主机测试 `koa2-printk-writeback` 并重新编译 `out-headless-smoke` 验证通过（`printk.o` 已链接 `v7_flush_kern_dcache_area` 与 `outer_cache`）。未改动已封装校验的 2026-11-24 真机套件，没有连接设备。
+
+## 2026-11-24 A/B 组主机预开发与套件扩展（主机 + QEMU）
+
+- A 组（扩展 2026-11-24 真机套件至 5 项测试、12 文件校验）：新增 `cpu1-quiesce.sh` 与主机测试 `koa2-cpu1-quiesce`（6 用例），`quiesce-dryrun.sh` 新增 `wifi` 与 `fdt` 只读采集模式并补全模拟测试，使用含 printk 缓存回写的新 `zImage` 重打 `materials/2026-11-24/readom-koa2-stage-test` 并更新中英文操作单。
+- B 组（阶段 D）：完成 QEMU `vexpress-a9` 双核 SELinux `policy30` + `ioctl xperms` 运行时验证（`build-qemu-selinux.sh` / `run-qemu-selinux.py`），确认 `policyvers=30`、畸形策略拒绝、合法 `policy.30` 加载、`enforcing=1`、`TCGETS` 放行与 `TIOCGWINSZ` 拒绝+`ioctlcmd=5413` 审计。
+- B 组（阶段 G）：在独立目录 `ports/koa2/epdc-v1/` 完成第一版安全 `mxc_epdc_fb_lab126.c`（gzip 波形读取、`MAX77696_EPD_VID` VCOM 范围校验、入口硬拒绝夜间模式）与 `koa2-epdc-v1` 契约测试，在独立树 `linux-epdc-v1` 用 ARM GCC 4.9 编过 `mxc_epdc_v2_fb.o`。没有连接设备。

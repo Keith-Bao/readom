@@ -242,10 +242,112 @@ mount() {{ echo mount >> "{root}/mutations"; }}
             assert (root / name).read_text() == content, name
 
 
+
+
+def check_wifi():
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        files = {
+            "proc/version": "Linux 4.1.15-lab126\n",
+            "proc/mounts": "/dev/root / ext4 ro,noatime 0 0\n",
+            "proc/modules": "bcmdhd 500000 0 - Live 0\n",
+            "sys/devices/system/cpu/online": "0-1\n",
+            "sys/module/bcmdhd/parameters/op_mode": "0\n",
+            "sys/module/bcmdhd/parameters/firmware_path": "/lib/firmware/brcm/fw.bin\n",
+            "sys/class/net/wlan0/operstate": "up\n",
+            "sys/class/net/wlan0/carrier": "1\n",
+            "sys/class/net/wlan0/address": ":".join(("aa", "bb", "cc", "dd", "ee", "ff")) + "\n",
+        }
+        for name, content in files.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, newline="\n")
+        (root / "mnt/us/documents").mkdir(parents=True)
+        (root / "sys/bus/sdio/drivers/bcmsdh_sdmmc/mmc0:0001:1").mkdir(parents=True)
+        for pid, comm in ((501, "wpa_supplicant"), (502, "wifid"), (503, "other")):
+            proc = root / f"proc/{pid}"
+            proc.mkdir(parents=True)
+            (proc / "comm").write_text(comm + "\n")
+        commands = f"""uname() {{ printf '%s\n' 4.1.15-lab126; }}
+rmmod() {{ echo rmmod >> "{root}/mutations"; }}
+modprobe() {{ echo modprobe >> "{root}/mutations"; }}
+mount() {{ echo mount >> "{root}/mutations"; }}
+"""
+        text = SCRIPT.read_text()
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/"):
+            text = text.replace(prefix, str(root) + prefix)
+        script = root / "preflight.sh"
+        script.write_text(commands + text, newline="\n")
+        subprocess.run([shutil.which("sh"), str(script), "wifi"], check=True, timeout=20)
+        base = root / "mnt/us/koa2-quiesce-dryrun"
+        report = (base / (base / "LAST_RUN.txt").read_text().strip() / "report.txt").read_text()
+        lines = report.splitlines()
+        assert lines[-1] == "result=quiesce_blocked_pending_restore", report
+        assert not (root / "mutations").exists()
+        for wanted in ("wifi_module_users=0", "wifi_param_op_mode=0",
+                       "wifi_param_firmware_path=configured",
+                       "wifi_iface=wlan0 operstate=up carrier=1",
+                       "wifi_sdio_binding=mmc0:0001:1",
+                       "wifi_process_pid=501 comm=wpa_supplicant",
+                       "wifi_process_pid=502 comm=wifid",
+                       "wifi_processes_observed=2"):
+            assert wanted in lines, (wanted, report)
+        assert ":".join(("aa", "bb", "cc", "dd", "ee", "ff")) not in report, "MAC address leaked"
+        assert "pid=503" not in report, report
+
+
+def check_fdt(payload, expected):
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        files = {
+            "proc/version": "Linux 4.1.15-lab126\n",
+            "proc/mounts": "/dev/root / ext4 ro,noatime 0 0\n",
+            "proc/modules": "mxc_epdc_v2_fb 1 3 - Live 0\n",
+            "sys/devices/system/cpu/online": "0-1\n",
+        }
+        for name, content in files.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, newline="\n")
+        (root / "mnt/us/documents").mkdir(parents=True)
+        if payload is not None:
+            fdt = root / "sys/firmware/fdt"
+            fdt.parent.mkdir(parents=True, exist_ok=True)
+            fdt.write_bytes(payload)
+        commands = f"""uname() {{ printf '%s\n' 4.1.15-lab126; }}
+rmmod() {{ echo rmmod >> "{root}/mutations"; }}
+modprobe() {{ echo modprobe >> "{root}/mutations"; }}
+mount() {{ echo mount >> "{root}/mutations"; }}
+"""
+        text = SCRIPT.read_text()
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/"):
+            text = text.replace(prefix, str(root) + prefix)
+        script = root / "preflight.sh"
+        script.write_text(commands + text, newline="\n")
+        subprocess.run([shutil.which("sh"), str(script), "fdt"], check=True, timeout=20)
+        base = root / "mnt/us/koa2-quiesce-dryrun"
+        run_dir = base / (base / "LAST_RUN.txt").read_text().strip()
+        report = (run_dir / "report.txt").read_text()
+        lines = report.splitlines()
+        assert lines[-1] == "result=quiesce_blocked_pending_restore", report
+        assert not (root / "mutations").exists()
+        assert f"fdt_backup={expected}" in lines, report
+        if expected == "ok":
+            copied = (run_dir / "stock-runtime.dtb").read_bytes()
+            assert copied == payload
+            assert f"fdt_sha256={hashlib.sha256(payload).hexdigest()}" in lines, report
+        else:
+            assert not (run_dir / "stock-runtime.dtb").exists()
+
+
 if os.name != "nt":
     check_epdc(3, "matched")
     check_epdc(5, "more_references_than_openers")
     check_epdc(2, "shared_files_possible")
     check_epdc(3, "unavailable", nodes=False)
+    check_wifi()
+    check_fdt(b"\xd0\x0d\xfe\xed" + b"\x00" * 60, "ok")
+    check_fdt(b"\x00\x00\x00\x00" + b"\x00" * 60, "invalid_magic")
+    check_fdt(None, "unavailable")
 
 print("KOA2 quiesce preflight: recorded stock state and EPDC users without changing them and refused another kernel")

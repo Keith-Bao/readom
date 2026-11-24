@@ -158,6 +158,80 @@ check_epdc_users() {
     printf 'epdc_reference_accounting=%s\n' "$accounting"
 }
 
+check_wifi_users() {
+    printf '\n[wifi_users]\n'
+    awk '$1 == "bcmdhd" {
+        print "wifi_module_users=" $3
+        print "wifi_module_holders=" $4
+        found = 1
+    } END { if (!found) print "wifi_module_users=unloaded" }' /proc/modules
+    for parameter in op_mode dhd_msg_level iface_name firmware_path nvram_path; do
+        value="/sys/module/bcmdhd/parameters/$parameter"
+        [ -r "$value" ] || continue
+        case "$parameter" in
+            firmware_path|nvram_path)
+                if [ -n "$(cat "$value" 2>/dev/null)" ]; then
+                    printf 'wifi_param_%s=configured\n' "$parameter"
+                else
+                    printf 'wifi_param_%s=empty\n' "$parameter"
+                fi
+                ;;
+            *)
+                printf 'wifi_param_%s=%s\n' "$parameter" "$(tr -cd '[:alnum:]_.-' < "$value" 2>/dev/null)"
+                ;;
+        esac
+    done
+    for iface in /sys/class/net/wlan*; do
+        [ -d "$iface" ] || continue
+        name=${iface##*/}
+        state=$(cat "$iface/operstate" 2>/dev/null || printf 'unknown')
+        carrier=$(cat "$iface/carrier" 2>/dev/null || printf 'unknown')
+        printf 'wifi_iface=%s operstate=%s carrier=%s\n' "$name" "$state" "$carrier"
+    done
+    for dev in /sys/bus/sdio/drivers/bcmsdh_sdmmc/mmc*; do
+        [ -e "$dev" ] || continue
+        printf 'wifi_sdio_binding=%s\n' "${dev##*/}"
+    done
+    found_proc=0
+    for process in /proc/[0-9]*; do
+        [ -r "$process/comm" ] || continue
+        comm=$(tr -cd '[:alnum:]_. -' < "$process/comm" 2>/dev/null) || continue
+        case "$comm" in
+            wpa_supplicant|wifid|udhcpc|dhclient|lipc-daemon)
+                printf 'wifi_process_pid=%s comm=%s\n' "${process##*/}" "$comm"
+                found_proc=$((found_proc + 1))
+                ;;
+        esac
+    done
+    printf 'wifi_processes_observed=%s\n' "$found_proc"
+}
+
+backup_runtime_fdt() {
+    printf '\n[runtime_fdt]\n'
+    src=/sys/firmware/fdt
+    dst="$DIR/stock-runtime.dtb"
+    if [ ! -r "$src" ]; then
+        printf '%s\n' 'fdt_backup=unavailable'
+        return
+    fi
+    if ! cp "$src" "$dst" 2>/dev/null; then
+        printf '%s\n' 'fdt_backup=copy_failed'
+        return
+    fi
+    size=$(wc -c < "$dst" 2>/dev/null | tr -cd '0-9')
+    magic=$(od -An -tx1 -N4 "$dst" 2>/dev/null | tr -cd '0-9a-fA-F' | tr 'A-F' 'a-f')
+    printf 'fdt_bytes=%s\n' "${size:-0}"
+    printf 'fdt_magic=%s\n' "${magic:-unknown}"
+    if [ "${size:-0}" -lt 40 ] || [ "$magic" != "d00dfeed" ]; then
+        rm -f "$dst"
+        printf '%s\n' 'fdt_backup=invalid_magic'
+        return
+    fi
+    sum=$(sha256sum "$dst" 2>/dev/null | awk '{print $1}')
+    printf 'fdt_sha256=%s\n' "${sum:-unavailable}"
+    printf '%s\n' 'fdt_backup=ok'
+}
+
 previous_boot_recovery() {
     printf '\n[previous_boot_recovery]\n'
     if [ ! -r /proc/printkbuf ]; then
@@ -198,7 +272,7 @@ previous_boot_recovery() {
 }
 
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v7'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v8'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
@@ -215,6 +289,10 @@ previous_boot_recovery() {
 
         if [ "${1:-}" = epdc ]; then
             check_epdc_users
+        elif [ "${1:-}" = wifi ]; then
+            check_wifi_users
+        elif [ "${1:-}" = fdt ]; then
+            backup_runtime_fdt
         fi
 
         printf '\n[input]\n'

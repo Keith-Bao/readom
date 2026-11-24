@@ -222,3 +222,17 @@ Retrieved voltage control information (0x8c0)
 
 新增 check-kernel-source.py 在构建开始前检查必要源文件；缺失退出码 2，
 输出 JSON。它只证明文件存在与否，补入文件后仍必须重新编译和审计。
+
+## 2026-11-24 第一版安全替代实现（主机编译通过，未上机）
+
+按上文“先跑非 REAGL、非夜间模式”的安全边界，已在独立目录 `ports/koa2/epdc-v1/`
+完成第一版干净实现（`mxc_epdc_fb_lab126.c`、`build-epdc-v1-check.sh`）与主机契约测试
+`koa2-epdc-v1`（不修改 `linux-stock`，`koa2-epdc-gap` 仍拒绝原厂树缺文件）：
+
+- `read_mnt_wfm_v2()`：读取 `/mnt/wfm/waveform_to_use` 并用内核 `zlib_inflate` 解压 gzip 波形；
+- `mxc_set_vcom()`：校验 VCOM 范围（`-5058900..0 uV`），按 `MAX77696_EPD_VID()` 写入 PMIC；
+- 提交入口硬拒绝夜间模式（`WAVEFORM_MODE_GCK16`、`WAVEFORM_MODE_GLKW16` 与
+  `GRAYSCALE_8BIT_INVERTED` 转换均返回 `-EOPNOTSUPP`），`eink_get_wfm_voltage_control()` /
+  `fetch_epdc_vdc_04_data()` / `fetch_epdc_adc_06_data()` 报错返回且不碰任何供电轨或时序字段；
+- 在独立树 `~/readom-work/linux-epdc-v1` 用 ARM GCC 4.9 针对 `imx_v7_zelda_defconfig`
+  实际编过 `drivers/video/fbdev/mxc/mxc_epdc_v2_fb.o`（0 错误）。尚未上机点屏。

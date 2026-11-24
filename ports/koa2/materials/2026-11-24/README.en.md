@@ -1,21 +1,24 @@
-# Two things to test at home (2026-11-24 kit)
+# Five tests to run at home (2026-11-24 kit)
 
-This file is the operating sheet. Work through it in order with the Kindle; neither WSL nor a rebuild is needed. Chinese: [README.md](README.md).
+This file is the operating sheet. Run the steps in order on the Kindle; no WSL or rebuild is needed. Chinese: [README.md](README.md).
 
-| # | Test | The question it answers | What it changes |
+| # | Test | Question it answers | What it changes |
 |---|---|---|---|
-| 1 | Inspect EPDC framebuffer users | Who holds the EPDC driver's 3 references | Read-only, stops nothing |
-| 2 | Touch only: sleep and wake controller | After the stock driver puts touch to sleep, is the I²C bus really quiet, and does touch come back after waking | Touch stops for about 12 seconds; the script wakes it |
+| 1 | Inspect EPDC framebuffer users | What holds the 3 EPDC module references | Read-only; stops nothing |
+| 2 | Inspect Wi-Fi (bcmdhd) users & params | `bcmdhd` module refs, safe params and userspace daemons | Read-only; stops nothing |
+| 3 | Backup stock runtime DTB (read-only) | Captures the missing local backup of `/sys/firmware/fdt` | Read-only; copies into report dir |
+| 4 | CPU1 only: offline and online | Whether stock GPCv2 secondary-core offline/online works cleanly | CPU1 offline ~2 s, restored by script |
+| 5 | Touch only: sleep and wake controller | Whether the I²C bus goes quiet and touch recovers after wake | Touch off ~12 s, woken by script |
 
-Neither test loads the handoff module, jumps, writes a partition or unloads a driver. They write only to the Kindle's `koa2-quiesce-dryrun/` and `koa2-touch-quiesce/` folders.
+None of the five loads the handoff module, jumps, writes partitions, or unloads drivers. Writes go only to `koa2-quiesce-dryrun/`, `koa2-cpu1-quiesce/`, and `koa2-touch-quiesce/` on the Kindle.
 
 ## 0. Check first
 
-Oasis 2, firmware 5.16.2.1.1, jailbroken with KUAL installed, battery above 50%. Otherwise stop; the scripts also refuse any other kernel.
+Oasis 2, firmware 5.16.2.1.1, jailbroken with KUAL, battery above 50%. Stop if not; the scripts also refuse other kernels.
 
 ## 1. Copy the kit to the Kindle
 
-Download only this folder:
+Fetch only this folder:
 
 ```bash
 git clone --filter=blob:none --no-checkout --depth 1 -b port/koa2-quiesce-preflight https://github.com/Keith-Bao/readom.git
@@ -24,54 +27,59 @@ git sparse-checkout set ports/koa2/materials/2026-11-24
 git checkout
 ```
 
-If an older `readom-koa2-stage-test` is still in `extensions/`, move it out first. Copy the whole `ports/koa2/materials/2026-11-24/readom-koa2-stage-test` folder into the Kindle's `extensions/`, then check it on the Kindle drive (use the actual drive letter):
+Remove any older `extensions/readom-koa2-stage-test` first. Copy `ports/koa2/materials/2026-11-24/readom-koa2-stage-test` into the Kindle's `extensions/` directory, then verify on the Kindle drive (adjust the drive letter):
 
 ```bash
 cd /d/extensions/readom-koa2-stage-test && sha256sum -c SHA256SUMS
 head -c 8 menu.json
 ```
 
-Continue only if all 11 lines say `OK` and the second command prints `{"items"`. `%TSD-Head` means the company DLP encrypted the file; copy from the home computer instead. Safely eject USB.
+All 12 lines must be `OK`, and the second command must print `{"items"`. Seeing `%TSD-Head` means corporate DLP encrypted the files; copy from a personal computer instead. Eject USB safely.
 
-## 2. EPDC framebuffer users (first; USB may stay connected)
+## 2. Three read-only inspections (USB may stay connected)
 
-KUAL → **Readom KOA2 Stage Test** → **Inspect EPDC framebuffer users**. It takes a few seconds and the screen does not change.
+In KUAL -> **Readom KOA2 Stage Test**, run these three in order (each takes a few seconds, screen unchanged; reports land in `koa2-quiesce-dryrun/<run>/report.txt`, ending with `result=quiesce_blocked_pending_restore`):
 
-The report is `koa2-quiesce-dryrun/<run ID>/report.txt`; its last line is `result=quiesce_blocked_pending_restore` (expected). Read the `[epdc_users]` section:
+1. **Inspect EPDC framebuffer users**: check `[epdc_users]` (`epdc_reference_accounting` and process list).
+2. **Inspect Wi-Fi (bcmdhd) users & params**: check `[wifi_users]` (module refs, interface state, SDIO binding and daemon comms; no MAC/SSID/credentials).
+3. **Backup stock runtime DTB (read-only)**: check `[runtime_fdt]` for `fdt_backup=ok`, `fdt_magic=d00dfeed` and SHA256; `stock-runtime.dtb` is saved beside the report (keep local only, **never commit to Git**).
 
-| `epdc_reference_accounting` | Meaning |
-|---|---|
-| `matched` | The listed processes account for every reference. Note the `epdc_user_pid=… comm=…` lines |
-| `shared_files_possible` | More processes than references, most likely sharing one open file after fork |
-| `more_references_than_openers` | Some reference is not a userspace open and the source does not explain it; bring the report back as is |
-| `unavailable` | No framebuffer node was found; bring the report back |
+## 3. CPU1-only offline and online
 
-## 3. Touch-only sleep and wake
+KUAL -> **CPU1 only: offline and online**. Completes in a few seconds; report in `koa2-cpu1-quiesce/<run>/report.txt`:
 
-Unplug USB, stay in the stock system with the screen on, and **do not press power or lock the screen during the test**.
-
-KUAL → **Touch only: sleep and wake controller (tap after)**. Touch does not respond for the first 12 seconds or so, as expected; then tap the screen once within ten seconds.
-
-The report is `koa2-touch-quiesce/<run ID>/report.txt`:
-
-| result | Meaning | Then |
+| result | Meaning | Next step |
 |---|---|---|
-| `touch_quiesce_restored_touch_observed` | **The wanted result**: bus and touch interrupts were 0 while asleep, power was off, and a tap arrived after waking | Bring the report back |
-| `touch_quiesce_restored_touch_unconfirmed` | Quiet held, but no tap arrived within ten seconds of waking | Tap the stock UI to confirm touch works; bring the report back |
-| `touch_wake_failed_restart_required` | The wake did not succeed | Restart normally once and touch returns. Do not retry |
-| any other `touch_*` | The report names the failed condition (bus not quiet, power not off, screen locked, and so on); a wake was attempted | Confirm touch works, bring the report back, do not retry |
-| `refused_*` | A precondition failed and nothing was written | Bring the report back |
+| `cpu1_quiesce_restored` | **Desired result**: CPU1 went offline with no IRQs and came back online | Continue to next step |
+| `cpu1_restore_failed_restart_required` | CPU1 did not come back online | Do a normal restart and bring back the report; do not retry |
+| Other `cpu1_*` / `refused_*` | Report explains why | Bring back the report; do not retry |
 
-If touch still does not respond afterwards, restart normally. If the device does not respond at all, hold power for about 40 seconds.
+## 4. Touch-only sleep and wake
 
-## 4. Bring the reports back and clean up
+Unplug USB, stay in the stock UI with the screen lit, and **do not press the power button or lock the screen during the test**.
+
+KUAL -> **Touch only: sleep and wake controller (tap after)**. Touch is expected not to respond for the first ~12 seconds; tap the screen once within ten seconds after that.
+
+Report in `koa2-touch-quiesce/<run>/report.txt`:
+
+| result | Meaning | Next step |
+|---|---|---|
+| `touch_quiesce_restored_touch_observed` | **Desired result**: zero bus/touch IRQs while asleep, power off, touch seen after wake | Bring back report |
+| `touch_quiesce_restored_touch_unconfirmed` | Sleep verified, no tap seen in 10 s after wake | Tap stock UI to confirm touch works, bring back report |
+| `touch_wake_failed_restart_required` | Wake did not succeed | Normal restart restores touch; do not retry |
+| Other `touch_*` | Report explains what failed; wake was attempted | Confirm touch works, bring back report; do not retry |
+| `refused_*` | Precondition not met; nothing written | Bring back report |
+
+If touch still does not respond afterwards: normal restart. If completely unresponsive, hold power for about 40 seconds.
+
+## 5. Bring back reports and clean up
 
 ```bash
-cp -r /d/koa2-quiesce-dryrun /d/koa2-touch-quiesce ~/koa2-evidence/
+cp -r /d/koa2-quiesce-dryrun /d/koa2-cpu1-quiesce /d/koa2-touch-quiesce ~/koa2-evidence/
 ```
 
-Once the copies open and are complete on the computer, delete `extensions/readom-koa2-stage-test` and both report folders from the Kindle. The reports hold only the kernel identity, process names, counts and states, with no coordinates, arguments or screen content; the raw reports stay local and do not go into Git.
+After verifying the copies and `stock-runtime.dtb` on the PC, remove `extensions/readom-koa2-stage-test` and those three report directories from the Kindle. Keep raw reports and `stock-runtime.dtb` local only; never commit them to Git.
 
-## 5. Where this kit came from
+## 6. Provenance of this kit
 
-Built in WSL from branch commit `8114e3e` (`ports/koa2/build-stage-test-kit.sh`). The 11 file hashes are in `readom-koa2-stage-test/SHA256SUMS`, and the device scripts check them again before running. All 35 symbols the module imports match the stock CRCs (`crcs.json`); neither test loads it. Host tests: 22 passed, 0 failed. Design and source evidence are in the last two sections of the [quiesce audit](../../handoff-quiesce.md); the full procedure is in the [device runbook](../../device-runbook.en.md).
+Built in WSL via `ports/koa2/build-stage-test-kit.sh` (including the rebuilt `zImage` with printk cache write-back and matching staging module). Checksums for all 12 files are in `readom-koa2-stage-test/SHA256SUMS`. None of the five tests loads the handoff module. See the [quiesce audit](../../handoff-quiesce.md) and [device runbook](../../device-runbook.en.md).
