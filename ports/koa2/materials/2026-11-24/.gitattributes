@@ -1,0 +1,5 @@
+# Copied straight onto a Kindle: every file must arrive byte for byte as built.
+# Git for Windows with core.autocrlf=true would otherwise give SHA256SUMS,
+# menu.json and config.xml CRLF endings (seen 2026-11-23, see ../2026-11-23).
+* -text
+*.md text eol=lf

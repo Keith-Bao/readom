@@ -56,6 +56,8 @@ Staging passed, the marker survived a normal restart, and Windows could read the
 
 ## 5. Where the materials are now
 
+**Next device batch**: the [2026-11-24 kit and sheet](materials/2026-11-24/README.en.md) (read-only EPDC users, touch-only sleep and wake), already built and ready to copy to the Kindle.
+
 The original kit and its operating sheet are archived in
 [the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the
 ten-file KUAL kit, the module's imports and CRC result, and a step-by-step sheet
