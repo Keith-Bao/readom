@@ -179,4 +179,73 @@ if os.name != "nt":
     compiler = shutil.which("cc")
     if compiler:
         check_touch_frames(compiler)
-print("KOA2 quiesce preflight: recorded stock state without changing it and refused another kernel")
+
+def check_epdc(users, expected, nodes=True):
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        files = {
+            "proc/version": "Linux 4.1.15-lab126\n",
+            "proc/mounts": "/dev/root / ext4 ro,noatime 0 0\n",
+            "proc/modules": f"mxc_epdc_v2_fb 1 {users} - Live 0\n",
+            "sys/devices/system/cpu/online": "0-1\n",
+            "sys/class/graphics/fb0/name": "mxc_epdc_fb\n",
+        }
+        for name, content in files.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, newline="\n")
+        (root / "mnt/us/documents").mkdir(parents=True)
+        fb = root / "dev/fb0"
+        if nodes:
+            fb.parent.mkdir(parents=True)
+            fb.touch()
+        line = f"40000000-40100000 rw-s 00000000 00:05 1 {fb}\n"
+        for pid, comm, fds, maps in ((111, "Xorg", 1, 1), (222, "awesome", 1, 0),
+                                     (333, "mapper", 0, 2), (444, "other", 0, 0)):
+            process = root / f"proc/{pid}"
+            (process / "fd").mkdir(parents=True)
+            (process / "comm").write_text(comm + "\n")
+            (process / "maps").write_text(line * maps + "1000-2000 r-xp 0 00:00 0 /bin/sh\n")
+            for fd in range(fds):
+                (process / f"fd/{fd + 3}").symlink_to(fb)
+            (process / "fd/9").symlink_to(root / "proc/version")
+        commands = f'''uname() {{ printf '%s\n' 4.1.15-lab126; }}
+rmmod() {{ echo rmmod >> "{root}/mutations"; }}
+modprobe() {{ echo modprobe >> "{root}/mutations"; }}
+mount() {{ echo mount >> "{root}/mutations"; }}
+'''
+        text = SCRIPT.read_text()
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/", '"/dev/'):
+            text = text.replace(prefix, prefix[0] + str(root) + prefix[1:] if prefix[0] == '"'
+                                else str(root) + prefix)
+        script = root / "preflight.sh"
+        script.write_text(commands + text, newline="\n")
+        subprocess.run([shutil.which("sh"), str(script), "epdc"], check=True, timeout=20)
+        base = root / "mnt/us/koa2-quiesce-dryrun"
+        report = (base / (base / "LAST_RUN.txt").read_text().strip() / "report.txt").read_text()
+        lines = report.splitlines()
+        assert lines[-1] == "result=quiesce_blocked_pending_restore", report
+        assert not (root / "mutations").exists(), "Preflight issued a mutating command"
+        assert f"epdc_module_users={users}" in lines, report
+        assert f"epdc_reference_accounting={expected}" in lines, report
+        if nodes:
+            for wanted in ("epdc_fb=fb0 name=mxc_epdc_fb",
+                           "epdc_user_pid=111 comm=Xorg fds=1 mappings=1",
+                           "epdc_user_pid=222 comm=awesome fds=1 mappings=0",
+                           "epdc_user_pid=333 comm=mapper fds=0 mappings=2",
+                           "epdc_open_fds=2", "epdc_mapped_only_processes=1"):
+                assert wanted in lines, (wanted, report)
+            assert "pid=444" not in report, report
+        else:
+            assert "epdc_fb_nodes=missing" in lines, report
+        for name, content in files.items():
+            assert (root / name).read_text() == content, name
+
+
+if os.name != "nt":
+    check_epdc(3, "matched")
+    check_epdc(5, "more_references_than_openers")
+    check_epdc(2, "shared_files_possible")
+    check_epdc(3, "unavailable", nodes=False)
+
+print("KOA2 quiesce preflight: recorded stock state and EPDC users without changing them and refused another kernel")

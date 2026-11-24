@@ -381,3 +381,7 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 ## 2026-11-24 触摸单项休眠与唤醒（主机）
 
 追踪原厂 `cyttsp5_core.c` 的休眠、IRQ、watchdog 和 startup 路径。新增 `touch-quiesce.sh`（KUAL：Touch only）及 `koa2-touch-quiesce` 主机测试：以醒着时的 i2c2 中断为对照，休眠窗口要求总线和触摸中断为 0，调节器、供电 GPIO 和中断线程状态独立核对，不依赖 `sleep_status`。没有连接设备。
+
+## 2026-11-24 EPDC 引用来源（主机）
+
+源码追踪：帧缓冲每次 open 取一次模块引用，映射保留引用；固件请求已在启动时归还，proc/sysfs 不取引用。预检新增 `epdc` 模式（KUAL：Inspect EPDC framebuffer users），只读核对打开者与引用数。没有连接设备。

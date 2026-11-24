@@ -305,3 +305,7 @@ Run this only after the host tests pass, on the stock system with USB unplugged 
 The script keeps the driver loaded and writes only `4` (`cyttsp5_core_sleep`) and `5` (wake) to the stock `drv_debug`. The touch controller is the only device on i2c2, so that bus's interrupt count stands for touch I²C traffic. A 5-second awake window comes first: the watchdog talks to the controller every 2 seconds, so the count must rise or the test refuses. In the same window after sleep, i2c2 and touch interrupts must both be 0, `MAX77796-LSW1` must read `disabled`, the `touch_1v8` GPIO `out lo`, the IRQ thread `S`, and the driver log must show exactly one `Suspend succeeded`. `sleep_status=off` is recorded but never relied on. A system suspend or screen change during the test voids the result.
 
 `touch_quiesce_restored_touch_observed` is the only full pass. `touch_wake_failed_restart_required` needs a normal restart to bring touch back. Every other `touch_*` and `refused_*` result names the condition that failed, and a wake was attempted in each. This test does not change the handoff check: `quiesce-verify.c` still requires the touch module to be unloaded.
+
+## EPDC framebuffer users (read-only)
+
+In KUAL under Readom KOA2 Stage Test, choose **Inspect EPDC framebuffer users**. The report goes to `koa2-quiesce-dryrun/<run ID>/report.txt`; its `[epdc_users]` section lists the module reference count and each process's descriptor and mapping counts, and the last line is still `quiesce_blocked_pending_restore`. USB can stay connected and no driver is stopped.

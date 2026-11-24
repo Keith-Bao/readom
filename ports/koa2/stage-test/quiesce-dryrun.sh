@@ -96,6 +96,68 @@ check_touch() {
     printf '%s\n' 'touch=touch_device_missing'
 }
 
+# Who holds the EPDC module. Every open of a framebuffer node takes one module
+# reference and close returns it; a mapping keeps its file, and so its
+# reference, after the descriptor is closed. Only counts and comm are recorded.
+check_epdc_users() {
+    printf '\n[epdc_users]\n'
+    users=$(awk '$1 == "mxc_epdc_v2_fb" {print $3; exit}' /proc/modules)
+    printf 'epdc_module_users=%s\n' "${users:-missing}"
+    nodes=
+    for fb in /sys/class/graphics/fb*; do
+        [ -r "$fb/name" ] || continue
+        printf 'epdc_fb=%s name=%s\n' "${fb##*/}" "$(tr -cd '[:alnum:]_. -' < "$fb/name")"
+        for node in "/dev/${fb##*/}" "/dev/graphics/${fb##*/}"; do
+            [ -e "$node" ] && nodes="$nodes $node"
+        done
+    done
+    if [ -z "$nodes" ]; then
+        printf '%s\n' 'epdc_fb_nodes=missing' 'epdc_reference_accounting=unavailable'
+        return
+    fi
+    files=0
+    mapped_only=0
+    for process in /proc/[0-9]*; do
+        [ -r "$process/comm" ] || continue
+        fds=0
+        for fd in "$process"/fd/*; do
+            for node in $nodes; do
+                if [ "$fd" -ef "$node" ]; then
+                    fds=$((fds + 1))
+                    break
+                fi
+            done
+        done
+        maps=0
+        for node in $nodes; do
+            count=$(awk -v node="$node" '$6 == node {++n} END {print n + 0}' "$process/maps" 2>/dev/null) || count=0
+            maps=$((maps + ${count:-0}))
+        done
+        [ "$fds" -gt 0 ] || [ "$maps" -gt 0 ] || continue
+        printf 'epdc_user_pid=%s comm=%s fds=%s mappings=%s\n' "${process##*/}" \
+            "$(tr -cd '[:alnum:]_. -' < "$process/comm" 2>/dev/null)" "$fds" "$maps"
+        files=$((files + fds))
+        [ "$fds" -gt 0 ] || mapped_only=$((mapped_only + 1))
+    done
+    openers=$((files + mapped_only))
+    printf 'epdc_open_fds=%s\nepdc_mapped_only_processes=%s\n' "$files" "$mapped_only"
+    # Descriptors shared by dup or fork count once in the module, so more
+    # observed openers than references is possible; fewer is not explained.
+    case "$users" in
+        ''|*[!0-9]*) accounting=unavailable ;;
+        *)
+            if [ "$users" -eq "$openers" ]; then
+                accounting=matched
+            elif [ "$users" -lt "$openers" ]; then
+                accounting=shared_files_possible
+            else
+                accounting=more_references_than_openers
+            fi
+            ;;
+    esac
+    printf 'epdc_reference_accounting=%s\n' "$accounting"
+}
+
 previous_boot_recovery() {
     printf '\n[previous_boot_recovery]\n'
     if [ ! -r /proc/printkbuf ]; then
@@ -136,7 +198,7 @@ previous_boot_recovery() {
 }
 
 {
-    printf '%s\n' 'Readom KOA2 quiesce preflight v6'
+    printf '%s\n' 'Readom KOA2 quiesce preflight v7'
     date -u
     uname -a
     if [ "$(uname -r)" != 4.1.15-lab126 ]; then
@@ -150,6 +212,10 @@ previous_boot_recovery() {
         awk '$1 ~ /^(mxc_epdc_v2_fb|bcmdhd|g_mass_storage|usb_f_mass_storage|libcomposite|cyttsp5_i2c|bma2x2|als1_max44009)$/ {
             print "module=" $1, "users=" $3, "holders=" $4
         }' /proc/modules
+
+        if [ "${1:-}" = epdc ]; then
+            check_epdc_users
+        fi
 
         printf '\n[input]\n'
         for event in /sys/class/input/event*; do

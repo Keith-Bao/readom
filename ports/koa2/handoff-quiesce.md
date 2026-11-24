@@ -175,3 +175,9 @@ KUAL 的 **Inspect Xorg touch configuration** 只读检查这三项。报告记�
 独立证据：i2c2（`30a30000.i2c`）上只有触摸控制器，i.MX I²C 驱动按字节中断，所以它的中断计数代表触摸 I²C 流量。醒着时 watchdog 每 2 秒发一次空命令，计数必须增加，这是对照。休眠后 5 秒窗口内须满足：i2c2 和触摸中断都为 0，调节器 `disabled`，供电 GPIO `out lo`，中断线程 `S`，日志恰好一次 `Suspend succeeded`。
 
 `ports/koa2/stage-test/touch-quiesce.sh` 实现上述流程，失败和中断都会尝试一次唤醒，并核对节点 inode、Xorg 读者和醒后接触帧。`koa2-touch-quiesce` 用模拟驱动覆盖 16 种情形，另做了 5 个故意改坏的版本，测试全部能发现。i2c2 只有触摸、按字节中断这两点来自源码和设备树，需要真机报告的醒着计数佐证。这项结果不放宽 `quiesce-verify.c`；交接时是否改为“休眠而不卸载”，要等真机通过后再定。
+
+#### EPDC 引用来源（主机侧，2026-11-24）
+
+源码结论：`fb_open()` 每次打开帧缓冲节点都对 `mxc_epdc_v2_fb` 调一次 `try_module_get`，`fb_release()` 归还（`fbmem.c:1458,1489`）。映射保留文件，因此关掉描述符后映射仍占引用。原厂配置没有 fbcon，不会有控制台占用。`request_firmware_nowait()` 也取一次引用，但设备日志显示 1.47 s 已进入 `mxc_epdc_fb_fw_handler`，工作完成后已归还。procfs 和 sysfs 文件不取模块引用。所以此前的 3 个引用最可能来自用户空间打开的 `/dev/fb0`，尚需实机确认。
+
+KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/class/graphics/fb*` 名称、每个进程打开帧缓冲的描述符数和映射数，以及按进程计的 `comm`。不记录参数、地址或内容。`epdc_reference_accounting=matched` 表示观察到的打开者数等于引用数；`shared_files_possible` 表示 fork/dup 共享文件导致观察数更多；`more_references_than_openers` 表示还有源码未解释的引用。`koa2-quiesce-dryrun` 覆盖这四种结果，并确认采集不改动状态。释放这些引用之前，EPDC 停用仍暂停。
