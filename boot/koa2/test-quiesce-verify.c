@@ -64,6 +64,16 @@ int main(void)
         assert(strcmp(koa2_quiesce_drivers[i], "falcon"));
         assert(!strstr(koa2_quiesce_drivers[i], "mmc"));
     }
+    /* Proven reversible touch-sleep path: only accepted when cyttsp5_i2c is
+     * the sole remaining driver AND independent bus/regulator quietness passed. */
+    s = good(); s.drivers_present = 1; s.touch_driver_present = 1; s.touch_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_OK);
+    s = good(); s.drivers_present = 1; s.touch_driver_present = 1; s.touch_quiesced_verified = 0;
+    assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
+    s = good(); s.drivers_present = 1; s.touch_driver_present = 0; s.touch_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
+    s = good(); s.drivers_present = 2; s.touch_driver_present = 1; s.touch_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
     assert(!strcmp(koa2_quiesce_drivers[0], "mxc_epdc_v2_fb"));
     puts("KOA2 quiesce verify: one core, every listed driver gone, a read-only rootfs and a recent "
          "watchdog feed; a check that did not look is refused");

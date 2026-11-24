@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 (KOA2) SELinux file contexts (host-prepared skeleton).
+/dev/graphics/fb0                               u:object_r:graphics_device:s0
+/sys/class/backlight/max77696-bl/brightness     u:object_r:sysfs_leds:s0
+/sys/class/backlight/max77696-bl/bl_power       u:object_r:sysfs_leds:s0

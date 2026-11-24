@@ -24,6 +24,12 @@ struct koa2_quiesce_state {
     unsigned drivers_checked;
     unsigned rootfs_readonly;    /* 1 when userspace says it remounted it */
     unsigned long seconds_since_feed;  /* since the watchdog was last fed */
+    /* Optional reversible touch-quiesce path (proven on KOA2 2026-11-24/25):
+     * cyttsp5_i2c may remain loaded ONLY when it is the sole driver present
+     * AND userspace independently verified MAX77796-LSW1=disabled, zero I2C2
+     * and touch interrupts over the quiet window, and irq_thread=S. */
+    unsigned touch_driver_present;
+    unsigned touch_quiesced_verified;
 };
 /* The drivers that command a DMA master on this machine and are removable.
  * usdhc3 (eMMC) is not here: it is the root filesystem and cannot be stopped

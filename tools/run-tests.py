@@ -96,6 +96,7 @@ TESTS = [
     ('koa2-hardware-contract', 'c', ['device/amazon/koa2/hardware/test_power_contract.c'], False),
     ('koa2-epdc-contract', 'c', ['device/amazon/koa2/hardware/test_epdc_contract.c'], False),
     ('koa2-sensor-contract', 'c', ['device/amazon/koa2/hardware/test_sensor_contract.c'], False),
+    ('koa2-device-tree', 'python', ['tools/tests/test_koa2_device_tree.py'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

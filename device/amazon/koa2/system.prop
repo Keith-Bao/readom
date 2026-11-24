@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 (KOA2) 512 MiB low-RAM & ART properties.
+# Carry forward PW3's -Xnorelocate / --no-watch-dog fix so ART runs directly
+# from /system boot image without duplicating 12 MiB into /data/dalvik-cache.
+ro.config.low_ram=true
+ro.sf.lcd_density=300
+ro.hardware.egl=swiftshader
+dalvik.vm.extra-opts=-Xnorelocate
+dalvik.vm.dex2oat-flags=--no-watch-dog --runtime-arg -Xnorelocate

@@ -14,7 +14,12 @@ int koa2_quiesce_verify(const struct koa2_quiesce_state *s)
     /* Every driver that commands a master is gone, and the module looked for
      * all of them rather than some. */
     if (s->drivers_checked != KOA2_Q_DRIVER_COUNT) return KOA2_BOUNDS;
-    if (s->drivers_present) return KOA2_RANGE;
+    if (s->drivers_present) {
+        int touch_only = (s->drivers_present == 1 &&
+                          s->touch_driver_present == 1 &&
+                          s->touch_quiesced_verified == 1);
+        if (!touch_only) return KOA2_RANGE;
+    }
     if (!s->rootfs_readonly) return KOA2_RANGE;
     /* The watchdog is at 60 seconds and cannot be stopped. Everything after
      * this point -- the copy, the jump, and the new kernel reaching its own

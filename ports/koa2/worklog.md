@@ -439,3 +439,4 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 - 主机侧推进：
   - `quiesce-dryrun.sh epdc` 新增只读采集 `/etc/upstart/{lab126_gui,x,awesome,blanket,framework}.conf` 的 `start on`/`stop on`/`emits` 依赖行（`koa2-quiesce-dryrun` 已覆盖）。
   - 新增 `ports/koa2/build-android41-epdc-kernel.sh`：将 `epdc-v1` 合入统一 Android 4.1 实验内核（`CONFIG_FB_MXC_EINK_V2_PANEL=m`，硬拒绝夜间模式），`modpost` 首次链接暴露缺失的 `do_pixel_line` 后已按 `mxc_epdc_v2_fb.c:4000` 标量等价实现补入 `mxc_epdc_fb_lab126.c`，完整编出并通过 `modpost` 链接 `zImage`、`imx7d-zelda.dtb` 与 484 KB `mxc_epdc_v2_fb.ko`（0 未定义符号，尚未上机）。
+  - 交接校验与 AOSP 设备树补齐：`boot/koa2/quiesce-verify.{h,c}` 新增经实机证实的触摸休眠路径（`touch_driver_present=1 && touch_quiesced_verified=1`）；补齐 `device/amazon/koa2/` 完整 AOSP 8.1 设备树（`koa2.mk`、`AndroidProducts.mk`、`vendorsetup.sh`、`manifest.xml`、`system.prop`、`sepolicy/`）与校验测试 `koa2-device-tree`；审计 `android41-epdc` 内核占用（`zImage` 6.44 MiB、`kernel_end=0x80c8a94c`，落入 `0x80d00000` 交接布局，`mxc_epdc_v2_fb.ko` 内就地解析 `do_pixel_line`）。
