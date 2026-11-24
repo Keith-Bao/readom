@@ -26,19 +26,45 @@ finish() {
     exit 0
 }
 
-# irq number and total count over all CPUs for the line named $1.
+# irq number and per-CPU "CPUk=count" pairs for the line named $1.
+# Matching by header CPU name handles dynamic CPU1 hotplug offline/online,
+# which adds or removes columns in /proc/interrupts without resetting counters.
 irq_line() {
-    awk -v name="$1" '$NF == name {
-        irq = $1; sub(/:$/, "", irq); total = 0
-        for (i = 2; i <= NF && $i ~ /^[0-9]+$/; ++i) total += $i
-        print irq, total; found = 1; exit
+    awk -v name="$1" 'NR == 1 {
+        ncpus = NF
+        for (i = 1; i <= NF; ++i) cpu[i] = $i
+        next
+    }
+    $NF == name {
+        irq = $1; sub(/:$/, "", irq)
+        out = irq
+        for (i = 1; i <= ncpus && (i + 1) <= NF && $(i + 1) ~ /^[0-9]+$/; ++i)
+            out = out " " cpu[i] "=" $(i + 1)
+        print out; found = 1; exit
     } END { exit !found }' /proc/interrupts
 }
 
-irq_count() {
-    line=$(irq_line "$1") || return 1
-    set -- $line
-    printf '%s\n' "$2"
+# Total new interrupts between two irq_line snapshots ($1=before, $2=after).
+# A CPU column that disappears (hotplugged offline) contributes 0; a CPU column
+# that appears or stays online contributes its non-negative delta.
+irq_delta() {
+    awk -v before="$1" -v after="$2" 'BEGIN {
+        nb = split(before, b, " ")
+        for (i = 2; i <= nb; ++i) { split(b[i], kv, "="); prev[kv[1]] = kv[2] + 0 }
+        na = split(after, a, " ")
+        total = 0
+        for (i = 2; i <= na; ++i) {
+            split(a[i], kv, "=")
+            cur = kv[2] + 0
+            if (kv[1] in prev) {
+                d = cur - prev[kv[1]]
+                if (d > 0) total += d
+            } else {
+                total += cur
+            }
+        }
+        print total
+    }'
 }
 
 # State letter of the threaded handler for the touch line.
@@ -126,10 +152,10 @@ blank_count() {
 
 # Counts of both interrupt lines over WINDOW seconds, as "i2c touch".
 window_counts() {
-    i2c_start=$(irq_count "$I2C_IRQ") && touch_start=$(irq_count "$TOUCH_IRQ") || return 1
+    i2c_start=$(irq_line "$I2C_IRQ") && touch_start=$(irq_line "$TOUCH_IRQ") || return 1
     sleep "$WINDOW"
-    i2c_end=$(irq_count "$I2C_IRQ") && touch_end=$(irq_count "$TOUCH_IRQ") || return 1
-    printf '%s %s\n' $((i2c_end - i2c_start)) $((touch_end - touch_start))
+    i2c_end=$(irq_line "$I2C_IRQ") && touch_end=$(irq_line "$TOUCH_IRQ") || return 1
+    printf '%s %s\n' "$(irq_delta "$i2c_start" "$i2c_end")" "$(irq_delta "$touch_start" "$touch_end")"
 }
 
 # On i.MX7D, gpio-mxc reads GPIO_PSR for output pins (bgpio_init without

@@ -103,6 +103,17 @@ check_epdc_users() {
     printf '\n[epdc_users]\n'
     users=$(awk '$1 == "mxc_epdc_v2_fb" {print $3; exit}' /proc/modules)
     printf 'epdc_module_users=%s\n' "${users:-missing}"
+    for param in /sys/module/mxc_epdc_v2_fb/parameters/*; do
+        [ -r "$param" ] || continue
+        val=$(tr -cd '[:alnum:]_.-' < "$param" 2>/dev/null)
+        printf 'epdc_param_%s=%s\n' "${param##*/}" "${val:-empty}"
+    done
+    if command -v initctl >/dev/null 2>&1; then
+        for job in lab126_gui x awesome blanket framework; do
+            st=$(initctl status "$job" 2>/dev/null | head -n 1 | tr -cd '[:alnum:]_.,/ -')
+            [ -n "$st" ] && printf 'epdc_service_%s=%s\n' "$job" "$st"
+        done
+    fi
     nodes=
     for fb in /sys/class/graphics/fb*; do
         [ -r "$fb/name" ] || continue

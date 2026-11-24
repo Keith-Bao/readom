@@ -189,6 +189,7 @@ def check_epdc(users, expected, nodes=True):
             "proc/modules": f"mxc_epdc_v2_fb 1 {users} - Live 0\n",
             "sys/devices/system/cpu/online": "0-1\n",
             "sys/class/graphics/fb0/name": "mxc_epdc_fb\n",
+            "sys/module/mxc_epdc_v2_fb/parameters/waveform": "320_R198_TEST.wrf.gz\n",
         }
         for name, content in files.items():
             path = root / name
@@ -213,6 +214,7 @@ def check_epdc(users, expected, nodes=True):
 rmmod() {{ echo rmmod >> "{root}/mutations"; }}
 modprobe() {{ echo modprobe >> "{root}/mutations"; }}
 mount() {{ echo mount >> "{root}/mutations"; }}
+initctl() {{ [ "$1" = status ] && [ "$2" = lab126_gui ] && echo "lab126_gui start/running"; }}
 '''
         text = SCRIPT.read_text()
         for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/", '"/dev/'):
@@ -228,6 +230,8 @@ mount() {{ echo mount >> "{root}/mutations"; }}
         assert not (root / "mutations").exists(), "Preflight issued a mutating command"
         assert f"epdc_module_users={users}" in lines, report
         assert f"epdc_reference_accounting={expected}" in lines, report
+        assert "epdc_param_waveform=320_R198_TEST.wrf.gz" in lines, report
+        assert "epdc_service_lab126_gui=lab126_gui start/running" in lines, report
         if nodes:
             for wanted in ("epdc_fb=fb0 name=mxc_epdc_fb",
                            "epdc_user_pid=111 comm=Xorg fds=1 mappings=1",

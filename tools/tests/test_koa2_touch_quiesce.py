@@ -43,6 +43,7 @@ elif command == '5':
     if fault != 'wake_fails':
         state['awake'] = state['powered'] = True
 elif not state['awake']:
+    state['asleep_ticks'] = state.get('asleep_ticks', 0) + 1
     # A sleep call inside the asleep window: the faults that happen there.
     if fault == 'bus_leaks':
         state['i2c'] += 2
@@ -56,10 +57,17 @@ elif not state['awake']:
         state['reader_start'] = 999
 if state['awake'] and fault != 'no_awake_activity':
     state['i2c'] += 3
-(root / 'proc/interrupts').write_text(
-    '           CPU0       CPU1\n'
-    ' 36: %10d          0       GIC  36 Level     30a30000.i2c\n'
-    ' 58: %10d          0  gpio-mxc  10 Edge      1-0024\n' % (state['i2c'], state['touch']))
+if fault == 'cpu1_offline_mid_window' and not state['awake'] and state.get('asleep_ticks', 0) >= 1:
+    (root / 'proc/interrupts').write_text(
+        '           CPU0\n'
+        ' 36: %10d       GIC  36 Level     30a30000.i2c\n'
+        ' 58: %10d  gpio-mxc  10 Edge      1-0024\n' % (state['i2c'], state['touch']))
+else:
+    cpu1_touch = 2 if fault == 'cpu1_offline_mid_window' else 0
+    (root / 'proc/interrupts').write_text(
+        '           CPU0       CPU1\n'
+        ' 36: %10d          0       GIC  36 Level     30a30000.i2c\n'
+        ' 58: %10d %10d  gpio-mxc  10 Edge      1-0024\n' % (state['i2c'], state['touch'], cpu1_touch))
 (touch / 'sleep_status').write_text('on\n' if state['awake'] else 'off\n')
 (root / 'sys/class/regulator/regulator.7/state').write_text(
     'enabled\n' if state['powered'] else 'disabled\n')
@@ -158,6 +166,9 @@ run('touch_quiesce_restored_touch_unconfirmed', contact=False)
 # Real i.MX7D hardware: touch_1v8 has SION=0 so GPIO_PSR always reads out_lo.
 lines_sion0 = run('touch_quiesce_restored_touch_observed', 'gpio_psr_always_lo')
 assert 'supply_gpio=out_lo' in lines_sion0 and 'asleep_supply_gpio=out_lo' in lines_sion0, lines_sion0
+# Real i.MX7D hardware: CPU1 hotplugs offline mid-window, dropping its /proc/interrupts column.
+lines_hotplug = run('touch_quiesce_restored_touch_observed', 'cpu1_offline_mid_window')
+assert 'asleep_i2c_irqs=0' in lines_hotplug and 'asleep_touch_irqs=0' in lines_hotplug, lines_hotplug
 # sleep_status reads off in both of these; the driver log, supply and bus decide.
 run('touch_sleep_not_confirmed_by_driver', 'sleep_logged_failure')
 run('touch_not_powered_down', 'power_stays_on')

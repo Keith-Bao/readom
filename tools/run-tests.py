@@ -79,6 +79,8 @@ TESTS = [
     ('koa2-touch-quiesce', 'python', ['tools/tests/test_koa2_touch_quiesce.py'], True),
     # Secondary core offline/online isolated verification.
     ('koa2-cpu1-quiesce', 'python', ['tools/tests/test_koa2_cpu1_quiesce.py'], False),
+    # EPDC isolated stop and parameter-preserving reload (host-simulated only).
+    ('koa2-epdc-quiesce', 'python', ['tools/tests/test_koa2_epdc_quiesce.py'], True),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),
     ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),
