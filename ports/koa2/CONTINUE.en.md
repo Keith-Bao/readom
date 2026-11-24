@@ -35,7 +35,7 @@ The accompanying [SHA256SUMS](reports/2026-11-21-stage-test/SHA256SUMS) identifi
 
 ## 3. Work that needs no device
 
-1. **Touch I²C.** Trace `cyttsp5_core_sleep_()`, IRQ handling, the watchdog and startup work in verified stock sources. Design a reversible way to drain in-flight IRQ/I²C activity and confirm quiescence without losing evdev or Xorg. Cover power-off failures, timeouts and rollback. Do not relax `quiesce-verify.c` based on `sleep_status=off` or normal suspend.
+1. **Touch I²C.** Host side done; see the touch design in [handoff-quiesce.md](handoff-quiesce.md) and run **Touch only** on the device ([runbook](device-runbook.en.md)). Original task: trace `cyttsp5_core_sleep_()`, IRQ handling, the watchdog and startup work in verified stock sources. Design a reversible way to drain in-flight IRQ/I²C activity and confirm quiescence without losing evdev or Xorg. Cover power-off failures, timeouts and rollback. Do not relax `quiesce-verify.c` based on `sleep_status=off` or normal suspend.
 2. **EPDC.** Use the [source gap audit](epdc-source-gap.md) and stock logs to design read-only observations of framebuffer users, driver references and pending updates. The module still had three references. Establish how to release those and handle DMA buffers before testing an isolated stop.
 3. **Handoff checks.** Keep staging separate from execution. Review recovery and early logging in [recovery.md](recovery.en.md). The bare-metal QEMU test lacks serial output on both this work and its baseline. Diagnose the emulator and keep it marked as failing.
 4. Run the host tests below and record passes, failures and skips separately.

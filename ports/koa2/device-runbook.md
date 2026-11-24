@@ -268,3 +268,11 @@ Wi-Fi 和触摸会停几秒，这是预期的。屏幕在 EPDC 停掉之后不�
 ### 测完后的设备清理
 
 每批只在 Kindle 上安装本批需要的入口。完成单项后，先把报告复制到电脑并校验，再移除设备上对应的入口、专用文件和报告副本。同批尚未完成的测试所需共用文件保留。
+
+## 触摸单项休眠与唤醒
+
+只在主机测试通过后上机，原厂系统，拔掉 USB，屏幕保持亮着。在 KUAL 的 Readom KOA2 Stage Test 中选择 **Touch only: sleep and wake controller (tap after)**。约 12 秒后脚本唤醒触摸，此时十秒内轻点屏幕。报告在 `koa2-touch-quiesce/<运行编号>/report.txt`。
+
+脚本不卸载驱动，只向原厂 `drv_debug` 写 `4`（`cyttsp5_core_sleep`）和 `5`（唤醒）。i2c2 总线上只有触摸控制器，所以它的中断计数代表触摸 I²C 流量。先在醒着时测 5 秒，看门狗每 2 秒访问一次，计数必须增加，否则拒绝。休眠后同样 5 秒内，i2c2 和触摸中断都须为 0，`MAX77796-LSW1` 为 `disabled`，`touch_1v8` GPIO 为 `out lo`，中断线程处于 `S`，驱动日志恰好一次 `Suspend succeeded`。`sleep_status=off` 只记录，不作依据。期间若系统休眠或屏幕状态变化，结果作废。
+
+`touch_quiesce_restored_touch_observed` 是唯一的完整通过。`touch_wake_failed_restart_required` 需要正常重启恢复触摸。其他 `touch_*` 和 `refused_*` 结果说明哪一项条件没满足，均已尝试唤醒。这项测试不改变交接校验：`quiesce-verify.c` 仍要求触摸模块已卸载。

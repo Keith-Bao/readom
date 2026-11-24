@@ -167,3 +167,11 @@ KUAL 的 **Inspect Xorg touch configuration** 只读检查这三项。报告记�
 2026-11-24 的首次观测返回 `stock_sleep_not_observed`。两次快照的开机标识、`event9` inode 和 Xorg 进程/句柄标记均一致，系统累计休眠时间却没有增加。当前脚本在此结果下未运行接触事件探针。这个结果仅说明该次锁屏没有观测到系统休眠，尚不能评价真正休眠后的触摸恢复。先查原厂电源管理何时进入 suspend，以及能否读取挂起成功计数，再安排下一批观测；暂停重复相同的两分钟流程。
 
 同日新版观测返回 `stock_sleep_touch_observed`。同次开机内挂起成功计数从 0 增至 2，失败计数保持为 0，累计休眠增量为 3,602,010 ms。`event9` inode 和 Xorg 读者标记在两个快照中相同，醒后探针收到完整接触事件。报告已在电脑上校验备份，测试入口和报告副本已从 Kindle 清理。原厂休眠唤醒的触摸内核侧通过；交接阶段 I²C 静止仍待独立验证。下一批先在主机审计可逆触摸静止和 EPDC 的占用来源。
+
+#### 触摸单项静止设计（主机侧，2026-11-24）
+
+源码结论：`cyttsp5_core_sleep_()` 先把状态设为 `SS_SLEEPING`，同步停 watchdog 定时器和工作（`del_timer_sync` + `cancel_work_sync`），再 `cancel_work_sync(startup_work)`，然后关 `touch_1v8` GPIO 和 `MAX77796-LSW1`。watchdog 工作在 `SS_SLEEPING` 下直接返回。中断用 `disable_irq_nosync()` 关，不等在途线程处理结束，所以“已停”要靠事后观测。`drv_debug` 写 `4`/`5` 直接调用原厂休眠和唤醒，不卸载驱动，输入节点和 Xorg 句柄不变；写 `5` 时 `wd_disabled` 清零并重启 watchdog。屏幕亮灭会经 framebuffer 回调和运行时电源引用再次调用休眠或唤醒，脚本检测到即作废结果。
+
+独立证据：i2c2（`30a30000.i2c`）上只有触摸控制器，i.MX I²C 驱动按字节中断，所以它的中断计数代表触摸 I²C 流量。醒着时 watchdog 每 2 秒发一次空命令，计数必须增加，这是对照。休眠后 5 秒窗口内须满足：i2c2 和触摸中断都为 0，调节器 `disabled`，供电 GPIO `out lo`，中断线程 `S`，日志恰好一次 `Suspend succeeded`。
+
+`ports/koa2/stage-test/touch-quiesce.sh` 实现上述流程，失败和中断都会尝试一次唤醒，并核对节点 inode、Xorg 读者和醒后接触帧。`koa2-touch-quiesce` 用模拟驱动覆盖 16 种情形，另做了 5 个故意改坏的版本，测试全部能发现。i2c2 只有触摸、按字节中断这两点来自源码和设备树，需要真机报告的醒着计数佐证。这项结果不放宽 `quiesce-verify.c`；交接时是否改为“休眠而不卸载”，要等真机通过后再定。

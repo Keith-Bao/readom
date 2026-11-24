@@ -297,3 +297,11 @@ A valid report requires the same boot, at least one extra second of cumulative s
 ### Device cleanup after a test
 
 Keep only the current batch's entries on the Kindle. After each test, copy its report to the computer and verify the copy before removing the device entry, its dedicated files and its local report. Keep shared files used by pending tests.
+
+## Touch-only sleep and wake
+
+Run this only after the host tests pass, on the stock system with USB unplugged and the screen on. In KUAL under Readom KOA2 Stage Test, choose **Touch only: sleep and wake controller (tap after)**. After about 12 seconds the script wakes touch; tap the screen within ten seconds. The report is `koa2-touch-quiesce/<run ID>/report.txt`.
+
+The script keeps the driver loaded and writes only `4` (`cyttsp5_core_sleep`) and `5` (wake) to the stock `drv_debug`. The touch controller is the only device on i2c2, so that bus's interrupt count stands for touch I²C traffic. A 5-second awake window comes first: the watchdog talks to the controller every 2 seconds, so the count must rise or the test refuses. In the same window after sleep, i2c2 and touch interrupts must both be 0, `MAX77796-LSW1` must read `disabled`, the `touch_1v8` GPIO `out lo`, the IRQ thread `S`, and the driver log must show exactly one `Suspend succeeded`. `sleep_status=off` is recorded but never relied on. A system suspend or screen change during the test voids the result.
+
+`touch_quiesce_restored_touch_observed` is the only full pass. `touch_wake_failed_restart_required` needs a normal restart to bring touch back. Every other `touch_*` and `refused_*` result names the condition that failed, and a wake was attempted in each. This test does not change the handoff check: `quiesce-verify.c` still requires the touch module to be unloaded.

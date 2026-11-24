@@ -377,3 +377,7 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 
 没有 Linux 依赖安装、ARM 构建、内核加载或设备跳转。
 当前不能宣称 B/C 完成，也没有可安装的 Android 包。
+
+## 2026-11-24 触摸单项休眠与唤醒（主机）
+
+追踪原厂 `cyttsp5_core.c` 的休眠、IRQ、watchdog 和 startup 路径。新增 `touch-quiesce.sh`（KUAL：Touch only）及 `koa2-touch-quiesce` 主机测试：以醒着时的 i2c2 中断为对照，休眠窗口要求总线和触摸中断为 0，调节器、供电 GPIO 和中断线程状态独立核对，不依赖 `sleep_status`。没有连接设备。

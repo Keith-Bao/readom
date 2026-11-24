@@ -75,6 +75,8 @@ TESTS = [
     ('koa2-usb-lun', 'python', ['tools/tests/test_koa2_usb_lun.py'], False),
     ('koa2-usb-reload', 'python', ['tools/tests/test_koa2_usb_reload.py'], False),
     ('koa2-stock-sleep', 'python', ['tools/tests/test_koa2_stock_sleep.py'], True),
+    # Touch put to sleep by its own stock driver, with the bus shown quiet.
+    ('koa2-touch-quiesce', 'python', ['tools/tests/test_koa2_touch_quiesce.py'], True),
     ('koa2-copylist', 'c', ['boot/koa2/copylist.c', 'boot/koa2/contract.c', 'boot/koa2/test-copylist.c'], False),
     ('koa2-stock-abi', 'python', ['tools/tests/test_koa2_stock_abi.py'], False),
     ('koa2-compare-build', 'python', ['tools/tests/test_koa2_compare_kernel_build.py'], False),
