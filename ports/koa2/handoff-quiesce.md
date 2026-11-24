@@ -181,3 +181,15 @@ KUAL 的 **Inspect Xorg touch configuration** 只读检查这三项。报告记�
 源码结论：`fb_open()` 每次打开帧缓冲节点都对 `mxc_epdc_v2_fb` 调一次 `try_module_get`，`fb_release()` 归还（`fbmem.c:1458,1489`）。映射保留文件，因此关掉描述符后映射仍占引用。原厂配置没有 fbcon，不会有控制台占用。`request_firmware_nowait()` 也取一次引用，但设备日志显示 1.47 s 已进入 `mxc_epdc_fb_fw_handler`，工作完成后已归还。procfs 和 sysfs 文件不取模块引用。所以此前的 3 个引用最可能来自用户空间打开的 `/dev/fb0`，尚需实机确认。
 
 KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/class/graphics/fb*` 名称、每个进程打开帧缓冲的描述符数和映射数，以及按进程计的 `comm`。不记录参数、地址或内容。`epdc_reference_accounting=matched` 表示观察到的打开者数等于引用数；`shared_files_possible` 表示 fork/dup 共享文件导致观察数更多；`more_references_than_openers` 表示还有源码未解释的引用。`koa2-quiesce-dryrun` 覆盖这四种结果，并确认采集不改动状态。释放这些引用之前，EPDC 停用仍暂停。
+
+#### 2026-11-24 晚五项真机批次结果
+
+使用 2026-11-24 套件在实机运行 5 项测试，原始报告与 `stock-runtime.dtb` 已校验备份到本地，设备上的测试入口与副本已清理：
+
+- **EPDC 引用来源**：`epdc_module_users=3`、`epdc_open_fds=3`、`epdc_mapped_only_processes=0`、`epdc_reference_accounting=matched`。3 个打开者全部查明：`Xorg`（`fds=1 mappings=1`）、`awesome`（`fds=1 mappings=0`）、`blanket`（`fds=1 mappings=0`）。源码外不存在未知内核引用，后续可据此设计可控释放路径。
+- **Wi-Fi（`bcmdhd`）**：采集时 `wifi_module_users=unloaded`，观察到 2 个关联进程：`lipc-daemon` 与 `wifid`（不含 MAC/SSID/密码）。
+- **原厂运行时 DTB 备份**：`fdt_backup=ok`、`fdt_magic=d00dfeed`、`fdt_bytes=49280`、`fdt_sha256=c84e99f47b2b451cc777bf9a36bb6732c2501bca8952dc739118f2d1fd60cd4f`。本地留存，不提交 Git。
+- **CPU1 单项下线与恢复**：`result=cpu1_quiesce_restored`。`online_before=0-1` → 离线窗口首尾均保持 `online=0`、`cpu1=0` → `online_after=0-1`，次核可逆下线/上线实机通过。
+- **触摸单项休眠与唤醒**：实机返回 `refused_touch_not_awake`（安全拒绝，未写入 `drv_debug`），记录 `regulator=enabled`、`sleep_status=on`、`supply_gpio=out_lo`。核对原厂 `drivers/gpio/gpio-mxc.c:450`（`bgpio_init` 传入 `GPIO_PSR` 且未置 `BGPIOF_READ_OUTPUT_REG_SET`）与 `stock-runtime.dtb` 后确认：`touch_1v8`（`GPIO1_IO12`）未启用 `SION`，读输出引脚恒返 `out_lo`。`touch-quiesce.sh` 与 `koa2-touch-quiesce` 已修正为保留 `supply_gpio` 日志记录，但以 `sleep_status=on` + `MAX77796-LSW1=enabled` + 醒着时的 I²C 中断正对照作为前提，待下次上机复测。
+
+- **触摸单项复测（修正 `supply_gpio` 前提后）**：实机完整跑完休眠与唤醒流程，报告已备份到本地并清理设备。醒着正对照 `awake_i2c_irqs=874`、`awake_touch_irqs=44`；写入 `4` 休眠后 `suspend_logged=1`、`suspend_failed_logged=0`、`asleep_status=off`、`asleep_regulator=disabled`、`asleep_irq_thread=S`、5 秒窗口内 **`asleep_i2c_irqs=0`**、`system_suspend_ms=0`、`screen_changes=0`；写入 `5` 唤醒后 `resume_logged=1`、`wake=ok`、`woken_i2c_irqs=502`、`after_touch=observed`，`event9` inode（`15:7148`）与 Xorg 句柄标记全程未变。脚本末行报 `touch_bus_not_quiet` 仅因 `asleep_touch_irqs=-2`——窗口期间原厂动态热插拔将 CPU1 下线，导致 `/proc/interrupts` 少了一列历史计数（差值为负而非新增中断）。结论：经由原厂 `drv_debug` 4/5 路径可逆停用并恢复触摸控制器（含 I²C2 总线归零与断电）已在实机证实。

@@ -132,8 +132,13 @@ window_counts() {
     printf '%s %s\n' $((i2c_end - i2c_start)) $((touch_end - touch_start))
 }
 
+# On i.MX7D, gpio-mxc reads GPIO_PSR for output pins (bgpio_init without
+# BGPIOF_READ_OUTPUT_REG_SET), and touch_1v8 (GPIO1_IO12) has SION=0, so
+# /sys/kernel/debug/gpio always reports out_lo even when driven high.
+# Record supply_gpio for diagnostics, but judge awake power by sleep_status
+# plus MAX77796-LSW1 regulator state (and the awake I2C positive control).
 powered() {
-    [ "$(sleep_status)" = on ] && [ "$(regulator_state)" = enabled ] && [ "$(supply_gpio)" = out_hi ]
+    [ "$(sleep_status)" = on ] && [ "$(regulator_state)" = enabled ]
 }
 
 release=$(uname -r)
@@ -167,7 +172,7 @@ blanks_before=$(blank_count)
 printf 'touch_irq=%s\nirq_thread=%s\nregulator=%s\nsupply_gpio=%s\nsleep_status=%s\n' \
     "$TOUCH_IRQ_NUMBER" "$thread" "$regulator" "$gpio" "$status"
 printf 'node=%s\ninode=%s\nreader=%s\n' "$node" "$identity" "$reader"
-[ "$status" = on ] && [ "$regulator" = enabled ] && [ "$gpio" = out_hi ] || finish refused_touch_not_awake
+[ "$status" = on ] && [ "$regulator" = enabled ] || finish refused_touch_not_awake
 users=$(other_users)
 if [ -n "$users" ]; then
     printf '%s\n' "$users"

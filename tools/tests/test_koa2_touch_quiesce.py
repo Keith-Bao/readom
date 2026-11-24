@@ -63,8 +63,9 @@ if state['awake'] and fault != 'no_awake_activity':
 (touch / 'sleep_status').write_text('on\n' if state['awake'] else 'off\n')
 (root / 'sys/class/regulator/regulator.7/state').write_text(
     'enabled\n' if state['powered'] else 'disabled\n')
+gpio_level = 'lo' if fault == 'gpio_psr_always_lo' else ('hi' if state['powered'] else 'lo')
 (root / 'sys/kernel/debug/gpio').write_text(
-    ' gpio-12  (touch_1v8           ) out %s    \n' % ('hi' if state['powered'] else 'lo'))
+    ' gpio-12  (touch_1v8           ) out %s    \n' % gpio_level)
 thread = 'D' if fault == 'thread_busy' and not state['awake'] else 'S'
 (root / 'proc/222/stat').write_text('222 (irq/58-1-0024) %s 2 0 0\n' % thread)
 (root / 'proc/111/stat').write_text('111 (Xorg) S ' + '0 ' * 18 + str(state['reader_start']) + ' 0\n')
@@ -154,6 +155,9 @@ for wanted in ('awake_i2c_irqs=3', 'asleep_i2c_irqs=0', 'asleep_touch_irqs=0',
                'suspend_logged=1', 'resume_logged=1', 'after_touch=observed', 'screen_changes=0'):
     assert wanted in lines, (wanted, lines)
 run('touch_quiesce_restored_touch_unconfirmed', contact=False)
+# Real i.MX7D hardware: touch_1v8 has SION=0 so GPIO_PSR always reads out_lo.
+lines_sion0 = run('touch_quiesce_restored_touch_observed', 'gpio_psr_always_lo')
+assert 'supply_gpio=out_lo' in lines_sion0 and 'asleep_supply_gpio=out_lo' in lines_sion0, lines_sion0
 # sleep_status reads off in both of these; the driver log, supply and bus decide.
 run('touch_sleep_not_confirmed_by_driver', 'sleep_logged_failure')
 run('touch_not_powered_down', 'power_stays_on')

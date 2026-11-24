@@ -23,8 +23,8 @@ On 2026-11-23 the marker survived a normal restart; on 2026-11-24 stock suspend 
 
 | Question | Answer |
 |---|---|
-| What is next | Run the [2026-11-24 5-item kit](materials/2026-11-24/README.en.md) on the Kindle (read-only EPDC/Wi-Fi/DTB, CPU1-only, touch-only), then design EPDC stop and rerun reversible quiesce |
-| Observed result | Staging `sealed_plan_valid`, restart marker `marker_survived`, USB-only reload passed, stock sleep `stock_sleep_touch_observed`, original dry run `incomplete_see_above` |
+| What is next | 2026-11-24 5-item kit ran on hardware: all 3 EPDC holders matched (`Xorg`/`awesome`/`blanket`), stock runtime DTB backed up (49,280 B), CPU1-only passed (`cpu1_quiesce_restored`); touch-only sleep/wake confirmed on hardware (I2C2 silent, regulator disabled, touch recovered); next design controlled release of the 3 EPDC holders and rerun reversible quiesce |
+| Observed result | Staging `sealed_plan_valid`, restart marker `marker_survived`, USB-only reload passed, stock sleep `stock_sleep_touch_observed`, CPU1-only `cpu1_quiesce_restored`, EPDC users `matched` (`Xorg`/`awesome`/`blanket`), runtime DTB backed up, touch-only re-run confirmed power-off (`disabled`), I2C2 silence (`874->0->502`), and wake recovery (`after_touch=observed`, Xorg handle unchanged; `asleep_touch_irqs=-2` was CPU1 dynamic offline dropping a column) |
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
 | What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): stock tree still lacks the file; isolated v1 (`epdc-v1`, night mode rejected) compiles `mxc_epdc_v2_fb.o` but is untested on hardware |
 | Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |

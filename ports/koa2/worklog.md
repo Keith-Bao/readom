@@ -418,3 +418,12 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 
 - 阶段 D：新增 `build-android41-kernel.sh` 合并 `android41-core.config` + 多 context Binder + SELinux `policy30` + printk 回写，排查并禁用 i.MX7D 不存在的 `CONFIG_MXC_GPU_VIV`，完整编出 KOA2 `zImage`、`imx7d-zelda.dtb` 与模块；在 QEMU 双核下同时开启 SELinux `policy30` enforcing 与三 context Binder 联合实跑通过（`run-qemu-android41.py`）。
 - 阶段 G：审计原厂 `max77696-battery.c`（`voltage_now`=mV、`current_now`=mA、`charge_now`=mAh、`temp`=0.1°C、`capacity` 未限幅）、`max77696-bl.c`（0–4095）、`imx7d-zelda.dts` 实体翻页键（104/109）和 `bu520.c` 霍尔开关（`SW_LID`），落地 `device/amazon/koa2/`（`BoardConfig.mk`、`gpio-keys.kl`、`hardware/PowerContract.h`、`README.md`）与主机测试 `koa2-hardware-contract`。没有连接设备。
+
+- 2026-11-24 晚实机五项批次与主机跟进：
+  - EPDC 只读采集：`epdc_module_users=3`、`epdc_reference_accounting=matched`，3 个打开者为 `Xorg`（fds=1, mappings=1）、`awesome`（fds=1, mappings=0）、`blanket`（fds=1, mappings=0）。
+  - Wi-Fi 只读采集：`wifi_module_users=unloaded`，关联进程 `lipc-daemon`、`wifid`。
+  - 原厂运行时 DTB 备份：`fdt_backup=ok`、`fdt_magic=d00dfeed`、49,280 字节（SHA256 `c84e99f4…cd4f`），已留存本地不进 Git。
+  - CPU1 单项：`cpu1_quiesce_restored`（`0-1` → `0` → `0-1`）。
+  - 触摸单项：返回 `refused_touch_not_awake`（`regulator=enabled`、`sleep_status=on`、`supply_gpio=out_lo`）。查明 `gpio-mxc.c` `bgpio_init` 读 `GPIO_PSR` 且 `touch_1v8` 无 `SION`，已修正 `touch-quiesce.sh` 与 `test_koa2_touch_quiesce.py` 并重建 `stage-test-kit`。
+  - 本机 WSL（`Readom-KOA2`）同步并全量编通 `epdc-v1`、`android41-kernel`、`qemu-android41`、`qemu-selinux`、`headless-smoke`、`module-abi`、`smoke-initramfs` 与 `stage-test-kit`。
+  - 触摸单项复测结果：`awake_i2c_irqs=874` → 休眠 5 秒内 `asleep_regulator=disabled`、`asleep_i2c_irqs=0`、`asleep_irq_thread=S` → 唤醒后 `wake=ok`、`woken_i2c_irqs=502`、`after_touch=observed`，Xorg 句柄与 inode 不变；`asleep_touch_irqs=-2` 源于期间 CPU1 动态热插拔下线导致 `/proc/interrupts` 列数减少。原始报告已归档到本地，Kindle 已清理。
