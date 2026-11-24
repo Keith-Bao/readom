@@ -274,3 +274,25 @@ static int mxc_epdc_waveform_proc(struct mxc_epdc_fb_data *fb_data)
 static void proc_entry_cleanup(void)
 {
 }
+
+#if defined(CONFIG_KERNEL_MODE_NEON)
+/* Clean-room scalar equivalent of Lab126's portrait scan-line gradient helper
+ * (matches the #else branch of mxc_epdc_v2_fb.c:4000-4012 identically). */
+void do_pixel_line(void *pixel_start, uint32_t *strength,
+		   uint32_t *transition, uint32_t width)
+{
+	const uint8_t *px = (const uint8_t *)pixel_start;
+	uint32_t col;
+
+	if (!px || !strength || !transition)
+		return;
+	for (col = 0; col + 1 < width; col += 2) {
+		int32_t diff = (int32_t)px[col] - (int32_t)px[col + 1];
+		if (diff < 0)
+			diff = -diff;
+		*strength += (uint32_t)diff;
+		if ((uint32_t)diff > 15u) /* ONE_GRAY_LEVEL at mxc_epdc_v2_fb.c:3918 */
+			(*transition)++;
+	}
+}
+#endif

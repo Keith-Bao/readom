@@ -436,3 +436,6 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 - 实机复测触摸单项：`awake_i2c_irqs=51`、`awake_touch_irqs=3` → 休眠 5 秒内 `asleep_regulator=disabled`、`asleep_i2c_irqs=0`、`asleep_touch_irqs=0`、`wake=ok`。
 - 实机只读采集 EPDC 参数与服务：确认 `epdc_param_waveform=320_R198_AG3902_ED070KC2UA_TC.wrf.gz`、`lab126_gui`/`x`/`framework` 三个独立 Upstart 任务。
 - 实机测试 `epdc-quiesce.sh`（停 `lab126_gui`）：修正 rootfs `.ko` 路径与 `setsid`/`SIGTERM` 保护后安全返回 `epdc_users_not_released`（`epdc_users_after_stop=3`，未卸载模块），证实停 `lab126_gui` 不会释放 `Xorg`/`awesome`/`blanket` 的 3 个引用（属 `x` 任务管理）；已将 `epdc-quiesce.sh` 暂移出 `menu.json`，待先只读审计 `x` 任务依赖。原始报告均已备份到本地，Kindle 已清理。
+- 主机侧推进：
+  - `quiesce-dryrun.sh epdc` 新增只读采集 `/etc/upstart/{lab126_gui,x,awesome,blanket,framework}.conf` 的 `start on`/`stop on`/`emits` 依赖行（`koa2-quiesce-dryrun` 已覆盖）。
+  - 新增 `ports/koa2/build-android41-epdc-kernel.sh`：将 `epdc-v1` 合入统一 Android 4.1 实验内核（`CONFIG_FB_MXC_EINK_V2_PANEL=m`，硬拒绝夜间模式），`modpost` 首次链接暴露缺失的 `do_pixel_line` 后已按 `mxc_epdc_v2_fb.c:4000` 标量等价实现补入 `mxc_epdc_fb_lab126.c`，完整编出并通过 `modpost` 链接 `zImage`、`imx7d-zelda.dtb` 与 484 KB `mxc_epdc_v2_fb.ko`（0 未定义符号，尚未上机）。

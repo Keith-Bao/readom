@@ -190,6 +190,7 @@ def check_epdc(users, expected, nodes=True):
             "sys/devices/system/cpu/online": "0-1\n",
             "sys/class/graphics/fb0/name": "mxc_epdc_fb\n",
             "sys/module/mxc_epdc_v2_fb/parameters/waveform": "320_R198_TEST.wrf.gz\n",
+            "etc/upstart/x.conf": "start on started lab126_gui\nstop on stopping lab126_gui\nexec /usr/bin/Xorg\n",
         }
         for name, content in files.items():
             path = root / name
@@ -217,7 +218,7 @@ mount() {{ echo mount >> "{root}/mutations"; }}
 initctl() {{ [ "$1" = status ] && [ "$2" = lab126_gui ] && echo "lab126_gui start/running"; }}
 '''
         text = SCRIPT.read_text()
-        for prefix in ("/mnt/us", "/proc/", "/sys/", "/dev/input/", "/var/log/", '"/dev/'):
+        for prefix in ("/mnt/us", "/proc/", "/sys/", "/etc/upstart/", "/dev/input/", "/var/log/", '"/dev/'):
             text = text.replace(prefix, prefix[0] + str(root) + prefix[1:] if prefix[0] == '"'
                                 else str(root) + prefix)
         script = root / "preflight.sh"
@@ -232,6 +233,9 @@ initctl() {{ [ "$1" = status ] && [ "$2" = lab126_gui ] && echo "lab126_gui star
         assert f"epdc_reference_accounting={expected}" in lines, report
         assert "epdc_param_waveform=320_R198_TEST.wrf.gz" in lines, report
         assert "epdc_service_lab126_gui=lab126_gui start/running" in lines, report
+        assert "epdc_upstart_x=start on started lab126_gui" in lines, report
+        assert "epdc_upstart_x=stop on stopping lab126_gui" in lines, report
+        assert "exec" not in report, report
         if nodes:
             for wanted in ("epdc_fb=fb0 name=mxc_epdc_fb",
                            "epdc_user_pid=111 comm=Xorg fds=1 mappings=1",

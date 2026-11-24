@@ -114,6 +114,14 @@ check_epdc_users() {
             [ -n "$st" ] && printf 'epdc_service_%s=%s\n' "$job" "$st"
         done
     fi
+    for job in lab126_gui x awesome blanket framework; do
+        conf="/etc/upstart/$job.conf"
+        [ -r "$conf" ] || continue
+        awk -v j="$job" '/^(start on|stop on|emits) / {
+            gsub(/[^[:alnum:]_.,/ ()=-]/, "", $0)
+            printf "epdc_upstart_%s=%s\n", j, $0
+        }' "$conf"
+    done
     nodes=
     for fb in /sys/class/graphics/fb*; do
         [ -r "$fb/name" ] || continue
