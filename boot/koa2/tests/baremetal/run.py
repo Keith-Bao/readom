@@ -25,6 +25,8 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 NEEDS = ['arm-linux-gnueabi-gcc', 'qemu-system-arm', 'make']
 KJ_COPIED, KJ_STATUS = 36, 40
+# Upper bound per case; a healthy run reaches its verdict in about a second.
+WAIT_SECONDS = 20
 # case: the status expected, and whether pages may already have been copied
 # when it is reached. Once the MMU is off there is no undo, so a refusal that
 # can only happen part way through a list leaves what it had copied; the
@@ -89,18 +91,42 @@ def run_case(case, work):
             if pathlib.Path(sock).exists():
                 break
             time.sleep(0.1)
-        time.sleep(2.5)
-        serial = pathlib.Path(str(log) + '.serial').read_text(errors='replace')
-        found = re.search(r'params (0x[0-9a-f]+)', serial)
-        dest = re.search(r'dest (0x[0-9a-f]+)', serial)
+        # Poll instead of sleeping a fixed time: on a busy host QEMU can take
+        # longer than a fixed wait to print the parameter address, and a fixed
+        # wait then reads as a run with no serial output at all.
+        serial_path = pathlib.Path(str(log) + '.serial')
+        deadline = time.monotonic() + WAIT_SECONDS
+        serial, found, dest = '', None, None
+        while time.monotonic() < deadline and qemu.poll() is None:
+            serial = serial_path.read_text(errors='replace') if serial_path.exists() else ''
+            found = re.search(r'params (0x[0-9a-f]+)', serial)
+            dest = re.search(r'dest (0x[0-9a-f]+)', serial)
+            if found and dest:
+                break
+            time.sleep(0.1)
         if not found or not dest:
-            return f'no parameter address in output\n{serial[-1500:]}'
+            state = 'running' if qemu.poll() is None else f'exited {qemu.returncode}'
+            qemu_out = log.read_text(errors='replace') if log.exists() else ''
+            return (f'no parameter address in output after {WAIT_SECONDS} s (qemu {state})\n'
+                    f'serial: {serial[-1500:]!r}\nqemu: {qemu_out[-800:]!r}')
         params = int(found.group(1), 16)
         status, copied_may = CASES[case]
-        got = words(monitor(sock, f'xp /2wx {params + KJ_COPIED:#x}'))
+        # The trampoline writes a non-zero status when it finishes or refuses;
+        # until then the word is the 0 the test put there.
+        got = []
+        while time.monotonic() < deadline:
+            got = words(monitor(sock, f'xp /2wx {params + KJ_COPIED:#x}', wait=0.2))
+            if len(got) >= 2 and got[1]:
+                break
+            time.sleep(0.1)
         if len(got) < 2:
             return f'cannot read the parameter block\n{serial[-1500:]}'
         copied, got_status = got[0], got[1]
+        if case == 'pass':
+            # The stand-in kernel prints after the trampoline has set the status.
+            while 'KO!' not in serial and 'X\n' not in serial and time.monotonic() < deadline:
+                time.sleep(0.1)
+                serial = serial_path.read_text(errors='replace')
         untouched = words(monitor(sock, f'xp /1wx {int(dest.group(1), 16):#x}'))
         if got_status != status:
             return f'status {got_status:#x}, expected {status:#x} (copied {copied})\n{serial[-1500:]}'
