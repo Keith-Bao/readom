@@ -7,7 +7,6 @@
 set -u
 BASE=/mnt/us/koa2-epdc-quiesce
 MOD=mxc_epdc_v2_fb
-MOD_KO=/lib/modules/mxc_epdc_v2_fb.ko
 GUI_JOB=${KOA2_EPDC_GUI_JOB:-lab126_gui}
 [ -d /mnt/us/documents ] || exit 1
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
@@ -52,7 +51,14 @@ mkdir "$BASE/.running" 2>/dev/null || finish refused_test_already_running
 trap 'rmdir "$BASE/.running"' 0
 
 users_before=$(mod_users) || finish refused_epdc_not_loaded
-[ -f "$MOD_KO" ] || finish refused_epdc_ko_missing
+MOD_KO=
+for candidate in     "/lib/modules/$release/kernel/drivers/video/fbdev/mxc/$MOD.ko"     "/lib/modules/$MOD.ko"; do
+    if [ -f "$candidate" ]; then
+        MOD_KO=$candidate
+        break
+    fi
+done
+[ -n "$MOD_KO" ] || finish refused_epdc_ko_missing
 waveform_file=/sys/module/$MOD/parameters/waveform
 [ -r "$waveform_file" ] || finish refused_epdc_params_missing
 waveform=$(tr -cd '[:alnum:]_.-' < "$waveform_file" 2>/dev/null)
@@ -63,7 +69,7 @@ case "$gui_status" in
     *"start/running"*) ;;
     *) finish refused_gui_service_missing ;;
 esac
-printf 'users_before=%s\nwaveform=%s\ngui_job=%s\n' "$users_before" "$waveform" "$GUI_JOB"
+printf 'users_before=%s\nmod_ko=%s\nwaveform=%s\ngui_job=%s\n' "$users_before" "$MOD_KO" "$waveform" "$GUI_JOB"
 
 gui_stopped=0
 mod_unloaded=0
@@ -93,7 +99,7 @@ restore_and_report() {
     fi
     if [ "$reload_ok" = 1 ] && [ "$gui_ok" = 1 ]; then
         waited=0
-        while [ "$waited" -lt 10 ]; do
+        while [ "$waited" -lt 20 ]; do
             if [ -r /sys/class/graphics/fb0/name ] && xorg_fb_open; then
                 break
             fi
@@ -118,17 +124,21 @@ restore_and_report() {
     printf 'result=%s\n' "$result"
 }
 trap 'restore_and_report' 0
-trap 'exit 1' HUP INT TERM
+# Stopping lab126_gui sends SIGHUP/SIGTERM to processes in the GUI tree; ignore
+# both so the script survives to unload, reload, and restart lab126_gui.
+trap '' HUP TERM
+trap 'exit 1' INT
 
+gui_stopped=1
 if ! initctl stop "$GUI_JOB" >/dev/null 2>&1; then
+    gui_stopped=0
     result=epdc_gui_stop_failed
     exit 0
 fi
-gui_stopped=1
 
 waited=0
 users_now=$users_before
-while [ "$waited" -lt 5 ]; do
+while [ "$waited" -lt 10 ]; do
     users_now=$(mod_users 2>/dev/null || printf 'missing')
     [ "$users_now" = 0 ] && break
     sleep 1

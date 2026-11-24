@@ -430,3 +430,9 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
   - 后续主机侧工作：完成原厂 `stock-runtime.dtb` 与 `android41` 构建 DTB 审计（确认 `epdc_reserved` `0x9c000000/5MiB`、`bma,place=1`、无 `mwan`）；修正 `touch-quiesce.sh` 多核热插拔中断计数（新增 `cpu1_offline_mid_window` 测试）；扩展 `quiesce-dryrun.sh epdc` 只读采集模块参数与 Upstart 服务状态；新增 `epdc-quiesce.sh` 与 13 用例主机测试 `koa2-epdc-quiesce`（暂不入 `menu.json`）。
   - 实机运行时 DTB 复验与 Android 硬件契约扩展：用本地 `stock-runtime.dtb` 实测 `koa2_fdt_validate`/`koa2_fdt_rewrite` 全部返回 `KOA2_OK` 且 `dtc` 校验通过（保留 `epdc_reserved`）；补齐 `device/amazon/koa2/` 的 `cyttsp5_mt.idc`、`hardware/EpdcContract.h`、`hardware/SensorContract.h` 及单测 `koa2-epdc-contract`、`koa2-sensor-contract`。
   - `boot/koa2/fdt-rewrite.c` 新增可选 `rewrite_usdhc3_standard`（将 `usdhc@30b60000` 由 `falcon_blk` 切回 `fsl,imx7d-usdhc`），在本地实机 `stock-runtime.dtb` 上验证 `usdhc3_rewritten=1` 且 `dtc` 校验通过；新增 `device/amazon/koa2/rootdir/{ueventd.koa2.rc,fstab.koa2,init.koa2.rc}` 骨架。
+
+## 2026-11-25
+
+- 实机复测触摸单项：`awake_i2c_irqs=51`、`awake_touch_irqs=3` → 休眠 5 秒内 `asleep_regulator=disabled`、`asleep_i2c_irqs=0`、`asleep_touch_irqs=0`、`wake=ok`。
+- 实机只读采集 EPDC 参数与服务：确认 `epdc_param_waveform=320_R198_AG3902_ED070KC2UA_TC.wrf.gz`、`lab126_gui`/`x`/`framework` 三个独立 Upstart 任务。
+- 实机测试 `epdc-quiesce.sh`（停 `lab126_gui`）：修正 rootfs `.ko` 路径与 `setsid`/`SIGTERM` 保护后安全返回 `epdc_users_not_released`（`epdc_users_after_stop=3`，未卸载模块），证实停 `lab126_gui` 不会释放 `Xorg`/`awesome`/`blanket` 的 3 个引用（属 `x` 任务管理）；已将 `epdc-quiesce.sh` 暂移出 `menu.json`，待先只读审计 `x` 任务依赖。原始报告均已备份到本地，Kindle 已清理。
