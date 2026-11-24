@@ -16,3 +16,5 @@ Kindle Oasis 2（KOA2 / i.MX7D / Cortex-A7 / 固件 5.16.2.1.1）的硬件契约
 | 根文件系统骨架 | `rootdir/{init,ueventd}.koa2.rc`、`fstab.koa2` | 300 PPI、`max77696-bl` 权限、纯内存验证挂载（不写原厂分区） |
 | 产品与 HIDL 清单 | `koa2.mk`、`AndroidProducts.mk`、`manifest.xml`、`system.prop` | AOSP 8.1 产品定义、`sensors@1.0`/`health@1.0`/`light@2.0`、`low_ram` + `-Xnorelocate`（512 MiB 优化） |
 | SELinux 骨架 | `sepolicy/{file_contexts,epdc.te}` | 仅授权 `/dev/graphics/fb0` 与 `max77696-bl`，不开放任何裸块设备 |
+| HAL 模块 | `lights/lights.c`、`health/healthd.cpp`、`power/power.c` | 12-bit 前光、MAX77796 容量钳位、EPDC/前光熄屏与 cpufreq 启动提速 |
+| USB 与 Wi-Fi | `rootdir/init.koa2.usb.rc`、`wifi/wpa_supplicant_overlay.conf` | `ci_hdrc.0` configfs ADB（强制授权）/MTP 与 `bcmdhd` 覆盖配置（无凭据） |

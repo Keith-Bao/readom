@@ -11,13 +11,13 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 | A 开发记录 | 基线、命令、证据、下一步；每阶段独立提交 | 进行中 |
 | B 环境 | WSL2 Ubuntu 22.04 `Readom-KOA2`，ext4 内构建 | 已完成，见 [build-environment.md](build-environment.md) |
 | C 原厂内核 | zelda defconfig、zImage、DTB、modules、哈希；干净重建 | 已完成（headless-smoke），见 [headless-smoke.md](headless-smoke.md) |
-| D Android 内核 | 逐项审计补丁，4.1 配置，Binder 多上下文优先 | 已审计未构建，见 [android41-audit.md](android41-audit.md) |
+| D Android 内核 | 逐项审计补丁，4.1 配置，Binder 多上下文优先 | 已编通统一 Android 4.1 与 Android 4.1 + EPDC v1 内核并通过 QEMU Binder+SELinux 联测，见 [android41-audit.md](android41-audit.md) |
 | E 交接 | 校验、暂存、复制表、跳转；SMP/DTB 后端 | 主机侧完成，实机暂存检查通过；尚未跳转，见 [boot/koa2/README.md](../../boot/koa2/README.md) |
 | F 最小 Linux | smoke initramfs，日志通路，三次往返 | initramfs 已就绪，未在设备上启动 |
-| G 基础硬件 | EPDC v2、触摸、翻页、旋转、前光 | 未开始，缺 EPDC 源码，见 [epdc-source-gap.md](epdc-source-gap.md) |
-| H AOSP | koa2-userdebug / Cortex-A7，独立输出 | 未开始 |
-| I 日常功能 | Wi-Fi、ADB、MTP、微信读书、自动休眠 | 未开始 |
-| J 安装回退 | KUAL 入口，机型校验，保留上一版 | 未开始 |
+| G 基础硬件 | EPDC v2、触摸、翻页、旋转、前光 | 主机侧完成：`epdc-v1` 编通 `mxc_epdc_v2_fb.ko`（拒夜间模式），`lights`/`health`/`power` HAL 与契约单测通过；待上机验证，见 [epdc-source-gap.md](epdc-source-gap.md) |
+| H AOSP | koa2-userdebug / Cortex-A7，独立输出 | `device/amazon/koa2/` 完整 AOSP 8.1 设备树骨架与 `koa2-device-tree` 校验已就绪，待接通 AOSP 镜像构建 |
+| I 日常功能 | Wi-Fi、ADB、MTP、微信读书、自动休眠 | `init.koa2.usb.rc`（`ci_hdrc.0` ADB/MTP）与 `wpa_supplicant_overlay.conf` 已就绪，待上机验收 |
+| J 安装回退 | KUAL 入口，机型校验，保留上一版 | `ports/koa2/installer/` 安装/升级/回退脚本与 `koa2-installer` 主机测试已通过，待最终上机验收 |
 
 ## E 阶段内部（当前重心）
 

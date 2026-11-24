@@ -7,3 +7,4 @@ ro.sf.lcd_density=300
 ro.hardware.egl=swiftshader
 dalvik.vm.extra-opts=-Xnorelocate
 dalvik.vm.dex2oat-flags=--no-watch-dog --runtime-arg -Xnorelocate
+ro.adb.secure=1

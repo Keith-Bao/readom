@@ -14,6 +14,10 @@ required = [
     'rootdir/init.koa2.rc', 'rootdir/ueventd.koa2.rc', 'rootdir/fstab.koa2',
     'sepolicy/file_contexts', 'sepolicy/epdc.te',
     'hardware/PowerContract.h', 'hardware/EpdcContract.h', 'hardware/SensorContract.h',
+    'lights/lights.c', 'lights/Android.mk',
+    'health/healthd.cpp', 'health/Android.mk',
+    'power/power.c', 'power/Android.mk',
+    'rootdir/init.koa2.usb.rc', 'wifi/wpa_supplicant_overlay.conf',
 ]
 for rel in required:
     assert (KOA2 / rel).is_file(), f'missing {rel}'
@@ -55,5 +59,10 @@ assert 'tmpfs /data' in fstab
 
 se = (KOA2 / 'sepolicy/epdc.te').read_text()
 assert 'block_device' not in se
+assert 'ro.adb.secure=1' in prop
+usb_rc = (KOA2 / 'rootdir/init.koa2.usb.rc').read_text()
+assert 'ci_hdrc.0' in usb_rc and '/dev/block/' not in usb_rc
+wifi_cfg = (KOA2 / 'wifi/wpa_supplicant_overlay.conf').read_text()
+assert 'psk=' not in wifi_cfg and 'ssid=' not in wifi_cfg
 
 print('KOA2 device tree: koa2.mk copy targets, HIDL manifest, 32-bit binder, 300 PPI, and no-raw-block invariants passed')

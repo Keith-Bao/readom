@@ -83,7 +83,7 @@ def run_case(case, work):
     log = work / ('out-' + case)
     with open(log, 'wb') as out:
         qemu = subprocess.Popen(['qemu-system-arm', '-M', 'virt', '-cpu', 'cortex-a7', '-m', '128M',
-                                 '-display', 'none', '-no-reboot', '-serial', 'file:' + str(log) + '.serial',
+                                 '-display', 'none', '-nic', 'none', '-no-reboot', '-serial', 'file:' + str(log) + '.serial',
                                  '-monitor', 'unix:' + sock + ',server,nowait',
                                  '-kernel', str(HERE / 'jump-test.elf')], stdout=out, stderr=out)
     try:

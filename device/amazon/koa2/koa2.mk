@@ -20,7 +20,13 @@ PRODUCT_COPY_FILES += \
     device/amazon/koa2/manifest.xml:system/vendor/manifest.xml \
     device/amazon/koa2/rootdir/init.koa2.rc:root/init.koa2.rc \
     device/amazon/koa2/rootdir/ueventd.koa2.rc:root/ueventd.koa2.rc \
-    device/amazon/koa2/rootdir/fstab.koa2:root/fstab.koa2
+    device/amazon/koa2/rootdir/fstab.koa2:root/fstab.koa2 \
+    device/amazon/koa2/rootdir/init.koa2.usb.rc:root/init.koa2.usb.rc \
+    device/amazon/koa2/wifi/wpa_supplicant_overlay.conf:system/etc/wifi/wpa_supplicant_overlay.conf
+
+PRODUCT_PACKAGES += \
+    lights.koa2 \
+    power.koa2
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.config.low_ram=true \
