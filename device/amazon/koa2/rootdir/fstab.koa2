@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# KOA2 RAM validation profile metadata.
+# Stock system/factory volumes are never formatted or written by this profile.
+tmpfs /data tmpfs nosuid,nodev,size=128m notrim
+tmpfs /cache tmpfs nosuid,nodev,size=16m notrim

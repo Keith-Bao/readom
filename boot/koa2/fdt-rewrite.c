@@ -51,12 +51,13 @@ int koa2_fdt_rewrite(const void *input, size_t in_bytes, const struct koa2_fdt_e
                      void *output, size_t out_max, size_t *bytes, struct koa2_fdt_seen *seen) {
     const unsigned char *p=input;
     struct koa2_fdt_info info;
-    struct koa2_fdt_seen saw={0,0,0,0};
+    struct koa2_fdt_seen saw={0,0,0,0,0};
     struct out o={output,out_max,0,0};
     size_t so,ss,no,ns,cursor,end,i,struct_at,strings_at,extra=0;
     uint32_t off[NAMES];
     unsigned depth=0;
-    int in_chosen=0,in_memory=0,result;
+    int in_chosen=0,in_memory=0,in_usdhc3=0,result;
+    unsigned usdhc3_depth=0;
     if(bytes) *bytes=0;
     if(seen) memset(seen,0,sizeof(*seen));
     if(!bytes || !seen || !output) return KOA2_BOUNDS;
@@ -86,6 +87,8 @@ int koa2_fdt_rewrite(const void *input, size_t in_bytes, const struct koa2_fdt_e
             cursor+=padded; depth++;
             in_chosen=depth==2 && node_is(name,"chosen");
             in_memory=depth==2 && node_is(name,"memory");
+            if(!strcmp(name,"usdhc@30b60000")) { in_usdhc3=1; usdhc3_depth=depth; }
+            else if(in_usdhc3 && depth>usdhc3_depth) { in_usdhc3=0; }
             if(in_chosen) { saw.chosen_nodes++; chosen_props(&o,e,off); }
         } else if(token==END_NODE) {
             if(depth==1 && !saw.chosen_nodes) {
@@ -93,7 +96,9 @@ int koa2_fdt_rewrite(const void *input, size_t in_bytes, const struct koa2_fdt_e
                 emit32(&o,BEGIN); emit(&o,"chosen",7); pad4(&o);
                 chosen_props(&o,e,off); emit32(&o,END_NODE);
             }
+            if(usdhc3_depth && depth==usdhc3_depth) { in_usdhc3=0; usdhc3_depth=0; }
             emit32(&o,END_NODE); depth--; in_chosen=in_memory=0;
+            if(usdhc3_depth && depth==usdhc3_depth) in_usdhc3=1;
         } else if(token==PROP) {
             uint32_t length=be32(p+cursor),name=be32(p+cursor+4);
             const char *key=(const char *)(p+no+name);
@@ -105,6 +110,12 @@ int koa2_fdt_rewrite(const void *input, size_t in_bytes, const struct koa2_fdt_e
             if(in_memory && !strcmp(key,"reg")) {
                 saw.memory_regs++;
                 if(length==8) { saw.memory_start=be32(data); saw.memory_size=be32(data+4); }
+            }
+            if(e->rewrite_usdhc3_standard && in_usdhc3 && !strcmp(key,"compatible")) {
+                static const char std_usdhc[]="fsl,imx7d-usdhc\0fsl,imx6sx-usdhc";
+                prop(&o,name,std_usdhc,sizeof(std_usdhc));
+                saw.usdhc3_rewritten++;
+                drop=1;
             }
             if(!drop) prop(&o,name,data,length);
         } else if(token==NOP) {

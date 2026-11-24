@@ -41,6 +41,7 @@ static size_t stock_like(unsigned char *p, int with_chosen) {
     w32(mem,0x80000000u); w32(mem+4,0x20000000u);
     node(&b,"memory"); prop(&b,"device_type","memory",7); prop(&b,"reg",mem,8); t(&b,2);
     node(&b,"chosen-not"); prop(&b,"bootargs","kept too",9); t(&b,2);
+    node(&b,"soc"); node(&b,"usdhc@30b60000"); prop(&b,"compatible","falcon_blk",11); t(&b,2); t(&b,2);
     t(&b,2); t(&b,9);
     return finish(&b,p,0x9d681000u,0xc000u);
 }
@@ -65,7 +66,7 @@ static const unsigned char *get(const unsigned char *p, const char *nodename, co
 static const char args[]="console=ttymxc0,115200 rdinit=/init koa2_smoke_hold=20";
 static const struct koa2_range keep[]={{0x81400000u,0xd000u}};
 static struct koa2_fdt_edit edit(void) {
-    struct koa2_fdt_edit e={args,0x81500000u,0x81500000u+271689u,keep,1};
+    struct koa2_fdt_edit e={args,0x81500000u,0x81500000u+271689u,keep,1,0};
     return e;
 }
 static unsigned char in[2048], out[4096], again[4096], small[4096];
@@ -98,6 +99,12 @@ int main(int argc, char **argv) {
     assert(get(out,"chosen","stdout-path",&len,&count) && count==1);
     /* A second pass changes nothing: the names now exist in the strings block. */
     assert(koa2_fdt_rewrite(out,m,&e,again,sizeof(again),&m2,&seen)==0 && m2==m && !memcmp(out,again,m));
+    /* Optional usdhc@30b60000 compatible rewrite: off by default, idempotent when on. */
+    assert(seen.usdhc3_rewritten==0);
+    e.rewrite_usdhc3_standard=1;
+    assert(koa2_fdt_rewrite(in,n,&e,out,sizeof(out),&m,&seen)==0 && seen.usdhc3_rewritten==1);
+    assert(koa2_fdt_rewrite(out,m,&e,again,sizeof(again),&m2,&seen)==0 && seen.usdhc3_rewritten==1 && m2==m && !memcmp(out,again,m));
+    e.rewrite_usdhc3_standard=0;
     /* No initramfs: the stock initrd properties go and none are written. */
     e.initrd_start=e.initrd_end=0;
     assert(koa2_fdt_rewrite(in,n,&e,out,sizeof(out),&m,&seen)==0);

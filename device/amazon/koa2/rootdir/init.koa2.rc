@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 (KOA2 / i.MX7D) AOSP 8.1 RAM-validation init skeleton.
+# Host-prepared skeleton; not yet built into a bootable AOSP image.
+
+on early-init
+    mount debugfs debugfs /sys/kernel/debug
+    chmod 0755 /sys/kernel/debug
+
+on init
+    # Oasis 2 7-inch 1264x1680 panel = 300 PPI.
+    setprop ro.sf.lcd_density 300
+    setprop ro.hardware.egl swiftshader
+
+on fs
+    mkdir /data 0771 system system
+    mkdir /cache 0770 system cache
+    mount tmpfs tmpfs /data nosuid,nodev,size=128m
+    mount tmpfs tmpfs /cache nosuid,nodev,size=16m

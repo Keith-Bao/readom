@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 (KOA2 / i.MX7D) ueventd permissions.
+# Use device names/subsystems, never unstable eventN indices.
+/dev/graphics/fb0 0660 system graphics
+/dev/rtc* 0640 system system
+
+# MAX77796 12-bit frontlight (0..4095, verified from drivers/video/backlight/max77696-bl.c).
+/sys/class/backlight/max77696-bl brightness 0660 system system
+/sys/class/backlight/max77696-bl bl_power 0660 system system
+
+# No raw block-device permission grants and no touch-firmware loader node.

@@ -13,3 +13,4 @@ Kindle Oasis 2（KOA2 / i.MX7D / Cortex-A7 / 固件 5.16.2.1.1）的硬件契约
 | 实体翻页键 | `arch/arm/boot/dts/imx7d-zelda.dts:56-75`、`gpio-keys.kl` | `page-forward` = `KEY_PAGEUP`（104），`page-back` = `KEY_PAGEDOWN`（109） |
 | 磁吸保护套 | `drivers/input/misc/hall/bu520.c` | 标准 `EV_SW` / `SW_LID`（0=开盖，1=合盖） |
 | 架构骨架 | `BoardConfig.mk` | `armv7-a-neon` / `cortex-a7` / `imx7d`，32-bit Binder，文件镜像不写分区 |
+| 根文件系统骨架 | `rootdir/{init,ueventd}.koa2.rc`、`fstab.koa2` | 300 PPI、`max77696-bl` 权限、纯内存验证挂载（不写原厂分区） |
