@@ -42,8 +42,7 @@ if awk '$1 == "bcmdhd" {found=1; exit} END {exit !found}' /proc/modules; then
 fi
 usb_file=$(cat /sys/module/g_mass_storage/parameters/file 2>/dev/null || true)
 [ -z "$usb_file" ] || finish refused_usb_active
-usb_removable=$(cat /sys/module/g_mass_storage/parameters/removable 2>/dev/null || printf 'Y')
-usb_stall=$(cat /sys/module/g_mass_storage/parameters/stall 2>/dev/null || printf 'Y')
+usb_removable=1
 [ -w "$TOUCH/drv_debug" ] || finish refused_touch_driver_missing
 [ -w "$CPU1" ] && [ "$(cat "$CPU1")" = 1 ] || finish refused_cpu1_not_online
 
@@ -72,7 +71,7 @@ restore_all() {
         fi
     fi
     if [ "$usb_removed" = 1 ]; then
-        if modprobe g_mass_storage "removable=$usb_removable" "stall=$usb_stall"; then
+        if modprobe g_mass_storage "removable=$usb_removable"; then
             printf 'restore_usb=ok\n'
         else
             printf 'restore_usb=failed\n'
@@ -94,6 +93,7 @@ trap 'exit 1' HUP INT TERM
 if rmmod g_mass_storage; then
     usb_removed=1
     printf 'step_usb=unloaded\n'
+    sync
 else
     result=step_usb_unload_failed
     exit 0
@@ -103,6 +103,8 @@ fi
 if echo 4 > "$TOUCH/drv_debug"; then
     touch_slept=1
     printf 'step_touch=slept\n'
+    sync
+    sleep 1
 else
     result=step_touch_sleep_failed
     exit 0
@@ -112,6 +114,7 @@ fi
 if echo 0 > "$CPU1" && [ "$(cat "$CPU1")" = 0 ]; then
     cpu1_offlined=1
     printf 'step_cpu1=offline\n'
+    sync
 else
     result=step_cpu1_offline_failed
     exit 0

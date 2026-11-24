@@ -41,6 +41,7 @@ def run_case(expected, fault='', wifi_loaded=False, usb_file='', damaged=False):
     esac
 }}
 sleep() {{ :; }}
+sync() {{ :; }}
 rmmod() {{ echo "rmmod $*" >> "{ops_log}"; return {rmmod_rc}; }}
 modprobe() {{ echo "modprobe $*" >> "{ops_log}"; return {modprobe_rc}; }}
 '''
@@ -65,7 +66,7 @@ modprobe() {{ echo "modprobe $*" >> "{ops_log}"; return {modprobe_rc}; }}
 lines, ops, cpu1 = run_case('full_quiesce_dryrun_restored')
 assert 'step_usb=unloaded' in lines and 'step_touch=slept' in lines and 'step_cpu1=offline' in lines
 assert 'restore_cpu1=ok' in lines and 'restore_touch=ok' in lines and 'restore_usb=ok' in lines
-assert ops == ['rmmod g_mass_storage', 'modprobe g_mass_storage removable=Y stall=Y'], ops
+assert ops == ['rmmod g_mass_storage', 'modprobe g_mass_storage removable=1'], ops
 assert cpu1 == '1'
 
 run_case('step_usb_unload_failed', fault='rmmod_fail')
