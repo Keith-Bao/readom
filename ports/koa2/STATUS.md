@@ -8,23 +8,23 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 2026-11-21，实机暂存测试通过（sealed_plan_valid），模块成功加载并卸载。
 布局、FDT 改写和复制表审计通过；尚未启动新内核。
 2026-11-22 跳转标记的写入已接上模块（`K2S_MARK`），不是跳转，也没打开跳转。
-主机 18 项 KOA2 测试通过、0 项失败。
+主机 26 项 KOA2 测试通过、0 项失败。
 2026-11-23 读标记的脚本改用 `tr` 取文本并要求读取自证成功：原来用 `strings`，
 这台机器没有该 applet 的证据，缺失时会误报成 `marker_absent`。
 旧版套件和当时的操作单存档在[资料目录](materials/2026-11-23/README.md)。
 
-2026-11-23 实机确认标记能跨正常重启。旧空跑未完成：EPDC 仍被占用，USB gadget 重载报错，触摸在强制重启后恢复。只读预检确认原厂触摸输入设备和 USB 模块已出现。
+2026-11-23 实机确认标记能跨正常重启；2026-11-24 原厂休眠验证通过（`stock_sleep_touch_observed`），USB 单项重载恢复读盘。同日完成回退与早期日志审计、实验内核 printk 缓冲 D-cache 回写、QEMU 双核 SELinux `policy30` enforcing + 多 context Binder 联测、统一 Android 4.1 内核完整构建、安全第一版 EPDC 辅助层（`epdc-v1`）ARM 编译与 `device/amazon/koa2/` 硬件契约；2026-11-24 真机套件已扩展至 5 项测试（12 项 SHA256），见 [2026-11-24 操作单](materials/2026-11-24/README.md)。
 
 ## 眼下的位置
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 先审计原厂触摸和 USB 恢复路径，补齐恢复检查，再决定是否重做空跑 |
-| 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；空跑 `incomplete_see_above` |
+| 下一步是什么 | 在 Kindle 上跑完 [2026-11-24 五项套件](materials/2026-11-24/README.md)（EPDC/Wi-Fi/DTB 只读采集、CPU1 单项、触摸单项），带回报告后设计 EPDC 停用并重做可逆空跑 |
+| 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；USB 单项重载通过；原厂休眠 `stock_sleep_touch_observed`；旧空跑 `incomplete_see_above` |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
-| 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)），原厂内核树编不出来 |
+| 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)）：原厂树仍缺文件；独立安全第一版（`epdc-v1`，拒夜间模式）已编过 `mxc_epdc_v2_fb.o`，未上机 |
 | 有没有不可逆的操作 | 没有。本次已加载并卸载暂存模块；未执行跳转或分区写入 |
-| 跳转失败能回来吗 | 源码分析见 [recovery.md](recovery.md)：看门狗 60 秒兜底，日志经 printk 缓冲跨复位；其中两项还没满足 |
+| 跳转失败能回来吗 | 见 [recovery.md](recovery.md)：printk 缓冲 D-cache 回写已补进实验内核；待真机静止可逆后再验证跨 `WDOG_B` 复位 |
 
 ## 交接各件的状态
 
@@ -56,7 +56,7 @@ release 字符串，而模块导入的 31 个符号 CRC 恰好与原厂一致。
 |---|---|
 | 内核 release | `4.1.15-lab126-koa2-headless-smoke`，97 个模块 vermagic 匹配 |
 | Image（build-id 清零） | `e2eba61b8420…`，换输出目录重建后相同 |
-| zImage | `4c69f47e…`，每次构建都会变（lzop 时间戳），钉在 target-lock.h |
+| zImage | `d2a93246…`（2026-11-24 含 printk 缓存回写重建；每次构建都会变，钉在 target-lock.h） |
 | DTB | `fbbe9517…` |
 | 新内核占用 | 页目录 0x80004000，解压到 0x80008000，_end 0x80c55a0c |
 | 交接布局 | zImage 0x80d00000、FDT 0x81400000、initramfs 0x81500000 |

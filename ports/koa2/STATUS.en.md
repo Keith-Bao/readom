@@ -10,25 +10,25 @@ The device staging test passed on 2026-11-21 (Asia/Shanghai): sealed_plan_valid.
 The module loaded, validated the layout, FDT rewrite and copy list, and unloaded.
 No new kernel has booted. On 2026-11-22 the pre-jump marker's write was wired
 into the module (`K2S_MARK`); it is not a jump and does not open the way to one.
-18 KOA2 host tests pass and none fail.
+26 KOA2 host tests pass and none fail.
 On 2026-11-23 the script that reads the marker back moved to `tr` and now
 requires the read to prove itself: it used `strings`, which this device is not
 known to have, and a missing applet read as `marker_absent`.
 The original kit and its operating sheet are archived in
 [the materials folder](materials/2026-11-23/README.en.md).
 
-On 2026-11-23 the marker survived a normal restart. The original dry run was incomplete. EPDC stayed busy, USB gadget reload failed, and touch recovered after a forced restart. The read-only preflight confirmed the stock touch input device and USB module were present.
+On 2026-11-23 the marker survived a normal restart; on 2026-11-24 stock suspend passed (`stock_sleep_touch_observed`) and isolated USB reload recovered mass storage. Host work on 2026-11-24 also completed the recovery/early-logging audit, Lab126 printk D-cache write-back, combined QEMU SELinux `policy30` enforcing + multi-context Binder smoke, unified Android 4.1 kernel build, clean-room v1 EPDC helper ARM compile (`epdc-v1`), and `device/amazon/koa2/` hardware contracts. The 2026-11-24 device kit now covers 5 tests (12 SHA256 entries); see [the 2026-11-24 sheet](materials/2026-11-24/README.en.md).
 
 ## Where this sits right now
 
 | Question | Answer |
 |---|---|
-| What is next | Audit how stock touch and USB are restored and add recovery checks before deciding whether to rerun quiesce |
-| Observed result | Staging `sealed_plan_valid`, restart marker `marker_survived`, dry run `incomplete_see_above` |
+| What is next | Run the [2026-11-24 5-item kit](materials/2026-11-24/README.en.md) on the Kindle (read-only EPDC/Wi-Fi/DTB, CPU1-only, touch-only), then design EPDC stop and rerun reversible quiesce |
+| Observed result | Staging `sealed_plan_valid`, restart marker `marker_survived`, USB-only reload passed, stock sleep `stock_sleep_touch_observed`, original dry run `incomplete_see_above` |
 | What follows that | The stock modules have been checked ([stock-module-abi.md](stock-module-abi.en.md)): 12 symbols differ from the build tree, and the module imports none of them |
-| What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): the stock kernel tree cannot be built |
+| What blocks Android | The EPDC source gap ([epdc-source-gap.md](epdc-source-gap.md)): stock tree still lacks the file; isolated v1 (`epdc-v1`, night mode rejected) compiles `mxc_epdc_v2_fb.o` but is untested on hardware |
 | Anything irreversible done | No. The staging module loaded and unloaded; no jump or partition write was executed |
-| Can a failed jump come back | The analysis is [recovery.md](recovery.en.md): the watchdog ends it within 60 seconds and the log survives in the printk buffer; two of its conditions are not met yet |
+| Can a failed jump come back | See [recovery.md](recovery.en.md): printk D-cache write-back is now in the experimental kernel; real `WDOG_B` survival awaits reversible quiesce and the jump stage |
 
 ## The handoff piece by piece
 
@@ -64,7 +64,7 @@ where those three match stock; the payload is still `out-headless-smoke`.
 |---|---|
 | Kernel release | `4.1.15-lab126-koa2-headless-smoke`, with 97 modules' vermagic matching |
 | Image (build-id zeroed) | `e2eba61b8420…`, the same after a rebuild in another output directory |
-| zImage | `4c69f47e…`, different on every build (the lzop timestamp); pinned in target-lock.h |
+| zImage | `d2a93246…` (2026-11-24 rebuild with printk write-back; changes per build, pinned in target-lock.h) |
 | DTB | `fbbe9517…` |
 | What the new kernel writes | Page directory at 0x80004000, decompressed to 0x80008000, _end at 0x80c55a0c |
 | The handoff layout | zImage 0x80d00000, FDT 0x81400000, initramfs 0x81500000 |
