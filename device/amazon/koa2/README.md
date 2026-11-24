@@ -5,7 +5,9 @@ Kindle Oasis 2（KOA2 / i.MX7D / Cortex-A7 / 固件 5.16.2.1.1）的硬件契约
 
 | 子系统 | 源码依据 | 契约要点 |
 |---|---|---|
-| 显示（EPDC v2） | `epdc/EpdcAbi.h` | 1264×1680，8 bpp，虚拟宽度/stride = 1280 |
+| 显示（EPDC v2） | `hardware/EpdcContract.h` | 1264×1680，8 bpp，虚拟宽度/stride = 1280，硬拒绝夜间波形（`GCK16`/`GLKW16`） |
+| 触摸屏（CYTTSP5） | `cyttsp5_mt.idc` | `cyttsp5_mt` 内置触摸屏，随方向旋转 |
+| 加速度与双光感 | `hardware/SensorContract.h` | `bosch_accel@18`（运行时 DTB `bma,place=1`）、4 向迟滞旋转、双 `max44009`（`0x4a`/`0x4b`）取高值防遮挡 |
 | 电池（MAX77796） | `drivers/power/max77696-battery.c`、`hardware/PowerContract.h` | `voltage_now` 为 mV、`current_now` 为 mA、`charge_now` 为 mAh（均需 ×1000 给 `healthd`）；`temp` 为 0.1 °C；`capacity` 未限幅（实测见 103），需钳位到 `[0, 100]` |
 | 前光 | `drivers/video/backlight/max77696-bl.c` | `/sys/class/backlight/max77796-bl`，`max_brightness=4095`（12-bit） |
 | 实体翻页键 | `arch/arm/boot/dts/imx7d-zelda.dts:56-75`、`gpio-keys.kl` | `page-forward` = `KEY_PAGEUP`（104），`page-back` = `KEY_PAGEDOWN`（109） |
