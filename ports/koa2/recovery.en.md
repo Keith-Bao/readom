@@ -18,16 +18,23 @@ stock kernel. It means **the device boots the stock system from eMMC again**.
 | Case | What ends it | How long |
 |---|---|---|
 | The new kernel comes up | Nothing needs to end it | — |
-| It does not come up, or hangs after it does | The i.MX watchdog, at 60 seconds | 60 seconds at most |
-| It dies before reaching the watchdog at all | The same; the watchdog was already counting | 60 seconds at most |
+| It hangs before `imx2_wdt` probes, or the kernel itself locks up | The i.MX watchdog, at 60 seconds | 60 seconds at most |
+| It passes `imx2_wdt` probe but userspace never opens `/dev/watchdog` | The kernel timer keeps pinging; no auto-reset; hold power key | About 40 seconds (manual) |
+| `smoke-init` opens `/dev/watchdog` and stops pinging without closing it | The i.MX watchdog resets at its configured timeout (default 30 s) | Up to configured timeout |
 | The user does not want to wait | Hold power about 40 seconds | At once |
 
 The watchdog's WDE bit cannot be cleared once set (section two of
 [handoff-quiesce.md](handoff-quiesce.md)), so **it keeps counting across the
-handoff**, which is the backstop: wherever the new kernel dies, the device
-resets within 60 seconds and U-Boot boots the stock kernel from eMMC. No
-partition is written and no bootloader changed, so the stock system itself is
-intact.
+handoff**. One boundary found on 2026-11-19 and re-checked on 2026-11-24 must
+be stated clearly: under `CONFIG_LAB126`, `imx2_wdt_probe()` starts a kernel
+timer that pings the watchdog every `timeout/2` seconds until `/dev/watchdog`
+is opened. Automatic 60-second reset therefore holds **before `imx2_wdt`
+probes**, **if the kernel itself locks up**, or **after `smoke-init` opens
+`/dev/watchdog` and stops pinging without closing it**. If the kernel stays
+alive while userspace fails to open `/dev/watchdog`, recovery requires holding
+power for about 40 seconds. No partition is written, no bootloader is changed,
+and `dump_lastk_to_mmc()` is a no-op with `CONFIG_FALCON_BLK` disabled, so the
+experimental kernel performs no raw eMMC writes.
 
 ## 2. Why the log survives the reset
 
@@ -67,7 +74,22 @@ Both halves (0x9be00000 + 0x80000) are in the handoff's persistent exclusions
 has `CONFIG_LAB126_PRINTK_BUFFER` itself, so it reserves the same area rather
 than using it as ordinary memory. ramoops (0x9bf00000 + 0x100000) is excluded
 the same way, and the new kernel's `CONFIG_MX6_RAMOOPS=y` allocates it at the
-same place, so a panic also leaves a copy in `/sys/fs/pstore`.
+same place (`imx7d_reserve()` reserves 1 MiB below `arm_lowmem_limit - 64 MiB`),
+with `CONFIG_PSTORE_RAM=y` and `CONFIG_PSTORE_CONSOLE=y` enabled in
+`out-headless-smoke/.config`. A 2026-11-24 source review confirmed two key
+details:
+- `arm_memblock_init()` runs `printk_reserve_buf()` before scanning FDT
+  reservations, and `stage.c` emits an empty FDT reserve map, so
+  `0x9be00000 + 0x80000` is not pre-reserved and the new kernel takes it over.
+- **Newly identified early-log gap**: `kernel/printk/printk.c` in the
+  experimental kernel maps `log_goal_first` via cached `__va(0x9be00000)`, and
+  neither `setup_log_buf()` clearing it nor `log_store()` writing lines flushes
+  the Cortex-A7 D-cache. Because a hardware `WDOG_B` reset does not clean
+  caches, lines written shortly before reset (including trailing `KOA2_SMOKE`
+  lines) can stay in dirty cache lines and be lost. `pstore/ramoops` uses
+  `pgprot_writecombine` to bypass caches, but only takes over after
+  `mxc_ramoops` probes. Before any real jump, the experimental kernel needs a
+  printk cache write-back patch analogous to PW3's `1043`.
 
 ## 4. One failure is silent (the real gap today)
 
@@ -132,20 +154,16 @@ can only be done in two halves: place one, restart, then read
 
 ## 5. So these all have to hold before a jump is discussed
 
-| Condition | Where it stands |
+| Condition | Where it stands (reviewed 2026-11-24) |
 |---|---|
-| No partition written, no bootloader changed | Holds, and always has |
-| The watchdog ends a failed attempt within 60 seconds | Holds in source (WDE cannot be cleared) |
-| The reset is a Partial Restart and DRAM survives | Holds by reasoning from source, **unverified on the device** |
-| The printk buffer and ramoops are not overwritten by the handoff | Holds (in the persistent exclusions, with a test on it) |
-| A marker written before the jump, so an early failure is distinguishable | The write is wired up (`K2S_MARK`), host tests pass and every stock CRC matches; **no marker has been placed on the device, and none has been shown to survive a reset** |
-| Quiescing works and everything can be put back | The script is written, **never run on the device** (the dry run) |
+| No partition written, no bootloader changed (and no raw MMC log dump) | Holds (`dump_lastk_to_mmc` is a no-op) |
+| Watchdog backstop and power-key fallback | Holds in source, except if the kernel passes `imx2_wdt` probe without userspace opening `/dev/watchdog` (kernel timer keeps pinging; 40 s power-key hold required) |
+| DRAM survives reset | Confirmed across a **normal restart** on 2026-11-23 (`marker_survived`); survival across a **WDOG_B hardware reset** still awaits the jump stage |
+| Printk buffer and ramoops are excluded and claimed by the new kernel | Holds (persistent exclusions tested; `printk_reserve_buf()` and `imx7d_reserve()` order verified) |
+| A marker written before the jump, so an early failure is distinguishable | Verified on the device across a normal restart (`marker_survived`); `execute_available` stays 0 |
+| New kernel printk buffer survives watchdog reset without cache loss | **Not met** (2026-11-24 audit found `log_goal_first` has no D-cache write-back; needs a kernel patch and rebuild before any jump) |
+| Quiescing works and everything can be put back | The 2026-11-23 dry run failed (3 EPDC refs, USB reload error, touch lost until hard restart); now split into read-only and isolated tests |
 
-What is left of those "not"s has to happen on the device, and neither part
-touches the jump: place a marker, restart, confirm it is still there
-(`marker-test.sh`), and the quiesce dry run (`quiesce-dryrun.sh`). A jump on the
-device should not be scheduled until they are done.
-
-That marker run also tests what section two only reasons about from source: that
-the reset is a Partial Restart and DRAM survives. If the marker does not
-survive, section two is wrong, and that matters more than the marker does.
+No real jump should be scheduled until EPDC references are accounted for, touch
+and USB recovery pass, a reversible quiesce dry run succeeds, and the new
+kernel's printk cache write-back gap is fixed.

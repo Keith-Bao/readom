@@ -399,3 +399,7 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 ## 2026-11-24 EPDC 引用来源（主机）
 
 源码追踪：帧缓冲每次 open 取一次模块引用，映射保留引用；固件请求已在启动时归还，proc/sysfs 不取引用。预检新增 `epdc` 模式（KUAL：Inspect EPDC framebuffer users），只读核对打开者与引用数。没有连接设备。
+
+## 2026-11-24 回退与早期日志审计（主机）
+
+复核实验内核（`out-headless-smoke`）与 `smoke-init.c` 的回退和早期日志条件，更新 `recovery.md`/`recovery.en.md` 与 `CONTINUE.md`/`CONTINUE.en.md`。确认 `printk_reserve_buf()` 先于 FDT 保留扫描、`imx7d_reserve()` 落在 `0x9bf00000+0x100000`、`dump_lastk_to_mmc()` 为空操作、`pstore` 走 `pgprot_writecombine`；同时同步 `imx2_wdt` 内核定时器的兜底边界，并查出 `log_goal_first`（`0x9be00000`）写入与清零无 D-cache 回写，须在真机跳转前补齐。主机 `koa2` 22 项测试、文档配对与链接检查全过。没有连接设备。
