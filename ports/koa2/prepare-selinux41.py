@@ -7,7 +7,7 @@ from pathlib import Path
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('source', type=Path)
 a = p.parse_args()
-if a.source.name != 'linux-selinux41' or not (a.source / '.koa2-headless-source-v1').is_file():
+if a.source.name not in ('linux-selinux41', 'linux-android41') or not (a.source / '.koa2-headless-source-v1').is_file():
     raise SystemExit('Only prepared linux-selinux41 is allowed')
 changes = [
     ('0000-upstream-ioctl-audit.patch', '608ea660d5b3d97fc08451ab7f7bc2e6fe4314ad97330d2628cc163d9d52b13a', '.koa2-ioctl-audit-v1'),

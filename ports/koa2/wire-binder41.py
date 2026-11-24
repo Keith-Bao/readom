@@ -11,7 +11,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('snapshot', type=Path)
 p.add_argument('kernel', type=Path)
 a = p.parse_args()
-if a.kernel.name != 'linux-binder41' or not (a.kernel / '.koa2-headless-source-v1').is_file():
+if a.kernel.name not in ('linux-binder41', 'linux-android41') or not (a.kernel / '.koa2-headless-source-v1').is_file():
     raise SystemExit('Only the prepared linux-binder41 research tree is allowed')
 receipt = json.loads((a.snapshot / 'receipt.json').read_text())
 for path, expected in receipt['files'].items():

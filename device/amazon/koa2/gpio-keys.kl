@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 physical page-turn buttons (arch/arm/boot/dts/imx7d-zelda.dts:56-75).
+# gpio3 21: page-forward -> KEY_PAGEUP (104)
+# gpio3 20: page-back    -> KEY_PAGEDOWN (109)
+key 104   PAGE_UP
+key 109   PAGE_DOWN

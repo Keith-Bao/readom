@@ -50,3 +50,18 @@ bash "$REPO/ports/koa2/audit-android41-build.sh"
 重建目录必须为空，防止覆盖研究修改。wire 工具拒绝未知的驱动修改，只允许
 原始、精确快照、当前生成内容及一个已知旧适配哈希。所有对象在独立输出目录。
 下一步为 QEMU 内核/用户空间 smoke，验证真实 ioctl 与三 context 的隔离。
+
+## 2026-11-24 合并构建与 QEMU 联合实测（Binder + SELinux enforcing）
+
+已在独立研究树 `linux-android41` 合并 `prepare-headless-source.py`（标准 eMMC、
+`dump_lastk_to_mmc` 空操作、printk D-cache 回写）、多 context Binder（`binder41.config`）、
+SELinux `policy30`/`ioctl xperms` 与 `android41-core.config`（46+1 项配置全过）：
+
+- 合并编译时发现 `imx_v7_zelda_defconfig` 原先带着 i.MX7D 并不存在的 `CONFIG_MXC_GPU_VIV=y`，
+  在开启 `CONFIG_ANDROID=y` 后会因缺少 `<sync.h>` 编断；`build-android41-kernel.sh`
+  已禁用 `MXC_GPU_VIV` 与 `FALCON_WRAPPER`，完整编出 KOA2 `zImage`、`imx7d-zelda.dtb` 与全部模块。
+- `build-qemu-android41.sh` / `run-qemu-android41.py` 在 QEMU `vexpress-a9` 双核下同时开启
+  **SELinux `policy30` `enforcing=1` + 三 context Binder** 实跑通过
+  （`KOA2_ANDROID41_SMOKE_PASS failures=0`，0 告警/panic）：`/dev/binder`、`/dev/hwbinder`、
+  `/dev/vndbinder` 均在 enforcing 下完成 `mmap`、`BINDER_VERSION` 与 `BINDER_SET_CONTEXT_MGR`，
+  同时 `TIOCGWINSZ`（`0x5413`）被 `xperms` 拒绝（`-EACCES` + `ioctlcmd=5413` 审计）。

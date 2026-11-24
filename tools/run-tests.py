@@ -90,6 +90,8 @@ TESTS = [
     ('koa2-printk-writeback', 'python', ['tools/tests/test_koa2_printk_writeback.py'], False),
     # Safe v1 EPDC Lab126 contract (isolated from stock tree).
     ('koa2-epdc-v1', 'python', ['tools/tests/test_koa2_epdc_v1.py'], False),
+    # MAX77796 battery unit scaling/clamp and 12-bit frontlight mapping.
+    ('koa2-hardware-contract', 'c', ['device/amazon/koa2/hardware/test_power_contract.c'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

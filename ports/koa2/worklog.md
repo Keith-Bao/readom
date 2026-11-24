@@ -413,3 +413,8 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 - A 组（扩展 2026-11-24 真机套件至 5 项测试、12 文件校验）：新增 `cpu1-quiesce.sh` 与主机测试 `koa2-cpu1-quiesce`（6 用例），`quiesce-dryrun.sh` 新增 `wifi` 与 `fdt` 只读采集模式并补全模拟测试，使用含 printk 缓存回写的新 `zImage` 重打 `materials/2026-11-24/readom-koa2-stage-test` 并更新中英文操作单。
 - B 组（阶段 D）：完成 QEMU `vexpress-a9` 双核 SELinux `policy30` + `ioctl xperms` 运行时验证（`build-qemu-selinux.sh` / `run-qemu-selinux.py`），确认 `policyvers=30`、畸形策略拒绝、合法 `policy.30` 加载、`enforcing=1`、`TCGETS` 放行与 `TIOCGWINSZ` 拒绝+`ioctlcmd=5413` 审计。
 - B 组（阶段 G）：在独立目录 `ports/koa2/epdc-v1/` 完成第一版安全 `mxc_epdc_fb_lab126.c`（gzip 波形读取、`MAX77696_EPD_VID` VCOM 范围校验、入口硬拒绝夜间模式）与 `koa2-epdc-v1` 契约测试，在独立树 `linux-epdc-v1` 用 ARM GCC 4.9 编过 `mxc_epdc_v2_fb.o`。没有连接设备。
+
+## 2026-11-24 阶段 D 合并内核 + QEMU 联测与阶段 G 硬件契约（主机 + QEMU）
+
+- 阶段 D：新增 `build-android41-kernel.sh` 合并 `android41-core.config` + 多 context Binder + SELinux `policy30` + printk 回写，排查并禁用 i.MX7D 不存在的 `CONFIG_MXC_GPU_VIV`，完整编出 KOA2 `zImage`、`imx7d-zelda.dtb` 与模块；在 QEMU 双核下同时开启 SELinux `policy30` enforcing 与三 context Binder 联合实跑通过（`run-qemu-android41.py`）。
+- 阶段 G：审计原厂 `max77696-battery.c`（`voltage_now`=mV、`current_now`=mA、`charge_now`=mAh、`temp`=0.1°C、`capacity` 未限幅）、`max77696-bl.c`（0–4095）、`imx7d-zelda.dts` 实体翻页键（104/109）和 `bu520.c` 霍尔开关（`SW_LID`），落地 `device/amazon/koa2/`（`BoardConfig.mk`、`gpio-keys.kl`、`hardware/PowerContract.h`、`README.md`）与主机测试 `koa2-hardware-contract`。没有连接设备。
