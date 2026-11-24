@@ -81,15 +81,17 @@ details:
 - `arm_memblock_init()` runs `printk_reserve_buf()` before scanning FDT
   reservations, and `stage.c` emits an empty FDT reserve map, so
   `0x9be00000 + 0x80000` is not pre-reserved and the new kernel takes it over.
-- **Newly identified early-log gap**: `kernel/printk/printk.c` in the
-  experimental kernel maps `log_goal_first` via cached `__va(0x9be00000)`, and
-  neither `setup_log_buf()` clearing it nor `log_store()` writing lines flushes
-  the Cortex-A7 D-cache. Because a hardware `WDOG_B` reset does not clean
-  caches, lines written shortly before reset (including trailing `KOA2_SMOKE`
-  lines) can stay in dirty cache lines and be lost. `pstore/ramoops` uses
-  `pgprot_writecombine` to bypass caches, but only takes over after
-  `mxc_ramoops` probes. Before any real jump, the experimental kernel needs a
-  printk cache write-back patch analogous to PW3's `1043`.
+- **Early-log cache write-back added**: stock `kernel/printk/printk.c` maps
+  `log_goal_first` via cached `__va(0x9be00000)` and neither `setup_log_buf()`
+  nor `log_store()` flushed D-cache, which would lose dirty trailing lines
+  across a hardware `WDOG_B` reset (`pstore/ramoops` uses `pgprot_writecombine`
+  but only takes over after `mxc_ramoops` probes). On 2026-11-24,
+  `prepare-headless-source.py` added `log_goal_write_back()` (calling
+  `__cpuc_flush_dcache_area` and `outer_clean_range` on backup copy, clear and
+  every `log_store()`), covered by `koa2-printk-writeback` and compiled into
+  `out-headless-smoke` (`printk.o` references `v7_flush_kern_dcache_area` and
+  `outer_cache`). Survival across a real watchdog reset still awaits the jump
+  stage.
 
 ## 4. One failure is silent (the real gap today)
 
@@ -161,9 +163,9 @@ can only be done in two halves: place one, restart, then read
 | DRAM survives reset | Confirmed across a **normal restart** on 2026-11-23 (`marker_survived`); survival across a **WDOG_B hardware reset** still awaits the jump stage |
 | Printk buffer and ramoops are excluded and claimed by the new kernel | Holds (persistent exclusions tested; `printk_reserve_buf()` and `imx7d_reserve()` order verified) |
 | A marker written before the jump, so an early failure is distinguishable | Verified on the device across a normal restart (`marker_survived`); `execute_available` stays 0 |
-| New kernel printk buffer survives watchdog reset without cache loss | **Not met** (2026-11-24 audit found `log_goal_first` has no D-cache write-back; needs a kernel patch and rebuild before any jump) |
+| New kernel printk buffer survives watchdog reset without cache loss | Implemented and built (`prepare-headless-source.py` + `koa2-printk-writeback`, `out-headless-smoke` rebuilt); device watchdog-reset survival still awaits the jump stage |
 | Quiescing works and everything can be put back | The 2026-11-23 dry run failed (3 EPDC refs, USB reload error, touch lost until hard restart); now split into read-only and isolated tests |
 
 No real jump should be scheduled until EPDC references are accounted for, touch
-and USB recovery pass, a reversible quiesce dry run succeeds, and the new
-kernel's printk cache write-back gap is fixed.
+and USB recovery pass, a reversible quiesce dry run succeeds, and the handoff
+kit is rebuilt with the printk cache write-back kernel.

@@ -403,3 +403,7 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 ## 2026-11-24 回退与早期日志审计（主机）
 
 复核实验内核（`out-headless-smoke`）与 `smoke-init.c` 的回退和早期日志条件，更新 `recovery.md`/`recovery.en.md` 与 `CONTINUE.md`/`CONTINUE.en.md`。确认 `printk_reserve_buf()` 先于 FDT 保留扫描、`imx7d_reserve()` 落在 `0x9bf00000+0x100000`、`dump_lastk_to_mmc()` 为空操作、`pstore` 走 `pgprot_writecombine`；同时同步 `imx2_wdt` 内核定时器的兜底边界，并查出 `log_goal_first`（`0x9be00000`）写入与清零无 D-cache 回写，须在真机跳转前补齐。主机 `koa2` 22 项测试、文档配对与链接检查全过。没有连接设备。
+
+## 2026-11-24 实验内核 printk 缓冲 D-cache 回写（主机）
+
+在 `ports/koa2/prepare-headless-source.py` 中为 `kernel/printk/printk.c` 的 `log_goal_first`（`0x9be00000`）补充 `log_goal_write_back()`（`__cpuc_flush_dcache_area` + `outer_clean_range`），覆盖 `setup_log_buf()` 的备份复制、清零与每次 `log_store()` 写入；新增主机测试 `koa2-printk-writeback` 并重新编译 `out-headless-smoke` 验证通过（`printk.o` 已链接 `v7_flush_kern_dcache_area` 与 `outer_cache`）。未改动已封装校验的 2026-11-24 真机套件，没有连接设备。

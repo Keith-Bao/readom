@@ -84,6 +84,8 @@ TESTS = [
     ('koa2-smoke-params', 'c', ['-Iports/koa2', 'ports/koa2/test-smoke-params.c'], False),
     # The kit pins the initramfs by SHA256, so its build has to be reproducible.
     ('koa2-initramfs-repro', 'python', ['tools/tests/test_koa2_smoke_initramfs_repro.py'], False),
+    # Keep the Lab126 printk buffer flushed across hardware watchdog resets.
+    ('koa2-printk-writeback', 'python', ['tools/tests/test_koa2_printk_writeback.py'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),
     # A patch header cannot be corrected after the fact (the series is
     # append-only), so what a patch says about itself is what was known the

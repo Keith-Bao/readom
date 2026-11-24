@@ -66,11 +66,14 @@ ramoops（0x9bf00000+0x100000）同样在排除表里，新内核 `CONFIG_MX6_RA
 2026-11-24 源码复核确认两处关键细节：
 - `arm_memblock_init()` 先调 `printk_reserve_buf()` 再扫描 FDT 保留区，且 `stage.c` 输出空的
   FDT 保留表，因此 `0x9be00000+0x80000` 不会被提前占掉，新内核能正常接管该缓冲区；
-- **新发现的早期日志缺口**：实验内核 `kernel/printk/printk.c` 通过 `__va(0x9be00000)` 以普通可缓存
-  内存写 `log_goal_first`，`setup_log_buf()` 清零与 `log_store()` 写入都没有刷出 Cortex-A7 D-cache。
-  硬件 `WDOG_B` 复位不清理缓存，因此新内核在看门狗复位前刚写入的日志（包括 `KOA2_SMOKE` 结尾行）
-  可能留在脏缓存行里丢失；`pstore/ramoops` 虽用 `pgprot_writecombine` 绕过缓存，但要等到
-  `mxc_ramoops` 探针后才接管。真机跳转前应为实验内核补上类 PW3 `1043` 的 printk 缓存回写补丁。
+- **已补齐的早期日志缓存回写**：原厂 `kernel/printk/printk.c` 通过 `__va(0x9be00000)` 以普通可缓存
+  内存写 `log_goal_first`，`setup_log_buf()` 清零与 `log_store()` 写入原本都没有刷出 D-cache，
+  在硬件 `WDOG_B` 复位下会丢失脏缓存行里的末尾日志（`pstore/ramoops` 虽用 `pgprot_writecombine`
+  绕过缓存，但要等到 `mxc_ramoops` 探针后才接管）。2026-11-24 已在 `prepare-headless-source.py`
+  补上 `log_goal_write_back()`（调用 `__cpuc_flush_dcache_area` 与 `outer_clean_range`，覆盖
+  `setup_log_buf()` 备份/清零与每次 `log_store()`），通过主机测试 `koa2-printk-writeback` 并在
+  `out-headless-smoke` 重新编过（`printk.o` 含 `v7_flush_kern_dcache_area` 与 `outer_cache` 引用）；
+  真机跨看门狗复位保留仍待跳转阶段验证。
 
 ## 四、有一种失败是静默的（现在的真实缺口）
 
@@ -125,7 +128,7 @@ ramoops（0x9bf00000+0x100000）同样在排除表里，新内核 `CONFIG_MX6_RA
 | 复位保留 DRAM | 2026-11-23 已在设备证实跨**正常重启**保留标记（`marker_survived`）；**WDOG_B 硬件复位**是否保留仍待跳转阶段验证 |
 | printk 缓冲和 ramoops 不被交接覆盖且新内核能接管 | 已成立（持久排除表有测试守着，`printk_reserve_buf()` 与 `imx7d_reserve()` 顺序已核实） |
 | 跳转前写标记，使极早期失败可分辨 | 已在设备验证放置并跨正常重启读回（`marker_survived`），`execute_available` 仍为 0 |
-| 新内核 printk 缓冲抗看门狗复位丢失 | **未满足**（2026-11-24 审计发现 `log_goal_first` 无 D-cache 回写；真机跳转前需补丁并重建） |
+| 新内核 printk 缓冲抗看门狗复位丢失 | 源码与构建已补齐（`prepare-headless-source.py` + `koa2-printk-writeback`，`out-headless-smoke` 已重建）；真机跨看门狗复位仍待验证 |
 | 静止能走通并且能全部放回 | 2026-11-23 旧空跑失败（EPDC 3 引用、USB 重载报错、触摸需强制重启）；现已拆为只读采集与单项测试推进 |
 
-在 EPDC 引用查明、触摸与 USB 恢复通过、静止空跑可逆且新内核 printk 缓存回写补齐之前，不安排真机跳转。
+在 EPDC 引用查明、触摸与 USB 恢复通过、静止空跑可逆（并用含 printk 缓存回写的最新内核重新打包交接套件）之前，不安排真机跳转。

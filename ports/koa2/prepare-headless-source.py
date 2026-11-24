@@ -29,6 +29,62 @@ EDITS = [
     ('kernel/printk/printk.c',
      '\t}\n}\nEXPORT_SYMBOL(dump_lastk_to_mmc);',
      '\t}\n#endif\n}\nEXPORT_SYMBOL(dump_lastk_to_mmc);'),
+    # Clean the Lab126 printk buffer (0x9be00000) out of inner and outer D-caches
+    # on boot-time copy/clear and on every log_store(), because a hardware WDOG_B
+    # reset does not flush caches (ports/koa2/recovery.md; cf. PW3 patch 1043).
+    ('kernel/printk/printk.c',
+     '#include <asm/uaccess.h>\n',
+     '#include <asm/uaccess.h>\n'
+     '#if defined(CONFIG_LAB126_PRINTK_BUFFER) && defined(CONFIG_ARM)\n'
+     '#include <asm/cacheflush.h>\n'
+     '#include <asm/outercache.h>\n'
+     '#endif\n'),
+    ('kernel/printk/printk.c',
+     'static char *last_log_buffer = NULL;\n#endif',
+     'static char *last_log_buffer = NULL;\n'
+     'static phys_addr_t log_goal_phys;\n'
+     'static inline void log_goal_write_back(char *va, size_t len)\n'
+     '{\n'
+     '#ifdef CONFIG_ARM\n'
+     '\tif (log_goal_phys && len) {\n'
+     '\t\tphys_addr_t pa = log_goal_phys + (va - log_goal_first);\n'
+     '\t\t__cpuc_flush_dcache_area(va, len);\n'
+     '\t\touter_clean_range(pa, pa + len);\n'
+     '\t}\n'
+     '#endif\n'
+     '}\n'
+     '#endif'),
+    ('kernel/printk/printk.c',
+     '\t\t/* no else here */ if (msg->text_len < (log_goal_last - log_goal_idx)) {\n'
+     '\t\t\tmemcpy(log_goal_idx, log_text(msg), msg->text_len);\n'
+     '\t\t\tlog_goal_idx += msg->text_len;\n'
+     '\t\t\t*log_goal_idx++ = \'\\n\';\n'
+     '\t\t}',
+     '\t\t/* no else here */ if (msg->text_len < (log_goal_last - log_goal_idx)) {\n'
+     '\t\t\tchar *start = log_goal_idx;\n'
+     '\t\t\tmemcpy(log_goal_idx, log_text(msg), msg->text_len);\n'
+     '\t\t\tlog_goal_idx += msg->text_len;\n'
+     '\t\t\t*log_goal_idx++ = \'\\n\';\n'
+     '\t\t\tlog_goal_write_back(start, msg->text_len + 1);\n'
+     '\t\t}'),
+    ('kernel/printk/printk.c',
+     '\t\t\tlast_log_buffer = log_goal_first + LOG_GOAL_SIZE;\n\n'
+     '\t\t\tmemcpy(last_log_buffer, log_goal_first, LOG_GOAL_SIZE);\n\n'
+     '\t\t\tprintk("Prink buffer had been relocated to physical address: 0x%08lx\\n",\n'
+     '\t\t\t\tlog_goal_location);\n\n'
+     '\t\t\t//Now that it is saved, clear out last time\'s prink to prevent log framents from\n'
+     '\t\t\t//recusrively showing up in printk logs.\n'
+     '\t\t\tmemset(log_goal_first, \'\\0\', LOG_GOAL_SIZE);',
+     '\t\t\tlast_log_buffer = log_goal_first + LOG_GOAL_SIZE;\n'
+     '\t\t\tlog_goal_phys = log_goal_location;\n\n'
+     '\t\t\tmemcpy(last_log_buffer, log_goal_first, LOG_GOAL_SIZE);\n'
+     '\t\t\tlog_goal_write_back(last_log_buffer, LOG_GOAL_SIZE);\n\n'
+     '\t\t\tprintk("Prink buffer had been relocated to physical address: 0x%08lx\\n",\n'
+     '\t\t\t\tlog_goal_location);\n\n'
+     '\t\t\t//Now that it is saved, clear out last time\'s prink to prevent log framents from\n'
+     '\t\t\t//recusrively showing up in printk logs.\n'
+     '\t\t\tmemset(log_goal_first, \'\\0\', LOG_GOAL_SIZE);\n'
+     '\t\t\tlog_goal_write_back(log_goal_first, LOG_GOAL_SIZE);'),
     # usdhc3 keeps the chip dtsi compatible, so sdhci-esdhc-imx owns the eMMC.
     ('arch/arm/boot/dts/imx7d-zelda.dts',
      '&usdhc3 {\n\tcompatible = "falcon_blk";\n',

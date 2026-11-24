@@ -37,7 +37,7 @@ execute_available=0，insmod_exit/client_exit/rmmod_exit 均为 0。
 
 1. **触摸 I²C**：主机侧已完成，见[触摸单项静止设计](handoff-quiesce.md)，待上机运行 **Touch only**（[操作单](device-runbook.md)）。原任务：用已校验的原厂源码追踪 `cyttsp5_core_sleep_()`、IRQ 处理、watchdog 和 startup 工作队列。设计能排空在途 IRQ/I²C、独立确认停机并可唤醒的方案，保留 evdev 节点和 Xorg。补齐断电失败、超时和回滚测试。不能用 `sleep_status=off` 或普通休眠结果放宽 `quiesce-verify.c`。
 2. **EPDC**：引用来源的只读采集已加入（**Inspect EPDC framebuffer users**，见[静止审计](handoff-quiesce.md)），待上机。原任务：对照 [EPDC 源码缺口](epdc-source-gap.md) 和原厂日志设计只读采集，定位 framebuffer 打开者、驱动引用和待完成刷新。此前模块有 3 个引用，先论证如何释放引用和处置 DMA 帧缓冲，再设计单项停用。
-3. **交接验证**：保持暂存和执行入口分开。按 [recovery.md](recovery.md) 检查回退和早期日志条件。QEMU 裸机跳转测试 2026-11-24 已排查：本机复现不出“缺串口输出”，直接运行和 8 核满载下 6 个用例都通过。原脚本固定等 2.5 秒才读串口，主机忙时会误判为没有输出，已改为轮询到结果（上限 20 秒），失败时附带 QEMU 状态和输出。破坏寄存器约定后测试仍报 FAIL。2026-11-24 已完成回退与早期日志源码复核（见 [recovery.md](recovery.md)）：`printk_reserve_buf()`、`imx7d_reserve()`、`dump_lastk_to_mmc()` 空操作和 `pstore/ramoops` 映射均已核实，但查出实验内核的 `log_goal_first`（`0x9be00000`）写入和清零无 D-cache 回写，看门狗复位可能丢末尾日志；真机跳转前需补上类 PW3 `1043` 的回写补丁。
+3. **交接验证**：保持暂存和执行入口分开。按 [recovery.md](recovery.md) 检查回退和早期日志条件。QEMU 裸机跳转测试 2026-11-24 已排查：本机复现不出“缺串口输出”，直接运行和 8 核满载下 6 个用例都通过。原脚本固定等 2.5 秒才读串口，主机忙时会误判为没有输出，已改为轮询到结果（上限 20 秒），失败时附带 QEMU 状态和输出。破坏寄存器约定后测试仍报 FAIL。2026-11-24 已完成回退与早期日志源码复核（见 [recovery.md](recovery.md)）：`printk_reserve_buf()`、`imx7d_reserve()`、`dump_lastk_to_mmc()` 空操作和 `pstore/ramoops` 映射均已核实，并已为实验内核补齐 `log_goal_first`（`0x9be00000`）的内/外 D-cache 回写（`prepare-headless-source.py`、`koa2-printk-writeback` 及 `out-headless-smoke` 重建验证通过）；2026-11-24 真机套件不启动新内核，保持原封不动。
 4. 按下列命令跑主机测试，分别记录通过、失败和跳过。
 
 ```bash
