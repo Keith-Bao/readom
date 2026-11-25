@@ -220,3 +220,7 @@ KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/c
 - `stage=rmmod` → **`epdc_unloaded=1`**（`mxc_epdc_v2_fb` 0.07 秒内成功卸载，最后一个 DMA 主设备在实机上证实可停！）。
 - `stage=restore_insmod` → **`epdc_reloaded=1`**（按原 `waveform` 参数 0.21 秒内成功重载）。
 - 末行停在 `stage=restore_x`（`initctl start x` 未返回，需重启恢复桌面；随后只读采集前次日志返回 `previous_boot_log_lines=38`、`previous_boot_result=log_filtered`）。对于真实交接路径（进入新内核无需原地重启 `x`），`stop x` → `users=0` → `rmmod mxc_epdc_v2_fb` 已在实机完全跑通。
+
+- **2026-11-25 晚两组对照组合实机结果（定位上次联合空跑卡死根因）**：
+  - **`Combined pair: Touch + CPU1 only`**：**全部通过（`result=full_quiesce_dryrun_restored`）**。`touch_power_before=on_enabled` → `touch_power_asleep=off_disabled` → `step_cpu1=offline`（`cpus=0`）→ `restore_cpu1=ok` → `restore_touch=ok`（`touch_power_restored=on_enabled`），总耗时 3.5 秒，彻底排除了触摸休眠与 CPU1 下线冲突的嫌疑。
+  - **`Combined pair: USB + Touch only`**：在 **`stage=usb_unload uptime=626.48 cpus=0-1`**（执行 `rmmod g_mass_storage` 时，尚未进入触摸步骤）卡死并触发看门狗重启；随后采集前次日志返回 `previous_boot_result=buffer_unreadable`。由此彻底锁定此前联合空跑卡死的直接触发点就是 `rmmod g_mass_storage`（需在主机侧对照原厂 `ci_hdrc` / `g_mass_storage` 源码审计为何 UDC 低功耗/拔线状态下 `rmmod` 会挂死）。原始报告已归档本地，Kindle 已清理。
