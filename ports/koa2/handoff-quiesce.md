@@ -210,3 +210,13 @@ KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/c
 - **联合可逆空跑 v2（主机，2026-11-25）**：v1 卡死后无法判断停在哪一步，v2 在每步动作前写并 `sync` 一行 `stage=`，前提检查与恢复确认逐项沿用 `usb-reload.sh`、`touch-quiesce.sh`、`cpu1-quiesce.sh`（触摸以 `sleep_status` 加调节器状态判断，不单信 `sleep_status`）。另提供 `touch,cpu1` 与 `usb,touch` 两步组合，先排除 v1 的头号嫌疑：触摸休眠后紧接 CPU1 下线。尚未上机，见 [2026-11-25 操作单](materials/2026-11-25/README.md)。
 
 - **离线审计原厂 OTA 根文件系统（主机，2026-11-25）**：从 Amazon 下载 Oasis 2 官方 OTA，用 KindleTool 解出 `rootfs.img`（63 个模块与真机采集字节一致）。确认 `x.conf` 是 `lxinit` 管理 Xorg/awesome/blanket 的入口（`start on x_should_start`，`stop on stopping dbus or stop_x`），`post-stop` 会 `killall -s KILL` 三者；Amazon 的 `dump-and-kill-cvm` 用 `stop x` / `start x` 做同样的事。`lab126_gui.conf` 只停 Java 框架（`stop on stopping x or ota-update`），不碰 X 进程树——这就是 2026-11-25 实机测试中 `initctl stop lab126_gui` 后 3 个引用不减的原因。`boot.img` initramfs 中的 `mxc_epdc_v2_fb.ko` 与 rootfs 副本功能相同（`.text`/`.data`/`.rodata`/`__versions`/`.modinfo` 全等，仅 `.symtab` 条目数差 1），`insmod` rootfs 副本安全。已将 `epdc-quiesce.sh` 改为 `initctl stop x` / `initctl start x`。
+
+#### 2026-11-25 晚实机重大突破：EPDC 驱动首次成功释放、卸载并原参数重载
+
+使用 `2026-11-25` 14 文件套件实机运行 **EPDC only: stop X, unload and reload (reversible)**（`epdc-quiesce.sh` v2），原始报告已备份本地并清理设备：
+
+- `users_before=3`、`mod_ko=/lib/modules/4.1.15-lab126/kernel/drivers/video/fbdev/mxc/mxc_epdc_v2_fb.ko`、`waveform=320_R198_AG3902_ED070KC2UA_TC.wrf.gz`、`x_status_before=x start/running, process 3078`。
+- `stage=stop_x` → **`epdc_users_after_stop=0 wait=0`**（停 `x` 后 3 个 `/dev/fb0` 引用立即归零！）。
+- `stage=rmmod` → **`epdc_unloaded=1`**（`mxc_epdc_v2_fb` 0.07 秒内成功卸载，最后一个 DMA 主设备在实机上证实可停！）。
+- `stage=restore_insmod` → **`epdc_reloaded=1`**（按原 `waveform` 参数 0.21 秒内成功重载）。
+- 末行停在 `stage=restore_x`（`initctl start x` 未返回，需重启恢复桌面；随后只读采集前次日志返回 `previous_boot_log_lines=38`、`previous_boot_result=log_filtered`）。对于真实交接路径（进入新内核无需原地重启 `x`），`stop x` → `users=0` → `rmmod mxc_epdc_v2_fb` 已在实机完全跑通。
