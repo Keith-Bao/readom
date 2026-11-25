@@ -19,7 +19,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 2026-11-24 五项套件已上机：EPDC 3 个引用已锁定（`Xorg`/`awesome`/`blanket`）、运行时 DTB 已备份（49280 B）、CPU1 单项通过（`cpu1_quiesce_restored`）；触摸单项休眠/唤醒已实机证实（I²C2 归零、断电、醒后触摸恢复），下一步设计 EPDC 3 个用户进程的可控释放并重做可逆空跑 |
+| 下一步是什么 | 2026-11-24 五项套件已上机：EPDC 3 个引用已锁定（`Xorg`/`awesome`/`blanket`）、运行时 DTB 已备份（49280 B）、CPU1 单项通过（`cpu1_quiesce_restored`）；触摸单项休眠/唤醒已实机证实（I²C2 归零、断电、醒后触摸恢复）。2026-11-25 联合空跑 v1 在实机卡死、报告未落盘；v2 每步前先写并 `sync` 一行 `stage=`，另加两步组合以定位卡死的组合。下一次上机按 [2026-11-25 操作单](materials/2026-11-25/README.md) 依次跑 EPDC 只读采集、触摸+CPU1、USB+触摸、三步联合 |
 | 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；USB 单项重载通过；原厂休眠 `stock_sleep_touch_observed`；CPU1 单项 `cpu1_quiesce_restored`；EPDC 引用 `matched`（`Xorg`/`awesome`/`blanket`）；运行时 DTB 已备份；触摸单项复测已证实断电（`disabled`）、I²C2 归零（`874→0→502`）与醒后触摸恢复（`after_touch=observed`，Xorg 句柄不变；`asleep_touch_irqs=-2` 系 CPU1 动态下线丢列） |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)）：安全第一版（`epdc-v1`，拒夜间模式）已在统一 Android 4.1 内核完整编通并过 `modpost` 链接出 484 KB `mxc_epdc_v2_fb.ko`（`kernel_end=0x80c8a94c` 落入 `0x80d00000` 交接窗口），尚未上机；AOSP 8.1 设备树 `device/amazon/koa2/` 骨架与主机校验已就绪，待整机静止完成后接通 AOSP 镜像构建 |

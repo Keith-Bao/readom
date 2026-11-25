@@ -56,7 +56,7 @@ Staging passed, the marker survived a normal restart, and Windows could read the
 
 ## 5. Where the materials are now
 
-**Next device batch**: the [2026-11-24 kit and sheet](materials/2026-11-24/README.en.md) (read-only EPDC users, Wi-Fi users and runtime DTB backup, CPU1-only offline/online, and touch-only sleep/wake — 5 items total), rebuilt with the printk cache write-back kernel and verified (12 SHA256 entries), ready to copy to the Kindle.
+**Next device batch**: the [2026-11-25 kit and sheet](materials/2026-11-25/README.en.md) (read-only EPDC inspection of the `x` job dependencies; combined dry-run v2 as the Touch+CPU1 and USB+Touch pairs and then all three steps, 4 items total). Before each action v2 writes and syncs a `stage=` line, so a freeze shows which step did not return. The kit was built with the stock CRC check (35 imports match) and has 13 SHA256 entries, ready to copy to the Kindle. All 5 items of the [2026-11-24 kit](materials/2026-11-24/README.en.md) have run on the device.
 
 The original kit and its operating sheet are archived in
 [the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the
