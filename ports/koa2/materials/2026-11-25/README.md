@@ -9,11 +9,12 @@
 | # | KUAL 菜单项 | 回答什么问题 | 会改动什么 |
 |---|---|---|---|
 | 1 | Inspect EPDC framebuffer users | `x` 任务的 `start on`/`stop on` 依赖，决定之后怎样停 EPDC | 只读 |
-| 2 | Combined pair: Touch + CPU1 only | 触摸休眠后再下线 CPU1 会不会卡死（v1 的头号嫌疑） | 触摸约 2 秒、CPU1 约 1 秒，脚本恢复 |
-| 3 | Combined pair: USB + Touch only | 卸载 USB 存储后再让触摸休眠会不会卡死 | USB 和触摸约 2 秒，脚本恢复 |
-| 4 | Combined dry-run: USB + Touch + CPU1 | 三步连在一起能否全部可逆恢复 | 三项约 3 秒，脚本逆序恢复 |
+| 2 | **EPDC only: stop X, unload and reload (reversible)** | 停 X 进程树（释放 3 个 `/dev/fb0` 引用）、卸载再装回 EPDC 模块、重启 X 并等 Xorg 重新打开 fb0 | X/框架约 15 秒不可用，脚本恢复 |
+| 3 | Combined pair: Touch + CPU1 only | 触摸休眠后再下线 CPU1 会不会卡死（v1 的头号嫌疑） | 触摸约 2 秒、CPU1 约 1 秒，脚本恢复 |
+| 4 | Combined pair: USB + Touch only | 卸载 USB 存储后再让触摸休眠会不会卡死 | USB 和触摸约 2 秒，脚本恢复 |
+| 5 | Combined dry-run: USB + Touch + CPU1 | 三步连在一起能否全部可逆恢复 | 三项约 3 秒，脚本逆序恢复 |
 
-四项都不加载交接模块、不跳转、不写分区、不碰 EPDC。只往 `koa2-quiesce-dryrun/` 和 `koa2-full-quiesce-dryrun/` 写报告。
+五项都不加载交接模块、不跳转、不写分区、不碰 EPDC。只往 `koa2-quiesce-dryrun/` 和 `koa2-full-quiesce-dryrun/` 写报告。
 
 ## 0. 先确认
 
@@ -37,7 +38,7 @@ cd /d/extensions/readom-koa2-stage-test && sha256sum -c SHA256SUMS
 head -c 8 menu.json
 ```
 
-13 行都要是 `OK`，第二条要输出 `{"items"`。看到 `%TSD-Head` 说明公司 DLP 加密了文件，换私人电脑拷。然后安全弹出 USB。
+14 行都要是 `OK`，第二条要输出 `{"items"`。看到 `%TSD-Head` 说明公司 DLP 加密了文件，换私人电脑拷。然后安全弹出 USB。
 
 ## 2. 只读采集（USB 可以插着）
 
@@ -47,7 +48,7 @@ KUAL → **Readom KOA2 Stage Test** → **Inspect EPDC framebuffer users**。几
 
 ## 3. 组合空跑，一项一项来
 
-**拔掉 USB 线**，停在原厂界面、屏幕亮着，**测试期间不要按电源键、不要锁屏**。按 2 → 3 → 4 的顺序，每项做完看报告末行再决定下一项：
+**拔掉 USB 线**，停在原厂界面、屏幕亮着，**测试期间不要按电源键、不要锁屏**。按 2 → 5 的顺序，每项做完看报告末行再决定下一项：
 
 | result | 含义 | 下一步 |
 |---|---|---|
@@ -59,7 +60,7 @@ KUAL → **Readom KOA2 Stage Test** → **Inspect EPDC framebuffer users**。几
 **如果卡死**（屏幕不动、触摸和按键都没反应）：等它自己重启，最多约 1 分钟；不重启就按住电源键约 40 秒。
 回到原厂界面后**先**跑 KUAL → **Read previous boot recovery log**，再停止本次所有测试，带回报告。不要重试同一项。
 
-第 4 项通过后，插回 USB，确认 Windows 能正常打开 Kindle 盘。
+第 5 项通过后，插回 USB，确认 Windows 能正常打开 Kindle 盘。
 
 ## 4. 带回报告并清理
 
@@ -77,6 +78,6 @@ cp -r /d/koa2-quiesce-dryrun /d/koa2-full-quiesce-dryrun ~/koa2-evidence/
 ## 6. 本套件的来源
 
 在 WSL 中由 `ports/koa2/build-stage-test-kit.sh` 构建，并带上 `KOA2_STOCK_MODULES` 让构建先过原厂 CRC 检查：35 个导入全部一致，见 [crcs.json](crcs.json)。
-13 个文件的校验值在 `readom-koa2-stage-test/SHA256SUMS`，整个目录的在 [SHA256SUMS](SHA256SUMS)。
+14 个文件的校验值在 `readom-koa2-stage-test/SHA256SUMS`，整个目录的在 [SHA256SUMS](SHA256SUMS)。
 `zImage` 与 2026-11-24 套件相同（`d2a93246…`，含 printk 缓存回写）。主机测试 `koa2-full-quiesce-dryrun` 覆盖了每一步失败、每一步恢复失败和每种拒绝。
 设计和源码依据见[静止审计](../../handoff-quiesce.md)，完整流程见[实机操作手册](../../device-runbook.md)。

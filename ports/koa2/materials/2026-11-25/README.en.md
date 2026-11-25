@@ -9,11 +9,12 @@ It also adds two entries that run only two of the three steps, to narrow down wh
 | # | KUAL entry | Question it answers | What it changes |
 |---|---|---|---|
 | 1 | Inspect EPDC framebuffer users | The `start on`/`stop on` dependencies of the `x` job, which decide how EPDC can be stopped later | Read-only |
-| 2 | Combined pair: Touch + CPU1 only | Whether taking CPU1 offline while touch sleeps freezes the device (the prime suspect for v1) | Touch ~2 s, CPU1 ~1 s, restored by script |
-| 3 | Combined pair: USB + Touch only | Whether sleeping touch right after the USB storage unload freezes the device | USB and touch ~2 s, restored by script |
-| 4 | Combined dry-run: USB + Touch + CPU1 | Whether all three chained together come back in full | All three ~3 s, restored in reverse by script |
+| 2 | **EPDC only: stop X, unload and reload (reversible)** | Stops the X process tree (releases the 3 `/dev/fb0` references), unloads and reloads the EPDC module, restarts X and waits for Xorg to reopen fb0 | X/framework down ~15 s, restored by script |
+| 3 | Combined pair: Touch + CPU1 only | Whether taking CPU1 offline while touch sleeps freezes the device (the prime suspect for v1) | Touch ~2 s, CPU1 ~1 s, restored by script |
+| 4 | Combined pair: USB + Touch only | Whether sleeping touch right after the USB storage unload freezes the device | USB and touch ~2 s, restored by script |
+| 5 | Combined dry-run: USB + Touch + CPU1 | Whether all three chained together come back in full | All three ~3 s, restored in reverse by script |
 
-None of the four loads the handoff module, jumps, writes partitions, or touches EPDC. Writes go only to the `koa2-quiesce-dryrun/` and `koa2-full-quiesce-dryrun/` reports.
+None of the five loads the handoff module, jumps, writes partitions, or touches EPDC. Writes go only to the `koa2-quiesce-dryrun/` and `koa2-full-quiesce-dryrun/` reports.
 
 ## 0. Check first
 
@@ -37,7 +38,7 @@ cd /d/extensions/readom-koa2-stage-test && sha256sum -c SHA256SUMS
 head -c 8 menu.json
 ```
 
-All 13 lines must be `OK`, and the second command must print `{"items"`. Seeing `%TSD-Head` means corporate DLP encrypted the files; copy from a personal computer instead. Eject USB safely.
+All 14 lines must be `OK`, and the second command must print `{"items"`. Seeing `%TSD-Head` means corporate DLP encrypted the files; copy from a personal computer instead. Eject USB safely.
 
 ## 2. Read-only inspection (USB may stay connected)
 
@@ -47,7 +48,7 @@ Check `epdc_reference_accounting=matched` under `[epdc_users]`, and the lines st
 
 ## 3. Combined dry-runs, one at a time
 
-**Unplug the USB cable**, stay in the stock UI with the screen lit, and **do not press the power button or lock the screen during the tests**. Run 2, then 3, then 4, reading the last line of each report before going on:
+**Unplug the USB cable**, stay in the stock UI with the screen lit, and **do not press the power button or lock the screen during the tests**. Run 2, then 3, then 4, then 5, reading the last line of each report before going on:
 
 | result | Meaning | Next step |
 |---|---|---|
@@ -59,7 +60,7 @@ Check `epdc_reference_accounting=matched` under `[epdc_users]`, and the lines st
 **If it freezes** (screen stuck, touch and buttons dead): wait up to about a minute for it to restart by itself; if it does not, hold the power button for about 40 seconds.
 Back in the stock UI, **first** run KUAL -> **Read previous boot recovery log**, then stop testing for this visit and bring back the reports. Do not retry the same entry.
 
-After entry 4 passes, plug USB back in and check that Windows opens the Kindle drive normally.
+After entry 5 passes, plug USB back in and check that Windows opens the Kindle drive normally.
 
 ## 4. Bring back reports and clean up
 
@@ -77,6 +78,6 @@ After checking the copies on the PC, remove `extensions/readom-koa2-stage-test` 
 ## 6. Provenance of this kit
 
 Built in WSL via `ports/koa2/build-stage-test-kit.sh` with `KOA2_STOCK_MODULES` set, so the build first passed the stock CRC check: all 35 imports match, see [crcs.json](crcs.json).
-Checksums for the 13 files are in `readom-koa2-stage-test/SHA256SUMS`, and for the whole folder in [SHA256SUMS](SHA256SUMS).
+Checksums for the 14 files are in `readom-koa2-stage-test/SHA256SUMS`, and for the whole folder in [SHA256SUMS](SHA256SUMS).
 The `zImage` is the same as in the 2026-11-24 kit (`d2a93246…`, with printk cache write-back). The host test `koa2-full-quiesce-dryrun` covers every failing step, every failing restore and every refusal.
 See the [quiesce audit](../../handoff-quiesce.md) and [device runbook](../../device-runbook.en.md).

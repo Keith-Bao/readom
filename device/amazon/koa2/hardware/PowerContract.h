@@ -2,14 +2,14 @@
 /*
  * Kindle Oasis 2 (MAX77796) battery and frontlight unit-conversion contract.
  *
- * Verified against stock Linux 4.1.15 drivers/power/max77696-battery.c:
+ * Verified against stock Linux 4.1.15 drivers/power/max77796-battery.c:
  *  - POWER_SUPPLY_PROP_VOLTAGE_NOW : millivolts (mV)  -> Android healthd needs uV (x1000)
  *  - POWER_SUPPLY_PROP_CURRENT_NOW : milliamps  (mA)  -> Android healthd needs uA (x1000)
  *  - POWER_SUPPLY_PROP_CHARGE_NOW  : mAh              -> Android healthd needs uAh (x1000)
  *  - POWER_SUPPLY_PROP_TEMP        : 0.1 deg C        -> already matches Android healthd
  *  - POWER_SUPPLY_PROP_CAPACITY    : unclamped % (observed 103 on device) -> clamp [0, 100]
  *
- * Verified against drivers/video/backlight/max77696-bl.c and hardware-findings.md:
+ * Verified against drivers/video/backlight/max77796-bl.c and hardware-findings.md:
  *  - /sys/class/backlight/max77796-bl/max_brightness = 4095 (12-bit).
  */
 #ifndef KOA2_HARDWARE_POWER_CONTRACT_H

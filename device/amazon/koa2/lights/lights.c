@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include "../hardware/PowerContract.h"
 
-#define KOA2_BL_PATH "/sys/class/backlight/max77696-bl/brightness"
+#define KOA2_BL_PATH "/sys/class/backlight/max77796-bl/brightness"
 
 static int set_light_backlight(struct light_device_t *device,
                                const struct light_state_t *state) {

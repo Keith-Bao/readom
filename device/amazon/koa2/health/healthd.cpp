@@ -6,7 +6,7 @@
 
 void healthd_board_init(healthd_config* config) {
     config->batteryChargeCounterPath =
-        "/sys/class/power_supply/max77696-battery/charge_now";
+        "/sys/class/power_supply/max77796-battery/charge_now";
     // Wake once per hour on battery; gauge interrupts report active changes.
     config->periodic_chores_interval_slow = 60 * 60;
 }

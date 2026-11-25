@@ -22,12 +22,12 @@ arm-linux-gnueabi-gcc $cflags -I"$here/boot/koa2" -I"$here/boot/handoff" \
     "$here/boot/koa2/stage-client.c" "$here/boot/handoff/sha256.c" -o "$module/koa2-stage-client"
 [[ -f $initramfs ]] || { echo "missing $initramfs (ports/koa2/build-smoke-initramfs.sh)" >&2; exit 1; }
 rm -rf "$dest"; mkdir -p "$dest"
-cp "$here"/ports/koa2/stage-test/{config.xml,menu.json,stage-test.sh,quiesce-dryrun.sh,marker-test.sh,usb-reload.sh,stock-sleep.sh,touch-quiesce.sh,cpu1-quiesce.sh,full-quiesce-dryrun.sh} "$dest/"
+cp "$here"/ports/koa2/stage-test/{config.xml,menu.json,stage-test.sh,quiesce-dryrun.sh,marker-test.sh,usb-reload.sh,stock-sleep.sh,touch-quiesce.sh,cpu1-quiesce.sh,epdc-quiesce.sh,full-quiesce-dryrun.sh} "$dest/"
 cp "$module/koa2_handoff_stage.ko" "$module/koa2-stage-client" "$dest/"
 arm-linux-gnueabi-gcc $cflags "$here/ports/koa2/stage-test/touch-events.c" -o "$dest/touch-events"
 cp "$payload_out/arch/arm/boot/zImage" "$initramfs" "$dest/"
 chmod 755 "$dest"/*.sh "$dest/koa2-stage-client"
-(cd "$dest" && sha256sum koa2_handoff_stage.ko koa2-stage-client zImage initramfs.cpio.gz stage-test.sh quiesce-dryrun.sh marker-test.sh touch-events usb-reload.sh stock-sleep.sh touch-quiesce.sh cpu1-quiesce.sh full-quiesce-dryrun.sh > SHA256SUMS)
+(cd "$dest" && sha256sum koa2_handoff_stage.ko koa2-stage-client zImage initramfs.cpio.gz stage-test.sh quiesce-dryrun.sh marker-test.sh touch-events usb-reload.sh stock-sleep.sh touch-quiesce.sh cpu1-quiesce.sh epdc-quiesce.sh full-quiesce-dryrun.sh > SHA256SUMS)
 # The module must have been built for exactly this zImage.
 want=$(grep -o 'K2S_KERNEL_BYTES [0-9]*' "$module/target-lock.h" | cut -d' ' -f2)
 [[ $(stat -c%s "$dest/zImage") == "$want" ]] || { echo 'zImage does not match the module lock' >&2; exit 2; }

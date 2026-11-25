@@ -42,6 +42,11 @@ for kit in kits:
         blob = git('show', f':{kit}/{name}')
         assert hashlib.sha256(blob).hexdigest() == digest, f'{kit}/{name}: tracked content differs'
         checked += 1
+    menu = git('show', f':{kit}/menu.json').decode()
+    import re as _re
+    scripts = _re.findall(r'sh \./([A-Za-z0-9_.-]+\.sh)', menu)
+    for script in sorted(set(scripts)):
+        assert script in listed, f'{kit}: menu.json runs {script} but it is not in the kit'
     attrs = git('check-attr', 'text', '--', f'{kit}/menu.json', f'{kit}/SHA256SUMS').decode()
     assert attrs.count('text: unset') == 2, f'{kit}: needs `* -text` beside it\n{attrs}'
-print(f'published KOA2 kits: {len(kits)} kits, {checked} listed files tracked and matching, all byte-exact on checkout')
+print(f'published KOA2 kits: {len(kits)} kits, {checked} listed files tracked and matching, all byte-exact on checkout, every menu.json script present')

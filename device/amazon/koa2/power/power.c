@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#define KOA2_BL_POWER "/sys/class/backlight/max77696-bl/bl_power"
+#define KOA2_BL_POWER "/sys/class/backlight/max77796-bl/bl_power"
 #define KOA2_CPUFREQ "/sys/devices/system/cpu/cpu0/cpufreq/"
 static char cpu_min[16], cpu_max[16];
 

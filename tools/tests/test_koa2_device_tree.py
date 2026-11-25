@@ -51,7 +51,7 @@ assert 'ro.config.low_ram=true' in prop
 
 ueventd = (KOA2 / 'rootdir/ueventd.koa2.rc').read_text()
 assert '/dev/block/' not in ueventd
-assert '/sys/class/backlight/max77696-bl brightness' in ueventd
+assert '/sys/class/backlight/max77796-bl brightness' in ueventd
 
 fstab = (KOA2 / 'rootdir/fstab.koa2').read_text()
 assert '/dev/block/' not in fstab

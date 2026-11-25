@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
-"""Host test for ports/koa2/stage-test/epdc-quiesce.sh against a simulated system."""
+"""Host test for ports/koa2/stage-test/epdc-quiesce.sh v2 against a simulated system.
+
+v2 stops and starts the stock x Upstart job (Xorg, awesome, blanket) rather
+than lab126_gui, writes a synced stage= line before each action, and waits
+up to 30 s for Xorg to reopen /dev/fb0.
+"""
 import hashlib
 import json
 from pathlib import Path
@@ -42,7 +47,7 @@ def sync_fs():
             fb_dir.rmdir()
         if fb_dev.exists():
             fb_dev.unlink()
-    if state['gui_running'] and state['mod_loaded'] and fault != 'gui_no_fb_reopen':
+    if state['x_running'] and state['mod_loaded'] and fault != 'gui_no_fb_reopen':
         xorg_fd.parent.mkdir(parents=True, exist_ok=True)
         (root / 'proc/111/comm').write_text('Xorg\n')
         if xorg_fd.exists() or xorg_fd.is_symlink():
@@ -56,20 +61,20 @@ rc = 0
 if cmd == 'initctl':
     action, job = args[0], args[1]
     if action == 'status':
-        if fault == 'gui_missing':
+        if fault == 'x_missing' or job != 'x':
             rc = 1
         else:
-            st = 'start/running' if state['gui_running'] else 'stop/waiting'
+            st = 'start/running' if state['x_running'] else 'stop/waiting'
             print(f'{job} {st}')
     elif action == 'stop':
-        state['gui_running'] = False
+        state['x_running'] = False
         if fault != 'users_stuck':
             state['users'] = 0
     elif action == 'start':
-        if fault == 'gui_start_fails':
+        if fault == 'x_start_fails':
             rc = 1
         else:
-            state['gui_running'] = True
+            state['x_running'] = True
             if state['mod_loaded']:
                 state['users'] = 3
 elif cmd == 'rmmod':
@@ -109,7 +114,7 @@ def run_case(expected, fault='', release='4.1.15-lab126', damaged=False,
         )
         (root / 'sys/class/graphics/fb0/name').write_text('mxc_epdc_fb\n')
         (root / 'state.json').write_text(json.dumps({
-            'fault': fault, 'mod_loaded': mod_loaded, 'gui_running': True,
+            'fault': fault, 'mod_loaded': mod_loaded, 'x_running': True,
             'users': 3 if mod_loaded else 0, 'ops': [], 'reloaded_args': [],
         }))
         (root / 'sim.py').write_text(SIM)
@@ -123,6 +128,7 @@ def run_case(expected, fault='', release='4.1.15-lab126', damaged=False,
     esac
 }}
 sleep() {{ :; }}
+sync() {{ :; }}
 initctl() {{ "{sys.executable}" "{root}/sim.py" "{root}" initctl "$@"; }}
 rmmod() {{ "{sys.executable}" "{root}/sim.py" "{root}" rmmod "$@"; }}
 insmod() {{ "{sys.executable}" "{root}/sim.py" "{root}" insmod "$@"; }}
@@ -148,20 +154,26 @@ insmod() {{ "{sys.executable}" "{root}/sim.py" "{root}" insmod "$@"; }}
 lines, st = run_case('epdc_quiesce_restored')
 assert 'epdc_unloaded=1' in lines and 'epdc_reloaded=1' in lines and 'fb_restored=1' in lines, lines
 assert any(a == 'waveform=320_R198_TEST.wrf.gz' for a in st['reloaded_args']), st['reloaded_args']
-assert st['mod_loaded'] and st['gui_running'] and st['users'] == 3, st
+assert st['mod_loaded'] and st['x_running'] and st['users'] == 3, st
+assert 'x_started=1' in lines and any(l.startswith('x_status_before=') for l in lines), lines
+assert [op[:3] for op in st['ops'] if op[0] == 'initctl' and op[1] != 'status'] == [['initctl', 'stop', 'x'], ['initctl', 'start', 'x']], st['ops']
+stages = [l.split()[0] for l in lines if l.startswith('stage=')]
+assert stages == ['stage=stop_x', 'stage=rmmod', 'stage=restore_insmod', 'stage=restore_x', 'stage=done'], stages
 
 # 2. Failure paths: every path restores GUI / module safely.
 _, st = run_case('epdc_users_not_released', fault='users_stuck')
-assert st['gui_running'] and st['mod_loaded'] and not any(op[0] == 'rmmod' for op in st['ops']), st
+assert st['x_running'] and st['mod_loaded'] and not any(op[0] == 'rmmod' for op in st['ops']), st
 
 _, st = run_case('epdc_rmmod_failed', fault='rmmod_fails')
-assert st['gui_running'] and st['mod_loaded'], st
+assert st['x_running'] and st['mod_loaded'], st
 
 _, st = run_case('epdc_reload_failed_restart_required', fault='reload_fails')
-assert st['gui_running'] and not st['mod_loaded'], st
+assert st['x_running'] and not st['mod_loaded'], st
 
-run_case('epdc_gui_restore_failed_restart_required', fault='gui_start_fails')
-run_case('epdc_gui_restore_failed_restart_required', fault='gui_no_fb_reopen')
+lines, _ = run_case('epdc_x_start_failed_restart_required', fault='x_start_fails')
+assert 'x_started=0' in lines, lines
+lines, _ = run_case('epdc_gui_restore_timeout', fault='gui_no_fb_reopen')
+assert 'fb_restored=0' in lines, lines
 
 # 3. Refusal paths: zero mutations issued.
 for exp, kw in (
@@ -171,7 +183,7 @@ for exp, kw in (
     ('refused_epdc_ko_missing', {'has_ko': False}),
     ('refused_epdc_params_missing', {'waveform': None}),
     ('refused_epdc_params_missing', {'waveform': ''}),
-    ('refused_gui_service_missing', {'fault': 'gui_missing'}),
+    ('refused_x_not_running', {'fault': 'x_missing'}),
 ):
     _, st = run_case(exp, **kw)
     assert not any(op[0] in ('rmmod', 'insmod') or op[:2] == ['initctl', 'stop'] for op in st['ops']), (exp, st)
