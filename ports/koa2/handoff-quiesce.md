@@ -224,3 +224,10 @@ KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/c
 - **2026-11-25 晚两组对照组合实机结果（定位上次联合空跑卡死根因）**：
   - **`Combined pair: Touch + CPU1 only`**：**全部通过（`result=full_quiesce_dryrun_restored`）**。`touch_power_before=on_enabled` → `touch_power_asleep=off_disabled` → `step_cpu1=offline`（`cpus=0`）→ `restore_cpu1=ok` → `restore_touch=ok`（`touch_power_restored=on_enabled`），总耗时 3.5 秒，彻底排除了触摸休眠与 CPU1 下线冲突的嫌疑。
   - **`Combined pair: USB + Touch only`**：在 **`stage=usb_unload uptime=626.48 cpus=0-1`**（执行 `rmmod g_mass_storage` 时，尚未进入触摸步骤）卡死并触发看门狗重启；随后采集前次日志返回 `previous_boot_result=buffer_unreadable`。由此彻底锁定此前联合空跑卡死的直接触发点就是 `rmmod g_mass_storage`（需在主机侧对照原厂 `ci_hdrc` / `g_mass_storage` 源码审计为何 UDC 低功耗/拔线状态下 `rmmod` 会挂死）。原始报告已归档本地，Kindle 已清理。
+
+#### 2026-11-27 实机结果（2026-11-26 v3 套件）：EPDC 完整恢复通过，确认 `udc_state=0` 下 `soft_connect` 同样挂死
+
+使用 `2026-11-26` v3 套件在实机运行，原始报告已归档本地并清理 Kindle：
+
+- **EPDC 单项（`epdc-quiesce.sh` v3）**：**`result=epdc_quiesce_restored`**。`stage=stop_x` → `epdc_users_after_stop=0 wait=0` → `stage=rmmod`（`epdc_unloaded=1`）→ `stage=restore_insmod`（`epdc_reloaded=1`）→ `stage=restore_x`（`x_started=1`、`x_status_after=x start/running`、`fb_restored=1`、`users_after=1`）→ `stage=done`（总计约 12 秒）。报告同时记录 `lab126_gui_status_after=lab126_gui stop/waiting`，说明 `start x --no-wait` 已恢复 `Xorg` 与 `/dev/fb0`，但未重启上层 `lab126_gui`，故肉眼看到空白静屏需重启恢复桌面。
+- **USB + Touch 组合（`full-quiesce-dryrun.sh` v3）**：在 `udc_state_before=0`、`touch_power_before=on_enabled` 下，执行 **`stage=usb_disconnect uptime=408.92 cpus=0-1`**（往 `soft_connect` 写 `disconnect`）时即卡死并重启（随后再次点击因锁文件残留返回 `refused_test_already_running`）。结合 2026-11-25 `rmmod g_mass_storage` 在同一阶段挂死，两次实机证据一致指向：拔线后 `udc_state=0` 时 ChipIdea OTG（`ci_hdrc.0`）处于低功耗/时钟门控状态，无论 `rmmod` 还是写 `soft_connect` 触碰其寄存器都会挂总线；下一步在主机侧对照 `drivers/usb/chipidea/` 源码核实 `udc_state=0` 是否本身已静止、或是否需先唤醒 runtime PM。

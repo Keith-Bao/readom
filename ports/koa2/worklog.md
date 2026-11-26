@@ -469,3 +469,9 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
   - `ramdisk.img` 1,113,744 B，SHA256 `2ff32b88bb6524d5d914bf49ea53de328542a78a19d96da08a32862e488fab1b`。
   - vendor manifest 装配 10 个 HAL；`vendor/bin/hw` 有 light/power/health/keymaster/graphics.allocator/audio 等 service，`lib/hw`/`vendor/lib/hw` 有对应 `-impl.so` 与 `lights.koa2.so`/`power.koa2.so`/`gralloc.default.so`/`audio.primary.default.so`。
 - 尚未上机：镜像能否在真机启动（EPDC framebuffer 合成、HAL 实际驱动硬件）属下一次上机验证；`TARGET_NO_KERNEL`/`TARGET_NO_BOOTLOADER` 为 true，内核与引导走既有交接路径。
+
+## 2026-11-27
+
+- 实机运行 `2026-11-26` v3 套件：
+  - `epdc-quiesce.sh` v3 完整通过：**`result=epdc_quiesce_restored`**（`epdc_users_after_stop=0`、`epdc_unloaded=1`、`epdc_reloaded=1`、`x_started=1`、`fb_restored=1`、`users_after=1`；`lab126_gui_status_after=lab126_gui stop/waiting`，故需重启拉回桌面框架）。
+  - `full-quiesce-dryrun.sh` v3（`steps=usb,touch`）在 `udc_state_before=0` 下精确卡死在 **`stage=usb_disconnect`**（写 `soft_connect`），与此前 `rmmod g_mass_storage` 挂死一致，指向拔线低功耗状态下触碰 `ci_hdrc.0` 寄存器挂总线。原始报告已归档本地，Kindle 已全部清理。
