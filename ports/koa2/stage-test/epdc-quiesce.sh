@@ -35,7 +35,7 @@ DIR="$BASE/$RUN"
 mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 exec > "$DIR/report.txt" 2>&1
 printf '%s
-' 'Readom KOA2 EPDC-only stop and reload v3'
+' 'Readom KOA2 EPDC-only stop and reload v4'
 date -u
 sync
 
@@ -156,6 +156,10 @@ lab126_gui_status_after=%s
         if [ -r /sys/class/graphics/fb0/name ] && xorg_fb_open; then
             printf 'fb_restored=1
 '
+            case "$(initctl status lab126_gui 2>/dev/null | head -n 1)" in
+                *"start/running"*) ;;
+                *) initctl start lab126_gui --no-wait >/dev/null 2>&1 || true ;;
+            esac
             [ "$result" = epdc_unloaded_pending_restore ] && result=epdc_quiesce_restored
         else
             printf 'fb_restored=0

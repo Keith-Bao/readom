@@ -74,6 +74,19 @@ int main(void)
     assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
     s = good(); s.drivers_present = 2; s.touch_driver_present = 1; s.touch_quiesced_verified = 1;
     assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
+    /* Proven USB-idle path (alone and combined with touch-sleep). */
+    s = good(); s.drivers_present = 1; s.usb_driver_present = 1; s.usb_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_OK);
+    s = good(); s.drivers_present = 1; s.usb_driver_present = 1; s.usb_quiesced_verified = 0;
+    assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
+    s = good(); s.drivers_present = 2;
+    s.touch_driver_present = 1; s.touch_quiesced_verified = 1;
+    s.usb_driver_present = 1; s.usb_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_OK);
+    s = good(); s.drivers_present = 3;
+    s.touch_driver_present = 1; s.touch_quiesced_verified = 1;
+    s.usb_driver_present = 1; s.usb_quiesced_verified = 1;
+    assert(koa2_quiesce_verify(&s) == KOA2_RANGE);
     assert(!strcmp(koa2_quiesce_drivers[0], "mxc_epdc_v2_fb"));
     puts("KOA2 quiesce verify: one core, every listed driver gone, a read-only rootfs and a recent "
          "watchdog feed; a check that did not look is refused");

@@ -40,7 +40,7 @@ RUN=$(date -u +%Y%m%d-%H%M%S)-$$
 DIR="$BASE/$RUN"
 mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 exec > "$DIR/report.txt" 2>&1
-printf '%s\n' 'Readom KOA2 combined reversible quiesce dry-run v3'
+printf '%s\n' 'Readom KOA2 combined reversible quiesce dry-run v4'
 date -u
 sync
 
@@ -109,15 +109,17 @@ if awk '$1 == "bcmdhd" {found=1; exit} END {exit !found}' /proc/modules; then
 fi
 if has usb; then
     [ "$(module_users)" = 0 ] || finish refused_usb_module_missing_or_busy
-    [ -w "$SOFT" ] || finish refused_usb_soft_connect_missing
     before=$(udc_state)
     printf 'udc_state_before=%s\n' "$before"
-    # The controller must be idle (not enumerated by a host) before we stop it.
-    # state "configured"/"1" means a host is talking to it; stopping then is the
-    # case that could strand an in-flight transfer, so refuse instead.
+    # Stock ci_hdrc_gadget_connect(gadget, 0) already stops USB interrupts
+    # (OP_USBINTR=0), drains endpoints, enters LPM and gates clocks on unplug.
+    # Touching soft_connect or rmmod while state=0 calls ci_udc_pullup() on
+    # clock-gated registers and hangs the i.MX7D bus. Verify idle read-only.
     case "$before" in
         configured|1) finish refused_usb_host_connected ;;
     esac
+    rt_status=$(cat "$UDC/device/power/runtime_status" 2>/dev/null || printf 'unavailable')
+    printf 'udc_runtime_status_before=%s\n' "$rt_status"
 fi
 if has touch; then
     [ -e "$TOUCH/driver" ] && [ -w "$TOUCH/drv_debug" ] || finish refused_touch_driver_missing
@@ -165,12 +167,8 @@ restore_all() {
     fi
     if [ "$usb_stopped" = 1 ]; then
         stage restore_usb
-        echo connect > "$SOFT"
-        sleep 1
         after=$(udc_state)
         printf 'udc_state_restored=%s module_users=%s\n' "$after" "$(module_users)"
-        # The module was never unloaded; connect restarts the UDC. A host is not
-        # attached here, so "not attached" / "powered" is the expected idle state.
         if [ "$(module_users)" = 0 ]; then
             printf 'restore_usb=ok\n'
         else
@@ -190,18 +188,16 @@ restore_all() {
 trap 'restore_all' 0
 trap 'exit 1' HUP INT TERM
 
-# Step 1: USB gadget soft-disconnect (stop the UDC, keep the module loaded).
+# Step 1: Verify USB UDC is already quiesced/idle (no clock-gated register write).
 if has usb; then
-    stage usb_disconnect
+    stage usb_verify_idle
     usb_stopped=1
-    echo disconnect > "$SOFT" || { result=step_usb_disconnect_write_failed; exit 0; }
-    sleep 1
     state=$(udc_state)
     printf 'udc_state_stopped=%s\n' "$state"
     case "$state" in
         configured|1) result=step_usb_not_stopped; exit 0 ;;
     esac
-    printf 'step_usb=disconnected\n'
+    printf 'step_usb=quiesced_idle\n'
 fi
 
 # Step 2: touch sleep through the stock driver, then let an interrupt handler
@@ -232,7 +228,14 @@ fi
 # Hold all three for a moment, then confirm nothing came back on its own.
 stage hold
 sleep 1
-if has cpu1 && [ "$(cat "$CPU_ONLINE")" != 0 ]; then
+if has usb; then
+    case "$(udc_state)" in
+        configured|1) result=step_usb_not_stopped ;;
+    esac
+fi
+if [ "$result" = step_usb_not_stopped ]; then
+    :
+elif has cpu1 && [ "$(cat "$CPU_ONLINE")" != 0 ]; then
     result=step_cpu1_came_back_early
 elif has touch && [ "$(touch_power)" != off_disabled ]; then
     result=step_touch_woke_early

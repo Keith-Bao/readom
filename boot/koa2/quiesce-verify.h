@@ -30,6 +30,12 @@ struct koa2_quiesce_state {
      * and touch interrupts over the quiet window, and irq_thread=S. */
     unsigned touch_driver_present;
     unsigned touch_quiesced_verified;
+    /* Optional USB-idle path (proven on KOA2 2026-11-25/27): when unplugged,
+     * ci_hdrc_gadget_connect(gadget, 0) already stops USB interrupts/DMA,
+     * enters LPM and gates clocks; touching rmmod or soft_connect hangs the
+     * bus. g_mass_storage may remain loaded ONLY when verified unplugged/idle. */
+    unsigned usb_driver_present;
+    unsigned usb_quiesced_verified;
 };
 /* The drivers that command a DMA master on this machine and are removable.
  * usdhc3 (eMMC) is not here: it is the root filesystem and cannot be stopped

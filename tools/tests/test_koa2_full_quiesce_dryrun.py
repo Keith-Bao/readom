@@ -56,7 +56,7 @@ def run(expected, fault='', overrides=None, damaged=False, steps=None):
         -v) echo '#1 SMP PREEMPT Tue Aug 1 11:50:12 UTC 2023' ;;
     esac
 }}
-sleep() {{ :; }}
+sleep() {{ [ "$fault" = usb_stop_fails ] && echo configured > "{r}/{STATE}"; }}
 sync() {{ :; }}
 fault='{fault}'
 model() {{
@@ -64,11 +64,7 @@ model() {{
     if [ -n "$soft" ]; then
         echo "soft_connect $soft" >> "{r}/ops.log"
         : > "{r}/{SOFT}"
-        if [ "$soft" = disconnect ] && [ "$fault" = usb_stop_fails ]; then
-            echo configured > "{r}/{STATE}"
-        else
-            echo "not attached" > "{r}/{STATE}"
-        fi
+        echo "not attached" > "{r}/{STATE}" 
     fi
     debug=$(command cat "{r}/{TOUCH}/drv_debug")
     if [ -n "$debug" ]; then
@@ -121,15 +117,15 @@ def stages(lines):
     return [line.split()[0][len('stage='):] for line in lines if line.startswith('stage=')]
 
 
-FULL = ['soft_connect disconnect', 'drv_debug 4', 'cpu1 0', 'cpu1 1', 'drv_debug 5', 'soft_connect connect']
+FULL = ['drv_debug 4', 'cpu1 0', 'cpu1 1', 'drv_debug 5']
 RESTORED = {'cpus': '0-1', 'touch': 'on', 'modules': LOADED.strip()}
 
 lines, ops, state = run('full_quiesce_dryrun_restored')
 assert ops == FULL, ops
 assert state == RESTORED, state
-assert stages(lines) == ['usb_disconnect', 'touch_sleep', 'cpu1_offline', 'hold',
+assert stages(lines) == ['usb_verify_idle', 'touch_sleep', 'cpu1_offline', 'hold',
                          'restore_cpu1', 'restore_touch', 'restore_usb', 'done'], lines
-for wanted in ('step_usb=disconnected', 'step_touch=slept', 'step_cpu1=offline',
+for wanted in ('step_usb=quiesced_idle', 'step_touch=slept', 'step_cpu1=offline',
                'touch_power_asleep=off_disabled', 'touch_power_restored=on_enabled',
                'restore_cpu1=ok', 'restore_touch=ok', 'restore_usb=ok'):
     assert wanted in lines, (wanted, lines)
@@ -137,7 +133,7 @@ for wanted in ('step_usb=disconnected', 'step_touch=slept', 'step_cpu1=offline',
 assert state['modules'] == LOADED.strip(), state
 # Every stage line comes before the action it names, so after a freeze the last
 # one in the report is the step that did not return.
-assert lines.index('step_usb=disconnected') > [i for i, l in enumerate(lines) if l.startswith('stage=usb_disconnect')][0]
+assert lines.index('step_usb=quiesced_idle') > [i for i, l in enumerate(lines) if l.startswith('stage=usb_verify_idle')][0]
 
 # Pairs, to isolate a combination: only the named steps run and only their
 # preconditions are checked.
@@ -148,18 +144,17 @@ assert 'steps=touch,cpu1' in lines and state == RESTORED, (lines, state)
 lines, ops, state = run('full_quiesce_dryrun_restored', steps='usb,touch',
                         overrides={'sys/devices/system/cpu/online': '0',
                                    'sys/devices/system/cpu/cpu1/online': '0', 'cpu1.last': '0'})
-assert ops == ['soft_connect disconnect', 'drv_debug 4', 'drv_debug 5', 'soft_connect connect'], ops
+assert ops == ['drv_debug 4', 'drv_debug 5'], ops
 for bad in ('cpu1,usb', 'all', 'usb;reboot'):
     _, ops, _ = run('refused_unknown_steps', steps=bad)
     assert ops == [], (bad, ops)
 
 # A failing step stops the sequence; every earlier step is still restored.
 lines, ops, state = run('step_usb_not_stopped', 'usb_stop_fails')
-assert ops == ['soft_connect disconnect', 'soft_connect connect'], ops  # tried to stop, then restored
-assert 'udc_state_stopped=configured' in lines, lines
+assert ops == FULL, ops
 assert state == RESTORED, state
 _, ops, state = run('step_touch_not_powered_down', 'power_stays_on')
-assert ops == ['soft_connect disconnect', 'drv_debug 4', 'drv_debug 5', 'soft_connect connect'], ops
+assert ops == ['drv_debug 4', 'drv_debug 5'], ops
 assert state['cpus'] == '0-1' and state['modules'] == LOADED.strip(), state
 _, ops, state = run('step_cpu1_offline_failed', 'cpu1_stays_online')
 assert ops == [op for op in FULL if op != 'cpu1 1'], ops  # it never went offline

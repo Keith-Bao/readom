@@ -15,10 +15,12 @@ int koa2_quiesce_verify(const struct koa2_quiesce_state *s)
      * all of them rather than some. */
     if (s->drivers_checked != KOA2_Q_DRIVER_COUNT) return KOA2_BOUNDS;
     if (s->drivers_present) {
-        int touch_only = (s->drivers_present == 1 &&
-                          s->touch_driver_present == 1 &&
-                          s->touch_quiesced_verified == 1);
-        if (!touch_only) return KOA2_RANGE;
+        unsigned allowed = 0;
+        if (s->touch_driver_present == 1 && s->touch_quiesced_verified == 1)
+            allowed++;
+        if (s->usb_driver_present == 1 && s->usb_quiesced_verified == 1)
+            allowed++;
+        if (s->drivers_present != allowed) return KOA2_RANGE;
     }
     if (!s->rootfs_readonly) return KOA2_RANGE;
     /* The watchdog is at 60 seconds and cannot be stopped. Everything after

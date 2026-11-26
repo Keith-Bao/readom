@@ -475,3 +475,4 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
 - 实机运行 `2026-11-26` v3 套件：
   - `epdc-quiesce.sh` v3 完整通过：**`result=epdc_quiesce_restored`**（`epdc_users_after_stop=0`、`epdc_unloaded=1`、`epdc_reloaded=1`、`x_started=1`、`fb_restored=1`、`users_after=1`；`lab126_gui_status_after=lab126_gui stop/waiting`，故需重启拉回桌面框架）。
   - `full-quiesce-dryrun.sh` v3（`steps=usb,touch`）在 `udc_state_before=0` 下精确卡死在 **`stage=usb_disconnect`**（写 `soft_connect`），与此前 `rmmod g_mass_storage` 挂死一致，指向拔线低功耗状态下触碰 `ci_hdrc.0` 寄存器挂总线。原始报告已归档本地，Kindle 已全部清理。
+  - 完成原厂 `drivers/usb/chipidea/{udc,core,ci_hdrc_imx}.c` 源码审计：确认拔线后 `ci_hdrc_gadget_connect(0)` 已关中断、排空端点、进 LPM 并门控时钟，而 `rmmod`/`soft_connect` 调用 `ci_udc_pullup()` 写已门控的 `OP_USBCMD` 导致挂总线。已将 `full-quiesce-dryrun.sh`（v4）与 `boot/koa2/quiesce-verify.{h,c}` 改为只读核验 USB 空闲静止，并为 `epdc-quiesce.sh`（v4）补齐 `start lab126_gui --no-wait`，33/33 KOA2 主机测试全过。

@@ -231,3 +231,10 @@ KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/c
 
 - **EPDC 单项（`epdc-quiesce.sh` v3）**：**`result=epdc_quiesce_restored`**。`stage=stop_x` → `epdc_users_after_stop=0 wait=0` → `stage=rmmod`（`epdc_unloaded=1`）→ `stage=restore_insmod`（`epdc_reloaded=1`）→ `stage=restore_x`（`x_started=1`、`x_status_after=x start/running`、`fb_restored=1`、`users_after=1`）→ `stage=done`（总计约 12 秒）。报告同时记录 `lab126_gui_status_after=lab126_gui stop/waiting`，说明 `start x --no-wait` 已恢复 `Xorg` 与 `/dev/fb0`，但未重启上层 `lab126_gui`，故肉眼看到空白静屏需重启恢复桌面。
 - **USB + Touch 组合（`full-quiesce-dryrun.sh` v3）**：在 `udc_state_before=0`、`touch_power_before=on_enabled` 下，执行 **`stage=usb_disconnect uptime=408.92 cpus=0-1`**（往 `soft_connect` 写 `disconnect`）时即卡死并重启（随后再次点击因锁文件残留返回 `refused_test_already_running`）。结合 2026-11-25 `rmmod g_mass_storage` 在同一阶段挂死，两次实机证据一致指向：拔线后 `udc_state=0` 时 ChipIdea OTG（`ci_hdrc.0`）处于低功耗/时钟门控状态，无论 `rmmod` 还是写 `soft_connect` 触碰其寄存器都会挂总线；下一步在主机侧对照 `drivers/usb/chipidea/` 源码核实 `udc_state=0` 是否本身已静止、或是否需先唤醒 runtime PM。
+
+#### ChipIdea UDC（`ci_hdrc.0`）拔线静止源码审计（2026-11-27）
+
+核对原厂 `drivers/usb/chipidea/udc.c` 与 `core.c`、`ci_hdrc_imx.c`：
+- 拔线时 `ci_hdrc_gadget_connect(gadget, 0)`（`udc.c:2079-2090`）已顺序执行：`usb_udc_vbus_handler(false)`、`ci->driver->disconnect()`、`hw_device_state(ci, 0)`（向 `OP_USBINTR` 写 `0` 关闭全部 USB 中断）、`_gadget_stop_activity()`（清空全部端点队列）、`pm_runtime_put_sync()` → `ci_controller_suspend()`（`core.c:1136` 进入 LPM、挂起 USB PHY、`imx_disable_unprepare_clks()` 关闭控制器时钟），最后置状态为 `USB_STATE_NOTATTACHED`（`/sys/class/udc/ci_hdrc.0/state` 为 `0`）。
+- 随后无论是 `rmmod g_mass_storage` 还是写 `disconnect > soft_connect`，都会进入 `ci_udc_pullup(gadget, 0)`（`udc.c:1684-1699`）并向已门控时钟的 `OP_USBCMD` 寄存器写入，在 i.MX7D 上直接挂死 AHB 总线——这完整解释了 2026-11-25 与 2026-11-27 两次实机挂死。
+- 结论：拔线且 `udc/state == 0`、`g_mass_storage users == 0` 时，USB 控制器已由原厂驱动完整静止（中断屏蔽、DMA 排空、LPM + 时钟关闭），交接前应只读核验空闲状态而不应再触碰 `rmmod` 或 `soft_connect`。已同步更新 `full-quiesce-dryrun.sh`（v4）、`boot/koa2/quiesce-verify.{h,c}` 与 `epdc-quiesce.sh`（v4 恢复时补拉 `lab126_gui --no-wait`）。
