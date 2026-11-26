@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
-"""Host test for ports/koa2/stage-test/epdc-quiesce.sh v2 against a simulated system.
+"""Host test for ports/koa2/stage-test/epdc-quiesce.sh v3 against a simulated system.
 
 v2 stops and starts the stock x Upstart job (Xorg, awesome, blanket) rather
 than lab126_gui, writes a synced stage= line before each action, and waits
-up to 30 s for Xorg to reopen /dev/fb0.
+up to 30 s for Xorg to reopen /dev/fb0. v3 starts x with --no-wait (a blocking
+`initctl start x` hung on the device) and logs x / lab126_gui status after.
 """
 import hashlib
 import json
@@ -59,9 +60,14 @@ def sync_fs():
 
 rc = 0
 if cmd == 'initctl':
-    action, job = args[0], args[1]
+    action = args[0]
+    rest = [a for a in args[1:] if not a.startswith('--')]
+    job = rest[0]
+    if action == 'start' and '--no-wait' not in args:
+        # A blocking start is what hung on the real device.
+        state['blocking_start'] = True
     if action == 'status':
-        if fault == 'x_missing' or job != 'x':
+        if fault == 'x_missing' or job not in ('x', 'lab126_gui'):
             rc = 1
         else:
             st = 'start/running' if state['x_running'] else 'stop/waiting'
@@ -156,7 +162,9 @@ assert 'epdc_unloaded=1' in lines and 'epdc_reloaded=1' in lines and 'fb_restore
 assert any(a == 'waveform=320_R198_TEST.wrf.gz' for a in st['reloaded_args']), st['reloaded_args']
 assert st['mod_loaded'] and st['x_running'] and st['users'] == 3, st
 assert 'x_started=1' in lines and any(l.startswith('x_status_before=') for l in lines), lines
-assert [op[:3] for op in st['ops'] if op[0] == 'initctl' and op[1] != 'status'] == [['initctl', 'stop', 'x'], ['initctl', 'start', 'x']], st['ops']
+assert [op for op in st['ops'] if op[0] == 'initctl' and op[1] != 'status'] == [['initctl', 'stop', 'x'], ['initctl', 'start', '--no-wait', 'x']], st['ops']
+assert not st.get('blocking_start'), st
+assert 'x_status_after=x start/running' in lines and any(l.startswith('lab126_gui_status_after=') for l in lines), lines
 stages = [l.split()[0] for l in lines if l.startswith('stage=')]
 assert stages == ['stage=stop_x', 'stage=rmmod', 'stage=restore_insmod', 'stage=restore_x', 'stage=done'], stages
 

@@ -17,6 +17,14 @@
 # Earlier (2026-11-25 device): stopping lab126_gui alone did not release the 3
 # EPDC references because Xorg/awesome/blanket belong to the x job, not to
 # lab126_gui.
+# v3 (2026-11-26): on the device `initctl start x` never returned (the report
+# ended at stage=restore_x). Stock restarts x with a plain `start x`
+# (dump-and-kill-cvm, x_monitor.conf); emitting start_x would not work after
+# boot, since x_prelaunch needs start_x AND started dynconfig AND started dbus
+# as fresh events. So v3 keeps `start x` but adds --no-wait, exactly as
+# /etc/upstart/display does for its emit: initctl returns at once and the 30 s
+# /dev/fb0 reopen poll decides success. The x and lab126_gui status after the
+# poll go into the report either way.
 set -u
 BASE=/mnt/us/koa2-epdc-quiesce
 MOD=mxc_epdc_v2_fb
@@ -27,7 +35,7 @@ DIR="$BASE/$RUN"
 mkdir -p "$BASE" && mkdir "$DIR" || exit 1
 exec > "$DIR/report.txt" 2>&1
 printf '%s
-' 'Readom KOA2 EPDC-only stop and reload v2'
+' 'Readom KOA2 EPDC-only stop and reload v3'
 date -u
 sync
 
@@ -122,7 +130,7 @@ restore_and_report() {
     x_ok=1
     if [ "$x_stopped" = 1 ]; then
         stage restore_x
-        if initctl start x >/dev/null 2>&1; then
+        if initctl start --no-wait x >/dev/null 2>&1; then
             x_stopped=0
             printf 'x_started=1
 '
@@ -142,6 +150,9 @@ restore_and_report() {
             sleep 1
             waited=$((waited + 1))
         done
+        printf 'x_status_after=%s
+lab126_gui_status_after=%s
+'             "$(initctl status x 2>/dev/null | head -n 1)"             "$(initctl status lab126_gui 2>/dev/null | head -n 1)"
         if [ -r /sys/class/graphics/fb0/name ] && xorg_fb_open; then
             printf 'fb_restored=1
 '

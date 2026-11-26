@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: GPL-2.0-only
 """Run ports/koa2/stage-test/full-quiesce-dryrun.sh against a model Kindle.
 
-The script only writes sysfs files and calls rmmod/modprobe, so the model sits
-behind `cat`: before every read it applies what was written since (CPU1
-online 0/1, touch drv_debug 4/5) the way the stock drivers do, and the named
-fault makes one of them misbehave. rmmod and modprobe edit /proc/modules and
-the gadget's LUN as the stock module does.
+The script only writes sysfs files, so the model sits behind `cat`: before
+every read it applies what was written since -- CPU1 online 0/1, touch
+drv_debug 4/5, and the UDC soft_connect disconnect/connect -- the way the
+stock drivers do, and the named fault makes one of them misbehave. Nothing
+unloads g_mass_storage: USB is stopped by writing the UDC soft_connect node
+(udc-core.c usb_gadget_udc_stop), which v3 uses in place of the rmmod that
+wedged the real device.
 """
 import hashlib
 from pathlib import Path
@@ -16,9 +18,9 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'ports/koa2/stage-test/full-quiesce-dryrun.sh'
-PARAM = 'sys/module/g_mass_storage/parameters'
 UDC = 'sys/class/udc/ci_hdrc.0'
-LUN = UDC + '/device/gadget/lun0/file'
+SOFT = UDC + '/soft_connect'
+STATE = UDC + '/state'
 TOUCH = 'sys/bus/i2c/devices/1-0024'
 LOADED = 'g_mass_storage 1 0 - Live 0\n'
 
@@ -26,29 +28,23 @@ LOADED = 'g_mass_storage 1 0 - Live 0\n'
 def run(expected, fault='', overrides=None, damaged=False, steps=None):
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        parameters = {
-            'file': '', 'luns': '0', 'removable': 'Y', 'stall': 'Y', 'recovery_mode': '0',
-            'ro': '', 'cdrom': '', 'nofua': '', 'idVendor': '6473', 'idProduct': '4',
-            'bcdDevice': '0', 'iManufacturer': '(null)', 'iProduct': '(null)',
-            'iSerialNumber': '(null)',
-        }
-        files = {f'{PARAM}/{k}': v for k, v in parameters.items()}
-        files.update({
+        files = {
             'proc/modules': LOADED.strip(), 'proc/uptime': '100.00 180.00',
-            UDC + '/state': '0', LUN: '',
+            STATE: 'not attached', SOFT: '',
             TOUCH + '/drv_debug': '', TOUCH + '/sleep_status': 'on',
             'sys/class/regulator/regulator.7/name': 'MAX77796-LSW1',
             'sys/class/regulator/regulator.7/state': 'enabled',
             'sys/devices/system/cpu/online': '0-1',
             'sys/devices/system/cpu/cpu1/online': '1',
             'cpu1.last': '1',
-        })
+        }
         files.update(overrides or {})
         for name, value in files.items():
             path = root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(value + '\n')
         (root / TOUCH / 'driver').mkdir()
+        (root / SOFT).parent.mkdir(parents=True, exist_ok=True)
         (root / 'mnt/us/documents').mkdir(parents=True)
         ops = root / 'ops.log'
         ops.write_text('')
@@ -64,6 +60,16 @@ sleep() {{ :; }}
 sync() {{ :; }}
 fault='{fault}'
 model() {{
+    soft=$(command cat "{r}/{SOFT}")
+    if [ -n "$soft" ]; then
+        echo "soft_connect $soft" >> "{r}/ops.log"
+        : > "{r}/{SOFT}"
+        if [ "$soft" = disconnect ] && [ "$fault" = usb_stop_fails ]; then
+            echo configured > "{r}/{STATE}"
+        else
+            echo "not attached" > "{r}/{STATE}"
+        fi
+    fi
     debug=$(command cat "{r}/{TOUCH}/drv_debug")
     if [ -n "$debug" ]; then
         echo "drv_debug $debug" >> "{r}/ops.log"
@@ -88,18 +94,6 @@ model() {{
     fi
 }}
 cat() {{ model; command cat "$@"; }}
-rmmod() {{
-    echo "rmmod $*" >> "{r}/ops.log"
-    [ "$fault" = rmmod_fail ] && return 1
-    : > "{r}/proc/modules"
-    rm -f "{r}/{LUN}"
-}}
-modprobe() {{
-    echo "modprobe $*" >> "{r}/ops.log"
-    [ "$fault" = modprobe_fail ] && return 1
-    echo 'g_mass_storage 1 0 - Live 0' > "{r}/proc/modules"
-    : > "{r}/{LUN}"
-}}
 '''
         text = re.sub(r'/mnt/us|/proc/|/sys/', lambda m: r + m[0], SCRIPT.read_text())
         script = root / 'full-quiesce-dryrun.sh'
@@ -127,43 +121,45 @@ def stages(lines):
     return [line.split()[0][len('stage='):] for line in lines if line.startswith('stage=')]
 
 
-RELOAD = 'modprobe g_mass_storage removable=1 idVendor=6473 idProduct=4 bcdDevice=0'
-FULL = ['rmmod g_mass_storage', 'drv_debug 4', 'cpu1 0', 'cpu1 1', 'drv_debug 5', RELOAD]
+FULL = ['soft_connect disconnect', 'drv_debug 4', 'cpu1 0', 'cpu1 1', 'drv_debug 5', 'soft_connect connect']
 RESTORED = {'cpus': '0-1', 'touch': 'on', 'modules': LOADED.strip()}
 
 lines, ops, state = run('full_quiesce_dryrun_restored')
 assert ops == FULL, ops
 assert state == RESTORED, state
-assert stages(lines) == ['usb_unload', 'touch_sleep', 'cpu1_offline', 'hold',
+assert stages(lines) == ['usb_disconnect', 'touch_sleep', 'cpu1_offline', 'hold',
                          'restore_cpu1', 'restore_touch', 'restore_usb', 'done'], lines
-for wanted in ('step_usb=unloaded', 'step_touch=slept', 'step_cpu1=offline',
+for wanted in ('step_usb=disconnected', 'step_touch=slept', 'step_cpu1=offline',
                'touch_power_asleep=off_disabled', 'touch_power_restored=on_enabled',
                'restore_cpu1=ok', 'restore_touch=ok', 'restore_usb=ok'):
     assert wanted in lines, (wanted, lines)
+# The module is never unloaded, even across a full run.
+assert state['modules'] == LOADED.strip(), state
 # Every stage line comes before the action it names, so after a freeze the last
 # one in the report is the step that did not return.
-assert lines.index('step_usb=unloaded') > [i for i, l in enumerate(lines) if l.startswith('stage=usb_unload')][0]
+assert lines.index('step_usb=disconnected') > [i for i, l in enumerate(lines) if l.startswith('stage=usb_disconnect')][0]
 
-# Pairs, to narrow down which combination froze v1: only the named steps run
-# and only their preconditions are checked.
+# Pairs, to isolate a combination: only the named steps run and only their
+# preconditions are checked.
 lines, ops, state = run('full_quiesce_dryrun_restored', steps='touch,cpu1',
-                        overrides={PARAM + '/file': '/dev/loop/0'})
+                        overrides={STATE: 'configured'})  # host attached, but USB step is skipped
 assert ops == ['drv_debug 4', 'cpu1 0', 'cpu1 1', 'drv_debug 5'], ops
-assert 'steps=touch,cpu1' in lines and state['cpus'] == '0-1' and state['touch'] == 'on', (lines, state)
+assert 'steps=touch,cpu1' in lines and state == RESTORED, (lines, state)
 lines, ops, state = run('full_quiesce_dryrun_restored', steps='usb,touch',
                         overrides={'sys/devices/system/cpu/online': '0',
                                    'sys/devices/system/cpu/cpu1/online': '0', 'cpu1.last': '0'})
-assert ops == ['rmmod g_mass_storage', 'drv_debug 4', 'drv_debug 5', RELOAD], ops
+assert ops == ['soft_connect disconnect', 'drv_debug 4', 'drv_debug 5', 'soft_connect connect'], ops
 for bad in ('cpu1,usb', 'all', 'usb;reboot'):
     _, ops, _ = run('refused_unknown_steps', steps=bad)
     assert ops == [], (bad, ops)
 
 # A failing step stops the sequence; every earlier step is still restored.
-_, ops, state = run('step_usb_unload_failed', 'rmmod_fail')
-assert ops == ['rmmod g_mass_storage'], ops
+lines, ops, state = run('step_usb_not_stopped', 'usb_stop_fails')
+assert ops == ['soft_connect disconnect', 'soft_connect connect'], ops  # tried to stop, then restored
+assert 'udc_state_stopped=configured' in lines, lines
 assert state == RESTORED, state
 _, ops, state = run('step_touch_not_powered_down', 'power_stays_on')
-assert ops == ['rmmod g_mass_storage', 'drv_debug 4', 'drv_debug 5', RELOAD], ops
+assert ops == ['soft_connect disconnect', 'drv_debug 4', 'drv_debug 5', 'soft_connect connect'], ops
 assert state['cpus'] == '0-1' and state['modules'] == LOADED.strip(), state
 _, ops, state = run('step_cpu1_offline_failed', 'cpu1_stays_online')
 assert ops == [op for op in FULL if op != 'cpu1 1'], ops  # it never went offline
@@ -175,26 +171,21 @@ assert 'restore_cpu1=failed' in lines and 'restore_touch=ok' in lines and 'resto
 assert ops == FULL, ops
 lines, ops, _ = run('dryrun_restore_failed_restart_required', 'wake_fails')
 assert 'restore_touch=failed' in lines and 'restore_usb=ok' in lines, lines
-lines, ops, _ = run('dryrun_restore_failed_restart_required', 'modprobe_fail')
-assert 'restore_usb=failed' in lines and ops == FULL, (lines, ops)
 
 # Refusals change nothing.
 for expected, kwargs in (
         ('refused_kit_unverified', {'damaged': True}),
         ('refused_wifi_loaded', {'overrides': {'proc/modules': 'bcmdhd 1 0 - Live 0\n' + LOADED.strip()}}),
         ('refused_usb_module_missing_or_busy', {'overrides': {'proc/modules': LOADED.replace('1 0', '1 1').strip()}}),
-        ('refused_unexpected_storage_parameters', {'overrides': {PARAM + '/file': '/dev/loop/0'}}),
-        ('refused_lun_not_proven_idle', {'overrides': {UDC + '/state': '1'}}),
-        ('refused_custom_usb_strings', {'overrides': {PARAM + '/iProduct': 'Kindle'}}),
-        ('refused_unexpected_usb_descriptor', {'overrides': {PARAM + '/idVendor': '0x1949'}}),
+        ('refused_usb_host_connected', {'overrides': {STATE: 'configured'}}),
         ('refused_touch_not_awake', {'overrides': {TOUCH + '/sleep_status': 'off'}}),
         ('refused_touch_not_awake', {'overrides': {'sys/class/regulator/regulator.7/state': 'disabled'}}),
         ('refused_cpu1_not_online', {'overrides': {'sys/devices/system/cpu/cpu1/online': '0',
                                                    'sys/devices/system/cpu/online': '0',
                                                    'cpu1.last': '0'}})):
     _, ops, _ = run(expected, **kwargs)
-    assert all(not op.startswith(('rmmod', 'modprobe', 'drv_debug')) for op in ops), (expected, ops)
+    assert all(not op.startswith(('soft_connect', 'drv_debug')) for op in ops), (expected, ops)
     assert 'cpu1 0' not in ops, (expected, ops)
 
-print('KOA2 full-quiesce dry-run: USB+Touch+CPU1 in order with a synced stage line before each, '
-      'reverse restore checked per step, failures and refusals reported')
+print('KOA2 full-quiesce dry-run: USB soft-disconnect + Touch + CPU1 in order with a synced '
+      'stage line before each, reverse restore per step, module never unloaded, refusals safe')
