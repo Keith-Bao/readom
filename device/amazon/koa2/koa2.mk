@@ -17,7 +17,6 @@ PRODUCT_AAPT_PREF_CONFIG := xhdpi
 PRODUCT_COPY_FILES += \
     device/amazon/koa2/cyttsp5_mt.idc:system/usr/idc/cyttsp5_mt.idc \
     device/amazon/koa2/gpio-keys.kl:system/usr/keylayout/gpio-keys.kl \
-    device/amazon/koa2/manifest.xml:system/vendor/manifest.xml \
     device/amazon/koa2/rootdir/init.koa2.rc:root/init.koa2.rc \
     device/amazon/koa2/rootdir/ueventd.koa2.rc:root/ueventd.koa2.rc \
     device/amazon/koa2/rootdir/fstab.koa2:root/fstab.koa2 \
@@ -26,7 +25,20 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     lights.koa2 \
-    power.koa2
+    power.koa2 \
+    android.hardware.light@2.0-service \
+    android.hardware.power@1.0-service \
+    android.hardware.health@1.0-service \
+    android.hardware.keymaster@3.0-service \
+    android.hardware.keymaster@3.0-impl \
+    android.hardware.graphics.allocator@2.0-service \
+    android.hardware.graphics.allocator@2.0-impl \
+    android.hardware.graphics.mapper@2.0-impl \
+    android.hardware.audio@2.0-service \
+    android.hardware.audio.effect@2.0-impl \
+    android.hardware.sensors@1.0-service \
+    audio.primary.default \
+    audio.r_submix.default
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.config.low_ram=true \

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# Kindle Oasis 2 (KOA2 / i.MX7D) sysfs labels.
+#
+# sysfs labels must go through genfscon on the real /sys/devices path, not
+# through file_contexts: sysfs is a pseudo filesystem, so a /sys/class/... entry
+# in file_contexts never takes effect (the class entries are symlinks and the
+# label is resolved on the target device path). The paths below are the real
+# device paths; /sys/class/graphics/fb0 and /sys/class/backlight/max77796-bl are
+# symlinks into them. Addresses come from the stock runtime DTB
+# (koa2-evidence/.../stock-runtime.dtb) and /proc/iomem captured on the device.
+#
+# genfscon matches by longest path prefix, so the controller-level prefix covers
+# every attribute the driver creates beneath it.
+
+# EPDC v2 framebuffer controller (fixed SoC address 0x306f0000 on aips-bus@30400000).
+# SurfaceFlinger reads its sysfs attributes (waveform, temperature, update mode).
+genfscon sysfs /devices/platform/30400000.aips-bus/306f0000.epdc u:object_r:sysfs_graphics:s0
+
+# --- i2c-attached device nodes: complete on-device ---
+# The MAX77796 PMIC (frontlight backlight + fuel-gauge battery) sits on
+# i2c@30a50000, and the Bosch accelerometer + twin MAX44009 light sensors on
+# i2c@30a40000. The Linux i2c *adapter* index (i2c-N) under each controller is
+# assigned at runtime, so the leaf path cannot be pinned from the DTB alone and
+# these are left commented until captured on the device with:
+#   readlink -f /sys/class/backlight/max77796-bl
+#   readlink -f /sys/class/power_supply/max77796-battery
+# Expected shape (N is the runtime adapter index, 3c is the PMIC 7-bit address):
+# genfscon sysfs /devices/platform/30800000.aips-bus/30a50000.i2c/i2c-N/N-003c/max77796-bl/backlight/max77796-bl u:object_r:sysfs_leds:s0
+# genfscon sysfs /devices/platform/30800000.aips-bus/30a50000.i2c/i2c-N/N-003c/power_supply/max77796-battery u:object_r:sysfs_batteryinfo:s0

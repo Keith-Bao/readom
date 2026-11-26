@@ -31,3 +31,14 @@ TARGET_COPY_OUT_VENDOR := system/vendor
 # File-image budgets (no device partition resize or raw partition writes).
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 536870912
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 1879048192
+
+# Vendor HAL manifest, assembled and checked by build/make/target/board/Android.mk.
+DEVICE_MANIFEST_FILE := device/amazon/koa2/manifest.xml
+
+# Device SELinux policy; without this the sepolicy/ directory is ignored.
+BOARD_SEPOLICY_DIRS += device/amazon/koa2/sepolicy
+
+# healthd board adaptation (MAX77796 capacity clamp, battery sysfs path). Without
+# this the generic android.hardware.health@1.0-service links the empty libhealthd.
+BOARD_HAL_STATIC_LIBRARIES := libhealthd.koa2
+

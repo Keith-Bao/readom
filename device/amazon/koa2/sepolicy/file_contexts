@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-# Kindle Oasis 2 (KOA2) SELinux file contexts (host-prepared skeleton).
-/dev/graphics/fb0                               u:object_r:graphics_device:s0
-/sys/class/backlight/max77796-bl/brightness     u:object_r:sysfs_leds:s0
-/sys/class/backlight/max77796-bl/bl_power       u:object_r:sysfs_leds:s0
+# Kindle Oasis 2 (KOA2) SELinux file contexts.
+# Only real device nodes belong here. sysfs attributes (frontlight, battery,
+# EPDC) are labelled through genfscon in genfs_contexts, because a /sys/class
+# entry in file_contexts never takes effect on a pseudo filesystem.
+# No raw eMMC block-device labels are granted here.
+/dev/graphics/fb0    u:object_r:graphics_device:s0

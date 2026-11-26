@@ -12,7 +12,7 @@ required = [
     'AndroidProducts.mk', 'BoardConfig.mk', 'koa2.mk', 'vendorsetup.sh',
     'manifest.xml', 'system.prop', 'cyttsp5_mt.idc', 'gpio-keys.kl', 'README.md',
     'rootdir/init.koa2.rc', 'rootdir/ueventd.koa2.rc', 'rootdir/fstab.koa2',
-    'sepolicy/file_contexts', 'sepolicy/epdc.te',
+    'sepolicy/file_contexts', 'sepolicy/epdc.te', 'sepolicy/genfs_contexts',
     'hardware/PowerContract.h', 'hardware/EpdcContract.h', 'hardware/SensorContract.h',
     'lights/lights.c', 'lights/Android.mk',
     'health/healthd.cpp', 'health/Android.mk',
@@ -59,6 +59,30 @@ assert 'tmpfs /data' in fstab
 
 se = (KOA2 / 'sepolicy/epdc.te').read_text()
 assert 'block_device' not in se
+
+# sysfs is labelled through genfscon, not file_contexts, and grants no raw block.
+genfs = (KOA2 / 'sepolicy/genfs_contexts').read_text()
+assert 'genfscon sysfs /devices/platform/30400000.aips-bus/306f0000.epdc' in genfs, 'EPDC genfscon missing'
+assert 'block_device' not in genfs
+# the i2c-attached leaf paths (dynamic i2c-N) stay commented until captured on device.
+assert genfs.count('\ngenfscon sysfs ') == 1, 'exactly one active genfscon expected'
+# file_contexts carries only real device nodes, no ineffective /sys entries.
+fc = (KOA2 / 'sepolicy/file_contexts').read_text()
+fc_lines = [l for l in fc.splitlines() if l.strip() and not l.lstrip().startswith('#')]
+assert not any(l.startswith('/sys/') for l in fc_lines), 'no active /sys line in file_contexts'
+assert any('/dev/graphics/fb0' in l for l in fc_lines)
+# every HAL the manifest declares has its service package in koa2.mk.
+pkgs = (KOA2 / 'koa2.mk').read_text()
+for svc in ('android.hardware.light@2.0-service', 'android.hardware.power@1.0-service',
+            'android.hardware.health@1.0-service', 'android.hardware.keymaster@3.0-service',
+            'android.hardware.graphics.allocator@2.0-service', 'android.hardware.graphics.mapper@2.0-impl',
+            'android.hardware.audio@2.0-service', 'android.hardware.sensors@1.0-service'):
+    assert svc in pkgs, f'{android_svc if False else svc} missing from koa2.mk PRODUCT_PACKAGES'
+# wifi.supplicant was dropped from the manifest: no service module in this tree.
+# check the declared HAL names, not comment text: wifi.supplicant is no longer served.
+assert 'android.hardware.wifi.supplicant' not in hals
+# BOARD_HAL_STATIC_LIBRARIES wires healthd to the KOA2 battery adaptation.
+assert 'BOARD_HAL_STATIC_LIBRARIES := libhealthd.koa2' in (KOA2 / 'BoardConfig.mk').read_text()
 assert 'ro.adb.secure=1' in prop
 usb_rc = (KOA2 / 'rootdir/init.koa2.usb.rc').read_text()
 assert 'ci_hdrc.0' in usb_rc and '/dev/block/' not in usb_rc

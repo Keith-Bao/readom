@@ -45,11 +45,12 @@
         <transport>hwbinder</transport><version>1.0</version>
         <interface><name>ISensors</name><instance>default</instance></interface>
     </hal>
-    <hal format="hidl">
-        <name>android.hardware.wifi.supplicant</name>
-        <transport>hwbinder</transport><version>1.0</version>
-        <interface><name>ISupplicant</name><instance>default</instance></interface>
-    </hal>
+    <!-- Wi-Fi (bcmdhd) is a real device capability, but AOSP 8.1 ships no
+         android.hardware.wifi.supplicant@1.0-service module in this tree: the
+         HIDL supplicant is built into wpa_supplicant itself (CONFIG_HIDL),
+         which needs its own wifi bringup. Declare the HAL once that service
+         is built and shipped, so the vendor manifest never lists an unserved
+         interface. Wi-Fi is optional in the framework compatibility matrix. -->
     <!-- Software keys only; does not imply a hardware TEE. -->
     <hal format="hidl">
         <name>android.hardware.keymaster</name>
