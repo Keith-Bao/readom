@@ -19,10 +19,10 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | 2026-11-24 五项套件已上机：EPDC 3 个引用已锁定（`Xorg`/`awesome`/`blanket`）、运行时 DTB 已备份（49280 B）、CPU1 单项通过（`cpu1_quiesce_restored`）；触摸单项休眠/唤醒已实机证实（I²C2 归零、断电、醒后触摸恢复）。2026-11-25 联合空跑 v1 在实机卡死、报告未落盘；v2 每步前先写并 `sync` 一行 `stage=`，另加两步组合以定位卡死的组合。下一次上机按 [2026-11-25 操作单](materials/2026-11-25/README.md) 依次跑 EPDC 只读采集、EPDC 单项停用与重载、触摸+CPU1、USB+触摸、三步联合 |
+| 下一步是什么 | 2026-11-24 五项套件已上机：EPDC 3 个引用已锁定（`Xorg`/`awesome`/`blanket`）、运行时 DTB 已备份（49280 B）、CPU1 单项通过（`cpu1_quiesce_restored`）；触摸单项休眠/唤醒已实机证实（I²C2 归零、断电、醒后触摸恢复）。2026-11-25 实机证实 EPDC 可停可重载（`stop x` 释放全部 3 个 `/dev/fb0` 引用、卸载 0.07 秒、原参数重载 0.21 秒），仅 `initctl start x` 恢复时卡住；并把联合卡死根因锁定在 `rmmod g_mass_storage`（USB+Touch 卡在 `stage=usb_unload`，Touch+CPU1 通过）。2026-11-26 套件出 v3：`epdc-quiesce.sh` 用 `start x --no-wait`、`full-quiesce-dryrun.sh` 改用 UDC `soft_connect` 断连/重连替代 `rmmod`。下一次上机按 [2026-11-26 操作单](materials/2026-11-26/README.md) 跑 EPDC 单项、USB+触摸、USB+触摸+CPU1 三项 |
 | 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；USB 单项重载通过；原厂休眠 `stock_sleep_touch_observed`；CPU1 单项 `cpu1_quiesce_restored`；EPDC 引用 `matched`（`Xorg`/`awesome`/`blanket`）；运行时 DTB 已备份；触摸单项复测已证实断电（`disabled`）、I²C2 归零（`874→0→502`）与醒后触摸恢复（`after_touch=observed`，Xorg 句柄不变；`asleep_touch_irqs=-2` 系 CPU1 动态下线丢列） |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
-| 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)）：安全第一版（`epdc-v1`，拒夜间模式）已在统一 Android 4.1 内核完整编通并过 `modpost` 链接出 484 KB `mxc_epdc_v2_fb.ko`（`kernel_end=0x80c8a94c` 落入 `0x80d00000` 交接窗口），尚未上机；AOSP 8.1 设备树 `device/amazon/koa2/` 骨架与主机校验已就绪，待整机静止完成后接通 AOSP 镜像构建 |
+| 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)）：安全第一版（`epdc-v1`，拒夜间模式）已在统一 Android 4.1 内核完整编通并过 `modpost` 链接出 484 KB `mxc_epdc_v2_fb.ko`（`kernel_end=0x80c8a94c` 落入 `0x80d00000` 交接窗口），尚未上机；AOSP 8.1 设备树 `device/amazon/koa2/` 已接通镜像构建所需的 HAL/sepolicy：manifest 声明的每个 HAL 都在 `koa2.mk` 补齐 service 包（light/power/health/keymaster/graphics/audio/sensors），删去本树无 service 的 wifi.supplicant；`BOARD_HAL_STATIC_LIBRARIES := libhealthd.koa2`；`sepolicy/genfs_contexts` 按原厂 DTB 标注固定地址的 EPDC（`306f0000.epdc`），i2c 动态叶子节点留采集模板。`koa2-userdebug` 正在 WSL 以 30% 算力（`-j2`+`nice`）构建 |
 | 有没有不可逆的操作 | 没有。本次已加载并卸载暂存模块；未执行跳转或分区写入 |
 | 跳转失败能回来吗 | 见 [recovery.md](recovery.md)：printk 缓冲 D-cache 回写已补进实验内核；待真机静止可逆后再验证跨 `WDOG_B` 复位 |
 

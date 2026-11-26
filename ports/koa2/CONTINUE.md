@@ -56,7 +56,7 @@ python3 tools/tests/test_doc_links.py
 
 ## 5. 资料已经上传到哪里
 
-**下一批真机测试**：[2026-11-25 套件与操作单](materials/2026-11-25/README.md)（EPDC 只读采集 `x` 任务依赖、EPDC 单项停用与重载；联合空跑 v2 的触摸+CPU1、USB+触摸两个组合和三步联合，共 5 项）。v2 在每步动作前写并 `sync` 一行 `stage=`，卡死后能看出停在哪一步。套件带原厂 CRC 检查构建（35 个导入一致），14 项 SHA256，拷到 Kindle 即可。[2026-11-24 套件](materials/2026-11-24/README.md)的 5 项已全部上机完成。
+**下一批真机测试**：[2026-11-26 套件与操作单](materials/2026-11-26/README.md)。2026-11-25 实机已证实 EPDC 可停可重载（`stop x` 释放全部 3 个 `/dev/fb0` 引用、卸载 0.07 秒、原参数重载 0.21 秒），唯 `initctl start x` 恢复时卡住；并把联合卡死根因锁定在 `rmmod g_mass_storage`。2026-11-26 套件出 v3：`epdc-quiesce.sh` 用 `start x --no-wait`，`full-quiesce-dryrun.sh` 用 UDC `soft_connect` 断连/重连替代 `rmmod`。二进制与 2026-11-24/25 实机验证构建逐字节相同，只改了这两个脚本。下一次上机跑 EPDC 单项、USB+触摸、USB+触摸+CPU1 三项；上一次结果记在 [2026-11-25 操作单](materials/2026-11-25/README.md)。
 
 旧版套件和当时的操作单存档在[2026-11-23 资料目录](materials/2026-11-23/README.md)：
 十文件 KUAL 套件、模块导入表与 CRC 结果，以及标记测试和静止空跑的逐步操作单。

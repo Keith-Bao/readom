@@ -1,0 +1,1 @@
+vermagic=4.1.15-lab126-koa2-headless-smoke SMP preempt mod_unload modversions ARMv7 p2v8 

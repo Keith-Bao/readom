@@ -56,7 +56,7 @@ Staging passed, the marker survived a normal restart, and Windows could read the
 
 ## 5. Where the materials are now
 
-**Next device batch**: the [2026-11-25 kit and sheet](materials/2026-11-25/README.en.md) (read-only EPDC inspection of the `x` job dependencies, isolated EPDC stop/reload; combined dry-run v2 as the Touch+CPU1 and USB+Touch pairs and then all three steps, 5 items total). Before each action v2 writes and syncs a `stage=` line, so a freeze shows which step did not return. The kit was built with the stock CRC check (35 imports match) and has 14 SHA256 entries, ready to copy to the Kindle. All 5 items of the [2026-11-24 kit](materials/2026-11-24/README.en.md) have run on the device.
+**Next device batch**: the [2026-11-26 kit and sheet](materials/2026-11-26/README.en.md). On 2026-11-25 the device proved EPDC stop/reload (`stop x` dropped all 3 `/dev/fb0` refs, module unloaded in 0.07 s and reloaded in 0.21 s) with only `initctl start x` hanging, and pinned the combined freeze to `rmmod g_mass_storage` (USB+Touch froze at `stage=usb_unload`; Touch+CPU1 passed). The 2026-11-26 kit ships v3 scripts: `epdc-quiesce.sh` starts x with `--no-wait`, and `full-quiesce-dryrun.sh` replaces the gadget `rmmod` with a UDC `soft_connect` disconnect/connect. Binaries are byte-identical to the device-validated 2026-11-24/25 build; only the two scripts changed. Next visit runs EPDC-only, USB+Touch, then USB+Touch+CPU1 (3 items). The [2026-11-25 sheet](materials/2026-11-25/README.en.md) records that visit's results.
 
 The original kit and its operating sheet are archived in
 [the 2026-11-23 materials folder](materials/2026-11-23/README.en.md): the
