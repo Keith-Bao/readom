@@ -14,7 +14,7 @@
 
 # EPDC v2 framebuffer controller (fixed SoC address 0x306f0000 on aips-bus@30400000).
 # SurfaceFlinger reads its sysfs attributes (waveform, temperature, update mode).
-genfscon sysfs /devices/platform/30400000.aips-bus/306f0000.epdc u:object_r:sysfs_graphics:s0
+genfscon sysfs /devices/platform/30400000.aips-bus/306f0000.epdc u:object_r:sysfs_epdc:s0
 
 # --- i2c-attached device nodes: complete on-device ---
 # The MAX77796 PMIC (frontlight backlight + fuel-gauge battery) sits on

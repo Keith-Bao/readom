@@ -29,14 +29,14 @@ assert len(pairs) >= 6, pairs
 for src in pairs:
     assert (ROOT / src).is_file(), f'koa2.mk references missing file: {src}'
 
-# 2. manifest.xml is valid XML and declares core HIDL interfaces including sensors & health.
+# 2. manifest.xml is valid XML and declares core HIDL interfaces including health (sensors deferred).
 tree = ET.parse(KOA2 / 'manifest.xml')
 root = tree.getroot()
 assert root.tag == 'manifest' and root.attrib.get('type') == 'device'
 hals = {h.findtext('name') for h in root.findall('hal')}
 for wanted in ('android.hardware.graphics.allocator', 'android.hardware.graphics.mapper',
                'android.hardware.health', 'android.hardware.light',
-               'android.hardware.sensors', 'android.hardware.keymaster'):
+               'android.hardware.keymaster'):
     assert wanted in hals, (wanted, hals)
 
 # 3. BoardConfig.mk / system.prop / ueventd / fstab safety invariants.
@@ -76,8 +76,10 @@ pkgs = (KOA2 / 'koa2.mk').read_text()
 for svc in ('android.hardware.light@2.0-service', 'android.hardware.power@1.0-service',
             'android.hardware.health@1.0-service', 'android.hardware.keymaster@3.0-service',
             'android.hardware.graphics.allocator@2.0-service', 'android.hardware.graphics.mapper@2.0-impl',
-            'android.hardware.audio@2.0-service', 'android.hardware.sensors@1.0-service'):
+            'android.hardware.audio@2.0-service', 'android.hardware.light@2.0-impl',
+            'android.hardware.power@1.0-impl', 'android.hardware.health@1.0-impl'):
     assert svc in pkgs, f'{android_svc if False else svc} missing from koa2.mk PRODUCT_PACKAGES'
+assert 'android.hardware.sensors' not in hals, 'sensors HAL has no sensors.koa2 module yet'
 # wifi.supplicant was dropped from the manifest: no service module in this tree.
 # check the declared HAL names, not comment text: wifi.supplicant is no longer served.
 assert 'android.hardware.wifi.supplicant' not in hals

@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Kindle Oasis 2 (KOA2) minimal EPDC/frontlight SELinux rules (skeleton).
 # No raw eMMC block-device permissions are granted here.
+
+# EPDC v2 framebuffer controller sysfs (labelled in genfs_contexts).
+type sysfs_epdc, fs_type, sysfs_type;
+
 allow surfaceflinger graphics_device:chr_file rw_file_perms;
+allow surfaceflinger sysfs_epdc:file r_file_perms;
+allow surfaceflinger sysfs_epdc:dir r_dir_perms;
 allow hal_light_default sysfs_leds:file rw_file_perms;

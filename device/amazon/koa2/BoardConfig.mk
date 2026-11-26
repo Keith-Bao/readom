@@ -31,6 +31,8 @@ TARGET_COPY_OUT_VENDOR := system/vendor
 # File-image budgets (no device partition resize or raw partition writes).
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 536870912
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 1879048192
+# eMMC erase block; the image size check divides by this and fails when it is empty.
+BOARD_FLASH_BLOCK_SIZE := 131072
 
 # Vendor HAL manifest, assembled and checked by build/make/target/board/Android.mk.
 DEVICE_MANIFEST_FILE := device/amazon/koa2/manifest.xml

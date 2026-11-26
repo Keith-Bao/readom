@@ -40,11 +40,10 @@
         <transport>hwbinder</transport><version>1.0</version>
         <interface><name>IHealth</name><instance>default</instance></interface>
     </hal>
-    <hal format="hidl">
-        <name>android.hardware.sensors</name>
-        <transport>hwbinder</transport><version>1.0</version>
-        <interface><name>ISensors</name><instance>default</instance></interface>
-    </hal>
+    <!-- Sensors (bosch_accel, twin max44009) are not declared yet: the passthrough
+         sensors@1.0-impl loads a legacy sensors.koa2 module, which does not exist.
+         hardware/SensorContract.h holds the contract; declare the HAL once the
+         module is built. Sensors are optional in the compatibility matrix. -->
     <!-- Wi-Fi (bcmdhd) is a real device capability, but AOSP 8.1 ships no
          android.hardware.wifi.supplicant@1.0-service module in this tree: the
          HIDL supplicant is built into wpa_supplicant itself (CONFIG_HIDL),
