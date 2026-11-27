@@ -256,3 +256,12 @@ KUAL **Inspect EPDC framebuffer users** 只读列出：模块引用数、`/sys/c
 - 结论：拔线且 `udc/state == 0`、`g_mass_storage users == 0` 时，USB 控制器已由原厂驱动完整静止（中断屏蔽、DMA 排空、LPM + 时钟关闭），交接前应只读核验空闲状态而不应再触碰 `rmmod` 或 `soft_connect`。已同步更新 `full-quiesce-dryrun.sh`（v4）、`boot/koa2/quiesce-verify.{h,c}` 与 `epdc-quiesce.sh`（v4 恢复时补拉 `lab126_gui --no-wait`）。
 
 - **2026-11-27 v4 联合空跑实机全部通过**：`full-quiesce-dryrun.sh` v4（`steps=usb,touch,cpu1`）在真机 3.58 秒内完整通过并返回 **`result=full_quiesce_dryrun_restored`**（`udc_state_before=0` → `step_usb=quiesced_idle` → `step_touch=slept`/`off_disabled` → `step_cpu1=offline`/`cpus=0` → `restore_cpu1=ok` → `restore_touch=ok`/`on_enabled` → `restore_usb=ok`）。随后 `epdc-quiesce.sh` v4 再次实机确认 `epdc_users_after_stop=0`、`epdc_unloaded=1`、`epdc_reloaded=1`（3 次连续实机证实 EPDC 可卸载重载）。至此阶段 E 的全部外设静止路径均已有实机证据，具备推进阶段 F（首次带看门狗自动回退的 `headless-smoke` 跳转）的条件。原始报告已归档本地，Kindle 已清理。
+
+#### 2026-11-28 实机重大里程碑：执行模块空跑一次通过（`result=exec_dryrun_restored`）
+
+使用 `2026-11-27` 16 文件套件在实机运行 **Exec dry-run: quiesce, arm trampoline, stop before caches (no jump)**（`exec-dryrun.sh` v1），全程 15.5 秒一次通过，原始报告已归档本地并清理 Kindle：
+
+- 全外设静止顺序全部通过：`stop_x`（`epdc_users_after_stop=0`）→ `rmmod_epdc`（`step_epdc=unloaded`）→ `usb_verify_idle`（`step_usb=quiesced_idle`）→ `touch_sleep`（`step_touch=slept`）→ `cpu1_offline`（`step_cpu1=offline`）→ `rootfs_readonly=1`。
+- `koa2_handoff_exec.ko` 在原厂内核加载成功，`--exec-dryrun` 返回 `client_exit=0`：`exec_online_cpus=1`、`exec_quiesce=0`、`exec_copylist=0`（1,709 项、0 冲突页）、`exec_params=0`、`exec_trampoline_bytes=596`、`exec_sctlr=0x10c53c7d`、`exec_ttbcr=0x00000000`、`exec_mmu_on=1`、`exec_caches_on=1`、`exec_irq_fiq_masked=1`、`exec_stopped_before_caches=1`、`exec_execute_available=0`。
+- 逆序恢复全部通过：`exec_unloaded=1` → `restore_cpu1=ok` → `restore_touch=ok` → `epdc_reloaded=1` → `fb_restored=1`（`x start/running`、`lab126_gui start/pre-start`）→ **`result=exec_dryrun_restored`**。
+- 结论：真实跳转前的所有实机前提已全部打通，下一步可直接制作**首次 `headless-smoke` 真跳转套件**（关缓存 → 进蹦床 → 启动新内核 → 看门狗自动回退原厂）。

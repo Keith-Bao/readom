@@ -482,3 +482,7 @@ ExecutionPolicy Bypass 仅针对此次进程，不改系统持久策略。
   - 构建门禁 `build-exec-module.sh`：Gate 2 用反汇编核对每条 `mcr`/`mcrr` 地址落在 `koa2_jump_start..koa2_jump_end` 内、且无分支或重定位指进蹦床；禁止导入 `cpu_down`/restart/`kallsyms_lookup_name`。Gate 3 强制核对 CRC。实测执行模块编通：`Gate 2: 2 coprocessor writes, all inside the trampoline ... no branch into it`，35 个导入，`crcs.json` 的 `passed: true`（36 个导入 CRC 全 matched）。
   - 新增主机测试：`koa2-exec`（kshim 跑 `exec.c`：每种拒绝、屏蔽后恢复、控制页交回、参数字段、不报跳转可用）、`koa2-exec-wiring`（源码侧守住不会跳的不变量）、`koa2-exec-dryrun`（模拟设备跑 `exec-dryrun.sh`：成功按逆序恢复，每步失败各自回滚）。`python3 tools/run-tests.py --filter koa2` 现为 36 项全过，doc pairs/links 全过。
   - 设备脚本 `ports/koa2/stage-test/exec-dryrun.sh` 与菜单项 **Exec dry-run: quiesce, arm trampoline, stop before caches (no jump)** 已就绪，`build-stage-test-kit.sh` 同时打包两个模块与新脚本；真机 Exec dry-run 与套件逐字节发布为下一次上机步骤（本机缺 `arm-linux-gnueabi-gcc`，静态 ARM 客户端与套件在家里的设备机打包）。
+
+## 2026-11-28
+
+- 实机运行 `2026-11-27` 16 文件套件的 **Exec dry-run** 一次通过：**`result=exec_dryrun_restored`**（全程 15.5 秒）。全外设静止（EPDC 卸载 + USB 空闲 + 触摸休眠 + CPU1 下线 + `rootfs_readonly=1`）通过 `exec_quiesce=0`，`koa2_handoff_exec.ko` 加载并装好 596 字节 `jump.S` 蹦床（`exec_copylist=0` 1,709 项、`exec_params=0`、`exec_sctlr=0x10c53c7d`、`exec_irq_fiq_masked=1`、`exec_stopped_before_caches=1`），随后逆序完整恢复（`exec_unloaded=1`、`restore_cpu1=ok`、`restore_touch=ok`、`epdc_reloaded=1`、`fb_restored=1`）。原始报告已留存本地，Kindle 已清理，下一步正式进入**首次 `headless-smoke` 真跳转**。
