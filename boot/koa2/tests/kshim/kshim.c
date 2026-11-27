@@ -59,3 +59,8 @@ u64 kshim_virt_to_phys(const void *v)
         return p->phys+(u64)((const unsigned char *)v-p->data);
     abort();
 }
+/* Exec dry-run stand-ins (boot/koa2/exec.c). */
+int kshim_cpu_online[2]={1,1};
+unsigned kshim_irq_masked, kshim_fiq_masked, kshim_irq_depth;
+unsigned kshim_cpsr, kshim_sctlr, kshim_ttbcr;
+void flush_icache_range(unsigned long start, unsigned long end) { (void)start; (void)end; }

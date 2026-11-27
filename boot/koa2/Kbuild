@@ -1,4 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-only
+# Two modules from one source set. Without KOA2_EXEC (build-handoff-module.sh)
+# this is the staging module: no jump, and the build gate forbids CP15 writes
+# and cpu_down. With KOA2_EXEC=1 (build-exec-module.sh) it is the execute
+# candidate: stage.c pulls in exec.c, jump.S is linked for its real code and
+# parameter layout, and the dry-run arms the trampoline but still does not jump.
+ifdef KOA2_EXEC
+obj-m := koa2_handoff_exec.o
+koa2_handoff_exec-y := stage.o contract.o plan.o fdt-rewrite.o copylist.o quiesce-verify.o marker.o jump-params.o sha256.o jump.o
+ccflags-y := -I$(src) -Werror -DKOA2_EXEC_BUILD -DKOA2_JUMP_BUILD
+asflags-y := -DKOA2_JUMP_BUILD
+else
 obj-m := koa2_handoff_stage.o
 koa2_handoff_stage-y := stage.o contract.o plan.o fdt-rewrite.o copylist.o quiesce-verify.o marker.o sha256.o
 ccflags-y := -I$(src) -Werror
+endif

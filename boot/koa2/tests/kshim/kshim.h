@@ -99,4 +99,18 @@ struct miscdevice { int minor; const char *name; const struct file_operations *f
 extern struct miscdevice *kshim_misc;
 static inline int misc_register(struct miscdevice *m) { kshim_misc=m; return 0; }
 static inline void misc_deregister(struct miscdevice *m) { (void)m; kshim_misc=NULL; }
+/* Exec dry-run stand-ins (boot/koa2/exec.c). The host build has no cores and
+ * no CP15, so the test sets the state and counts the masking. */
+extern int kshim_cpu_online[2];
+static inline int cpu_online(int cpu) { return (cpu>=0 && cpu<2) ? kshim_cpu_online[cpu] : 0; }
+extern unsigned kshim_irq_masked, kshim_fiq_masked, kshim_irq_depth;
+/* local_irq_save/restore nest; the test checks the depth returns to zero and
+ * that the fiq mask was taken and released around the snapshot. */
+static inline void kshim_local_irq_save(unsigned long *flags) { *flags=kshim_irq_masked; kshim_irq_masked=1; kshim_irq_depth++; }
+#define local_irq_save(f) kshim_local_irq_save(&(f))
+static inline void local_irq_restore(unsigned long f) { kshim_irq_masked=(unsigned)f; if(kshim_irq_depth) kshim_irq_depth--; }
+static inline void local_fiq_disable(void) { kshim_fiq_masked=1; }
+static inline void local_fiq_enable(void) { kshim_fiq_masked=0; }
+extern unsigned kshim_cpsr, kshim_sctlr, kshim_ttbcr;
+void flush_icache_range(unsigned long start, unsigned long end);
 #endif

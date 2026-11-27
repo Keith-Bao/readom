@@ -9,6 +9,7 @@
  * PC-relative parameter block, and the register contract at the jump. */
 #include "copylist.h"
 #include "jump-abi.h"
+#include "jump-params.h"
 #define PAGE 0x1000u
 #define RAM_BASE 0x40000000u
 #define RAM_END 0x48000000u          /* QEMU is started with 128 MiB */
@@ -135,17 +136,21 @@ void baremetal_main(void)
     if (audited != entries) fail("entries disagree");
     copy(as_pointer(control), koa2_jump_start, jump_bytes);
     params = (struct kj_params *)(control + (unsigned int)(koa2_jump_params - koa2_jump_start));
-    params->list = list_phys[0];
-    params->entry = dest;
-    params->machine = 0xffffffffu;
-    params->fdt = fdt_dest;
-    params->ram_start = RAM_BASE;
-    params->ram_end = RAM_END;
-    params->budget = 1024;
-    params->control = control;
-    params->expected = kernel_pages + 1;
-    params->copied = 0;
-    params->status = 0;
+    {
+        /* The same filler the module uses, so the two cannot drift. budget is
+         * the audited entry count, as the module sets it. */
+        struct koa2_jump_inputs in;
+        in.list = list_phys[0];
+        in.entry = dest;
+        in.machine = 0xffffffffu;
+        in.fdt = fdt_dest;
+        in.ram_start = RAM_BASE;
+        in.ram_end = RAM_END;
+        in.budget = entries;
+        in.control = control;
+        in.expected = kernel_pages + 1;
+        if (koa2_jump_fill(params, &in)) fail("jump params rejected");
+    }
 #ifdef CASE_bad_link
     /* A link out of RAM, where the first entry is. */
     list_virt[0][0] = 0x90000000u | 2u;

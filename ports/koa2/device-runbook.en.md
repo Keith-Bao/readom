@@ -278,6 +278,14 @@ Step two keeps only the lines containing `KOA2_HANDOFF` in its report. The
 previous boot's full log is the device's own: it is read, then deleted, and never
 goes into Git.
 
+## 8d. The execute-module dry run (arms the trampoline, stops before the caches, no jump)
+
+Before you start: stock system, USB safely ejected and **the cable unplugged**, Wi-Fi off (`bcmdhd` not loaded), screen on, and the kit copied as in section 2 with `sha256sum -c` all OK. KUAL → Readom KOA2 Stage Test → **Exec dry-run: quiesce, arm trampoline, stop before caches (no jump)**. The script stops X and unloads the EPDC, checks read-only that USB is idle, puts touch to sleep, takes CPU1 offline and runs `sync`, then loads `koa2_handoff_exec.ko` for the dry run and restores everything in reverse. The screen goes blank for ten seconds or so and the desktop comes back.
+
+The report is in `koa2-exec-dryrun/<UTC time>-<PID>/report.txt`. A pass ends `result=exec_dryrun_restored` and also shows `exec_stopped_before_caches=1`, `exec_execute_available=0`, `exec_copylist=0`, `exec_params=0` and `exec_quiesce=0`. A last line of `exec_dryrun_restored_not_quiesced` means the trampoline was armed and given back but the module's quiesce verdict refused, usually because `/` is not read-only (`rootfs_readonly=0` in the report); that is not a failure, just note `writable_block_mounts`. `exec_restore_failed_restart_required` means something did not come back; a normal restart returns to stock.
+
+If the device freezes and the watchdog restarts it, run **Read previous boot recovery log** first, then fetch the report: its last `stage=` line names the step that did not return. Once the report is fetched and checked, delete its folder from the device. This writes no partition and does not jump; the real jump gets its own kit after this passes.
+
 ## 9. Still needs the device, but not in this procedure
 
 | What | Why it needs hardware |

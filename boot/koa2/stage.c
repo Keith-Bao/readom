@@ -76,6 +76,10 @@ struct store {
     struct koa2_plan plan;         /* filled by seal(); no addresses leave the module */
 };
 static atomic_t opened = ATOMIC_INIT(0);
+#ifdef KOA2_EXEC_BUILD
+/* The execute build adds this; its body is exec.c, #included at the tail. */
+static int exec_dryrun(struct store *s, void __user *arg);
+#endif
 /* Every import has to be one some stock module also imports, so that its CRC
  * can be checked before loading (ports/koa2/module-crcs.py). That rules out
  * __vmalloc (with PAGE_KERNEL), PHYS_OFFSET and page_to_pfn under
@@ -442,6 +446,9 @@ static long stage_ioctl(struct file *file, unsigned int command, unsigned long a
     case K2S_PUT: rc=put(s,(void __user *)arg); break;
     case K2S_SEAL: rc=arg?-EINVAL:seal(s); break;
     case K2S_MARK: rc=mark(s,(void __user *)arg); break;
+#ifdef KOA2_EXEC_BUILD
+    case K2S_EXEC_DRYRUN: rc=exec_dryrun(s,(void __user *)arg); break;
+#endif
     case K2S_DISCARD: if(arg) { rc=-EINVAL; break; } discard(s); rc=0; break;
     case K2S_STATUS:
         memset(&status,0,sizeof(status));
@@ -484,7 +491,12 @@ static const struct file_operations ops={
     .owner=THIS_MODULE, .open=stage_open, .release=stage_release,
     .unlocked_ioctl=stage_ioctl, .llseek=no_llseek,
 };
-static struct miscdevice device={ .minor=MISC_DYNAMIC_MINOR, .name="koa2-handoff-stage", .fops=&ops, .mode=0600 };
+#ifdef KOA2_EXEC_BUILD
+#define K2S_DEVICE_NAME "koa2-handoff-exec"
+#else
+#define K2S_DEVICE_NAME "koa2-handoff-stage"
+#endif
+static struct miscdevice device={ .minor=MISC_DYNAMIC_MINOR, .name=K2S_DEVICE_NAME, .fops=&ops, .mode=0600 };
 static int __init stage_init(void)
 {
     const struct new_utsname *u=init_utsname();
@@ -502,4 +514,9 @@ static int __init stage_init(void)
 static void __exit stage_exit(void) { misc_deregister(&device); }
 module_init(stage_init); module_exit(stage_exit);
 MODULE_LICENSE("GPL v2");
+#ifdef KOA2_EXEC_BUILD
+#include "exec.c"
+MODULE_DESCRIPTION("KOA2 handoff execute candidate: stage, arm trampoline, quiesce dry-run; no jump");
+#else
 MODULE_DESCRIPTION("KOA2 handoff staging: stage, check, rewrite FDT, validate plan; no jump");
+#endif

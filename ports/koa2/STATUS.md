@@ -19,7 +19,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 
 | 问题 | 答案 |
 |---|---|
-| 下一步是什么 | **阶段 E 全部外设实机静止路径已齐备**：2026-11-27 实机 `epdc-quiesce.sh` v3 返回 `epdc_quiesce_restored`（3 次实机证实 `epdc_unloaded=1`/`epdc_reloaded=1`），`full-quiesce-dryrun.sh` v4（`usb,touch,cpu1`）在 3.58 秒内完整通过（`result=full_quiesce_dryrun_restored`）。下一步进入**阶段 E → F**：把 `boot/koa2/jump.S` 接入受控执行入口，准备首次带看门狗自动回退的 `headless-smoke` 真机跳转 |
+| 下一步是什么 | **阶段 E 全部外设实机静止路径已齐备**：2026-11-27 实机 `epdc-quiesce.sh` v3 返回 `epdc_quiesce_restored`（3 次实机证实 `epdc_unloaded=1`/`epdc_reloaded=1`），`full-quiesce-dryrun.sh` v4（`usb,touch,cpu1`）在 3.58 秒内完整通过（`result=full_quiesce_dryrun_restored`）。阶段 E → F 已动工：`boot/koa2/jump.S` 已接入**单独的执行模块** `koa2_handoff_exec.ko`（源码与暂存模块同一套，exec.c 在 `KOA2_EXEC_BUILD` 下并入），新增只读空跑 `K2S_EXEC_DRYRUN`——校验静止、重审复制表、在自有页里装好蹦床并填参数、屏蔽 IRQ/FIQ 只读 CP15，然后停在关缓存前、全部放回，不跳转（`execute_available` 恒为 0）。主机 36 项全过，执行模块按 `build-exec-module.sh` 三道门禁编通（CP15 写仅在蹦床内、无跳转调用、CRC 核对 `passed: true`）。下一步上机跑 Exec dry-run，再准备首次带看门狗回退的真机跳转 |
 | 实机结果 | 暂存 `sealed_plan_valid`；重启标记 `marker_survived`；USB 单项重载通过；原厂休眠 `stock_sleep_touch_observed`；CPU1 单项 `cpu1_quiesce_restored`；EPDC 引用 `matched`（`Xorg`/`awesome`/`blanket`）；运行时 DTB 已备份；触摸单项复测已证实断电（`disabled`）、I²C2 归零（`874→0→502`）与醒后触摸恢复（`after_touch=observed`，Xorg 句柄不变；`asleep_touch_irqs=-2` 系 CPU1 动态下线丢列） |
 | 那之后做什么 | 原厂模块已核对完（[stock-module-abi.md](stock-module-abi.md)）：12 个符号与构建树不一致，模块一个都没用到 |
 | 什么在挡着 Android | EPDC 源码缺口（[epdc-source-gap.md](epdc-source-gap.md)）：安全第一版（`epdc-v1`，拒夜间模式）已在统一 Android 4.1 内核完整编通并过 `modpost` 链接出 484 KB `mxc_epdc_v2_fb.ko`（`kernel_end=0x80c8a94c` 落入 `0x80d00000` 交接窗口），尚未上机；AOSP 8.1 设备树 `device/amazon/koa2/` 已接通镜像构建所需的 HAL/sepolicy：manifest 声明的每个 HAL 都在 `koa2.mk` 补齐 service 包（light/power/health/keymaster/graphics/audio/sensors），删去本树无 service 的 wifi.supplicant；`BOARD_HAL_STATIC_LIBRARIES := libhealthd.koa2`；`sepolicy/genfs_contexts` 按原厂 DTB 标注固定地址的 EPDC（`306f0000.epdc`），i2c 动态叶子节点留采集模板。`koa2-userdebug` 已在 WSL 以 30% 算力（`-j2`+`taskset`+`nice`）从零完整构建成功（`system.img` 实占 365 MiB < 512 MiB 预算，vendor manifest 装配 10 个 HAL 及其 `-impl`），镜像大小/SHA256 见 [worklog.md](worklog.md)；能否真机启动属下一次上机验证 |
@@ -37,7 +37,7 @@ English: [STATUS.en.md](STATUS.en.md)。流程见 [device-runbook.md](device-run
 | 暂存模块（无跳转） | `boot/koa2/stage.c` | `koa2-stage` | 加载、封存、卸载成功 |
 | 原厂 CRC 核对 | `ports/koa2/module-crcs.py` | `koa2-module-crcs`、`koa2-stock-abi` | 63 个原厂模块已离线核对：31 个导入全部一致 |
 | 跳转前标记 | `boot/koa2/marker.c`、模块侧 `K2S_MARK` | `koa2-marker`、`koa2-marker-wiring`、`koa2-stage` | 实机放置后跨正常重启读回 |
-| 跳转蹦床 | `boot/koa2/jump.S` | `koa2-jump-baremetal` | 未编进模块，未执行 |
+| 跳转蹦床 | `boot/koa2/jump.S` | `koa2-jump-baremetal`、`koa2-exec-wiring` | 已编进执行模块 `koa2_handoff_exec.ko`，由空跑装好但不执行 |
 | 静止顺序 | `boot/koa2/quiesce.c`、`quiesce-verify.c` | `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-quiesce-dryrun` | 旧版空跑失败，已用只读预检替换设备入口 |
 | 构建可复现性 | `ports/koa2/compare-kernel-build.py` | `koa2-compare-build` | 不适用 |
 

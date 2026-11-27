@@ -61,6 +61,13 @@ TESTS = [
     # compiler or QEMU.
     ('koa2-jump-baremetal', 'python', ['boot/koa2/tests/baremetal/run.py'], True),
     ('koa2-quiesce', 'c', ['boot/koa2/quiesce.c', 'boot/koa2/test-quiesce.c'], False),
+    # exec.c (the execute module's dry-run) on the host, through kshim, the
+    # same way koa2-stage runs stage.c. It arms the trampoline and stops before
+    # the caches; the host build supplies stand-in trampoline symbols.
+    ('koa2-exec', 'c', ['-Iboot/koa2/tests/kshim', '-Iboot/koa2/tests', '-Iboot/koa2', '-Iboot/handoff',
+                        'boot/koa2/tests/test-exec.c', 'boot/koa2/tests/kshim/kshim.c', 'boot/koa2/contract.c',
+                        'boot/koa2/plan.c', 'boot/koa2/fdt-rewrite.c', 'boot/koa2/copylist.c', 'boot/koa2/marker.c',
+                        'boot/koa2/quiesce-verify.c', 'boot/koa2/jump-params.c', 'boot/handoff/sha256.c'], False),
     ('koa2-epdc-gap', 'python', ['tools/tests/test_koa2_epdc_gap.py'], False),
     ('koa2-marker', 'c', ['boot/koa2/marker.c', 'boot/koa2/test-marker.c'], False),
     # The marker is only useful if it reaches DRAM and the module still loads.
@@ -98,6 +105,10 @@ TESTS = [
     ('koa2-sensor-contract', 'c', ['device/amazon/koa2/hardware/test_sensor_contract.c'], False),
     ('koa2-device-tree', 'python', ['tools/tests/test_koa2_device_tree.py'], False),
     ('koa2-full-quiesce-dryrun', 'python', ['tools/tests/test_koa2_full_quiesce_dryrun.py'], True),
+    # The execute module's wiring (static: no jump, no unchecked imports) and
+    # its dry-run script against a model Kindle (arms, stops before caches, restores).
+    ('koa2-exec-wiring', 'python', ['tools/tests/test_koa2_exec_wiring.py'], False),
+    ('koa2-exec-dryrun', 'python', ['tools/tests/test_koa2_exec_dryrun.py'], True),
     ('koa2-published-kits', 'python', ['tools/tests/test_koa2_published_kits.py'], False),
     ('koa2-installer', 'python', ['tools/tests/test_koa2_installer.py'], False),
     ('patch-series', 'python', ['tools/tests/test_patch_series.py'], False),

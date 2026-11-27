@@ -22,7 +22,7 @@ its testable order, and the parts that touch hardware are not written.
 | 5 | Rewrite the FDT (bootargs, initrd, clear the memreserves) | `fdt-rewrite.c` | Yes |
 | 6 | Build the copy list and audit it | `copylist.c` | Yes |
 | 7 | Quiesce: EPDC, Wi-Fi, USB, SDMA, eMMC, the second core, interrupts, the watchdog | `quiesce.c` (hardware parts unwritten) | Every step must roll back |
-| 8 | Caches off, MMU off, walk the list, jump | `jump.S` (in no module) | **Irreversible** |
+| 8 | Caches off, MMU off, walk the list, jump | `jump.S` (in the execute module, armed by the dry-run but not executed) | **Irreversible** |
 
 Steps 1 to 6 are what the device test does today, and it unloads afterwards.
 The point of no return is turning the caches off at the start of step 8: before it, a failure at any
@@ -286,6 +286,43 @@ the real copy-list code run bare-metal on QEMU's Cortex-A7:
 Without the cross compiler or QEMU the test skips itself. It says this code
 behaves as designed on an ARMv7 core; it says nothing about how the i.MX7D's
 peripherals behave on real hardware.
+
+## The execute module (exec.c, koa2_handoff_exec.ko)
+
+Stage F starts here, and this batch does not jump. The execute module is the
+same source as the staging module: `stage.c` pulls in `exec.c` at its tail
+under `KOA2_EXEC_BUILD`, so it reuses the one store, BEGIN/PUT/SEAL and audited
+copy list, with the device renamed `koa2-handoff-exec`. The build is chosen by
+`Kbuild`'s `KOA2_EXEC` branch: the execute build also links `jump.S` (the real
+trampoline, not a stand-in), and the staging build is unchanged to the byte.
+
+It adds one read-only ioctl, `K2S_EXEC_DRYRUN` (the staging build answers it
+with `-ENOTTY`). After the seal the dry-run does five reversible things: it
+counts the online cores itself with `cpu_online` (not `num_online_cpus`, which
+would pull in an `__sw_hweight` no stock module can check) and calls
+`koa2_quiesce_verify`; re-audits the copy list, whose entry count must equal
+the seal's; arms the trampoline in a page it owns, fills the parameter block
+through `koa2_jump_fill` (`jump-params.c`, shared with the bare-metal test),
+and hands the page straight back; masks IRQ and FIQ to read CPSR/SCTLR/TTBCR,
+then releases them; and stops before disabling the caches (`KOA2_Q_CACHES`, the
+point of no return), putting everything back. The watchdog is untouched --
+feeding it belongs at the point of no return, which the dry-run stops before,
+so the report records `watchdog_step=deferred`. `execute_available` stays 0:
+nothing is copied to a destination, no device is stopped, no core goes down,
+and nothing jumps.
+
+The build gate `build-exec-module.sh` enforces "cannot jump": Gate 2 reads the
+disassembly and requires every `mcr`/`mcrr` to sit inside
+`koa2_jump_start..koa2_jump_end`, with no branch or relocation pointing into
+the trampoline, and forbids importing `cpu_down`, the restarts or
+`kallsyms_lookup_name`. Gate 3 is mandatory here -- the execute module adds
+imports the staging module did not (`cpu_online_mask`), so without the stock
+modules it refuses to ship, and it builds only when the CRC check is
+`passed: true`. The host test `koa2-exec` runs `exec.c` itself through kshim
+(every refusal, mask-and-release, the control page handed back, the report
+fields), `koa2-exec-wiring` holds those invariants from the source side, and
+`koa2-exec-dryrun` runs the device script `exec-dryrun.sh` against a model
+(success restores in reverse, each step rolls back what ran before it).
 
 ## The quiesce sequence (quiesce.c)
 

@@ -32,13 +32,13 @@ Chinese: [ROADMAP.md](ROADMAP.md). Where it stands: [STATUS.md](STATUS.en.md).
 | The copy list and its audit | Done, test `koa2-copylist` |
 | The staging module (no jump) | Done, test `koa2-stage` |
 | Stock symbol CRCs | The tool is done; 63 stock modules recovered, test `koa2-module-crcs` |
-| The jump trampoline | Done and run bare-metal, test `koa2-jump-baremetal`; in no module |
+| The jump trampoline | Done and run bare-metal, now in the execute module `koa2_handoff_exec.ko`; armed by the dry-run but not executed, tests `koa2-jump-baremetal`, `koa2-exec-wiring` |
 | The quiesce sequence | Only the testable order; the hardware bodies are missing, test `koa2-quiesce` |
 | The device test kit | Done, device staging passed, see [device-runbook.md](device-runbook.en.md) |
 
 ## What each stage has to show before the next
 
-- E to F: `sealed_plan_valid` on the device, and the quiesce hardware bodies written.
+- E to F: `sealed_plan_valid` on the device, and the quiesce hardware bodies written (met; every quiesce path proven on hardware); the execute module's dry-run now arms the trampoline and stops before the caches, with the real jump still pending a device run.
 - F to G: the user starts it by hand, and it enters the new kernel and returns to stock three times running.
 - G to H: the EPDC source gap closed, with refresh, touch, page keys and rotation working.
 - H to I: a desktop stable for 30 minutes, with a way back to stock.

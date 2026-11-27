@@ -19,7 +19,7 @@ QEMU 的 Cortex-A7 上裸机跑过，**但没有编进任何模块**；静止顺
 | 5 | 改写 FDT（bootargs、initrd、清 memreserve） | `fdt-rewrite.c` | 是 |
 | 6 | 建出复制表并审计 | `copylist.c` | 是 |
 | 7 | 静止：EPDC、Wi-Fi、USB、SDMA、eMMC、次核、中断、看门狗 | `quiesce.c`（未实现硬件部分） | 每步都要能回滚 |
-| 8 | 关缓存、关 MMU、走表、跳转 | `jump.S`（未编进模块） | **不可逆** |
+| 8 | 关缓存、关 MMU、走表、跳转 | `jump.S`（编进执行模块，空跑装好不执行） | **不可逆** |
 
 第 1 到 6 步就是设备测试现在做的事，做完就卸载。不可逆点是第 8 步开始时的“关缓存”：
 在那之前任何一步失败都必须把原厂系统放回原样；在那之后已经没有可以回去的原厂内核，
@@ -251,6 +251,30 @@ Cortex-A7 上以裸机方式跑：
 
 缺交叉编译器或 QEMU 时这个测试自己跳过。它只说明这段代码在 ARMv7 上按设计运行，
 不说明 i.MX7D 的外设在真机上的行为。
+
+## 执行模块（exec.c，koa2_handoff_exec.ko）
+
+阶段 F 从这里开始，但这一批不跳转。执行模块和暂存模块是同一套源码：`stage.c` 在
+`KOA2_EXEC_BUILD` 下在末尾并入 `exec.c`，所以它复用同一个 store、BEGIN/PUT/SEAL 和
+审计过的复制表，设备名换成 `koa2-handoff-exec`。构建由 `Kbuild` 的 `KOA2_EXEC` 分支
+决定：执行构建额外链接 `jump.S`（真正的蹦床，不是替身），暂存构建一个字节都不变。
+
+它只多一个只读 ioctl `K2S_EXEC_DRYRUN`（暂存构建收到它返回 `-ENOTTY`）。空跑在封存
+之后做五件事，全部可逆：用 `cpu_online` 自己数在线核（不用 `num_online_cpus`，那会引入
+原厂核对不了的 `__sw_hweight`）后调 `koa2_quiesce_verify`；重审复制表，表项数必须与封存
+时一致；在自有的一页里装好蹦床，用 `koa2_jump_fill`（`jump-params.c`，与裸机测试同一份）
+填参数块，再把这页立即交回；屏蔽 IRQ 和 FIQ，只读 CPSR/SCTLR/TTBCR，随即解除；然后停在
+关缓存（`KOA2_Q_CACHES`，不可逆点）之前，把一切放回。看门狗不碰——喂狗属于不可逆点，空跑
+不到那里，报告记 `watchdog_step=deferred`。`execute_available` 恒为 0，什么都没复制到目的
+地址，没停任何设备，没下核，更没有跳转。
+
+构建门禁 `build-exec-module.sh` 守住“不会跳”：Gate 2 用反汇编核对每条 `mcr`/`mcrr` 的地址
+都落在 `koa2_jump_start..koa2_jump_end` 内，并且没有任何分支或重定位指进蹦床；禁止导入
+`cpu_down`、各种 restart、`kallsyms_lookup_name`。Gate 3 在这里是强制的——执行模块比暂存
+模块多了 `cpu_online_mask` 等导入，不给原厂模块就拒绝出包，核对 CRC 为 `passed: true` 才放行。
+主机测试 `koa2-exec` 用 kshim 跑 `exec.c` 本身（每种拒绝、屏蔽后恢复、控制页交回、参数字段），
+`koa2-exec-wiring` 从源码侧守住上面这些不变量，`koa2-exec-dryrun` 用模拟设备跑设备脚本
+`exec-dryrun.sh`（成功按逆序恢复，每步失败各自回滚）。
 
 ## 静止顺序（quiesce.c）
 

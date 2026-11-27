@@ -60,4 +60,47 @@ struct k2s_status {
  * can be told apart in the buffer afterwards. */
 struct k2s_mark { k2s_u32 attempt, reserved; };
 #define K2S_MARK _IOW('K',0x36,struct k2s_mark)
+/* The execute module (koa2_handoff_exec.ko, built with KOA2_EXEC_BUILD) adds a
+ * dry-run that the staging module does not have: it quiesce-verifies, re-audits
+ * the sealed copy list, arms the trampoline in a page it owns and fills its
+ * parameter block, then masks IRQ/FIQ to read the CPU state read-only -- and
+ * stops there, one step short of the point of no return (disabling the caches),
+ * putting everything back. It never copies a payload, stops no device itself,
+ * takes no core down and does not jump. The staging build does not define the
+ * ioctl and returns -ENOTTY. execute_available stays 0 in both. */
+struct k2s_exec_claim {
+    /* What userspace established before calling, by the same reversible paths
+     * the dry-run scripts use (ports/koa2/handoff-quiesce.md). The module does
+     * not trust these for the CPU count, which it reads itself. */
+    k2s_u32 drivers_present;            /* of the four quiesce drivers, how many are still loaded */
+    k2s_u32 touch_driver_present;       /* cyttsp5_i2c still loaded but verified asleep */
+    k2s_u32 touch_quiesced_verified;
+    k2s_u32 usb_driver_present;         /* g_mass_storage still loaded but verified unplugged/idle */
+    k2s_u32 usb_quiesced_verified;
+    k2s_u32 rootfs_readonly;            /* 1 when userspace remounted / read-only */
+    k2s_u32 reserved;
+};
+/* Watchdog handling in the dry-run: it is not fed, because feeding it belongs
+ * at the point of no return, which the dry-run stops before. */
+#define K2S_WDT_DEFERRED 0u
+struct k2s_exec_report {
+    k2s_u32 version;
+    k2s_u32 online_cpus;          /* read by the module: cpu_online(0)+cpu_online(1) */
+    k2s_u32 quiesce_result;       /* koa2_quiesce_verify() return (0 = quiesced) */
+    k2s_u32 copylist_result;      /* re-audit of the sealed list (0 = good) */
+    k2s_u32 copylist_entries;     /* entries re-audited; must equal the sealed list_entries */
+    k2s_u32 expected_pages;       /* payload pages the trampoline is told to copy */
+    k2s_u32 params_result;        /* koa2_jump_fill() return (0 = armed) */
+    k2s_u32 trampoline_bytes;     /* koa2_jump_end - koa2_jump_start; must be <= one page */
+    k2s_u32 sctlr;                /* CP15 SCTLR, read-only under IRQ/FIQ masked */
+    k2s_u32 ttbcr;                /* CP15 TTBCR; the trampoline needs it 0 */
+    k2s_u32 mmu_on;               /* SCTLR.M */
+    k2s_u32 caches_on;            /* SCTLR.C or SCTLR.I */
+    k2s_u32 irq_fiq_masked;       /* both masked during the read-only snapshot */
+    k2s_u32 watchdog_step;        /* K2S_WDT_DEFERRED: not fed in a dry-run */
+    k2s_u32 execute_available;    /* always 0 */
+    k2s_u32 stopped_before_caches;/* 1 when it reached the step before caches and put everything back */
+};
+struct k2s_exec_dryrun { struct k2s_exec_claim claim; struct k2s_exec_report report; };
+#define K2S_EXEC_DRYRUN _IOWR('K',0x37,struct k2s_exec_dryrun)
 #endif

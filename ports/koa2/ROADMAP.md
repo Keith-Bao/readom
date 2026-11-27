@@ -31,13 +31,13 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 | 复制表与审计 | 完成，测试 `koa2-copylist` |
 | 暂存模块（无跳转） | 完成，测试 `koa2-stage` |
 | 原厂符号 CRC 核对 | 工具完成，已回收 63 个原厂模块，测试 `koa2-module-crcs` |
-| 跳转蹦床 | 完成并裸机验证，测试 `koa2-jump-baremetal`，未编进模块 |
+| 跳转蹦床 | 完成并裸机验证，已编进执行模块 `koa2_handoff_exec.ko`；由空跑装好但不执行，测试 `koa2-jump-baremetal`、`koa2-exec-wiring` |
 | 静止顺序 | 只有可测的顺序，缺碰硬件的实现，测试 `koa2-quiesce` |
 | 设备测试套件 | 完成，实机暂存测试通过，见 [device-runbook.md](device-runbook.md) |
 
 ## 阶段门槛
 
-- E 推进到 F：设备上 `sealed_plan_valid`，且静止顺序的硬件实现齐备。
+- E 推进到 F：设备上 `sealed_plan_valid`，且静止顺序的硬件实现齐备（已达成，静止路径均过实机）；执行模块的空跑已能在关缓存前装好蹦床并全部放回，真跳转待上机。
 - F 推进到 G：用户手动启动，连续三次进入新内核并返回原厂。
 - G 推进到 H：EPDC 源码缺口解决，刷新、触摸、翻页、旋转可用。
 - H 推进到 I：桌面稳定 30 分钟并可返回原厂。

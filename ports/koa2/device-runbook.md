@@ -249,6 +249,14 @@ Wi-Fi 和触摸会停几秒，这是预期的。屏幕在 EPDC 停掉之后不�
 第二步只把含 `KOA2_HANDOFF` 的行留在报告里。上一次启动的完整日志是设备自己的，
 读完即删，不进 Git。
 
+## 8d. 执行模块空跑（装好蹦床，停在关缓存前，不跳转）
+
+前提：原厂系统，安全弹出并**拔掉 USB 线**，Wi-Fi 关闭（`bcmdhd` 未加载），屏幕亮着，套件已按第 2 节拷好且 `sha256sum -c` 全过。KUAL → Readom KOA2 Stage Test → **Exec dry-run: quiesce, arm trampoline, stop before caches (no jump)**。脚本依次停 X 并卸载 EPDC、只读核验 USB 空闲、让触摸休眠、下线 CPU1、`sync`，然后加载 `koa2_handoff_exec.ko` 做空跑，再按逆序全部恢复。屏幕会空白十几秒，桌面随后回来。
+
+报告在 `koa2-exec-dryrun/<UTC时间>-<PID>/report.txt`。通过的末行是 `result=exec_dryrun_restored`，同时应看到 `exec_stopped_before_caches=1`、`exec_execute_available=0`、`exec_copylist=0`、`exec_params=0`、`exec_quiesce=0`。若末行是 `exec_dryrun_restored_not_quiesced`，说明蹦床已装好并放回，但模块的静止判定拒绝了，通常因为 `/` 不是只读（报告里 `rootfs_readonly=0`）；这不算失败，记下 `writable_block_mounts` 即可。`exec_restore_failed_restart_required` 表示某项没恢复，正常重启即可回到原厂。
+
+如果设备卡死并由看门狗重启，先运行 **Read previous boot recovery log**，再取回报告：最后一行 `stage=` 就是没有返回的那一步。取回并校验报告后，从设备删除报告目录。这一项不写分区、不跳转；真跳转要等这项通过后另出套件。
+
 ## 9. 还需要设备、但不在这次流程里的事
 
 | 事 | 为什么必须上机 |
