@@ -32,7 +32,7 @@ English: [ROADMAP.en.md](ROADMAP.en.md)。当前进度见 [STATUS.md](STATUS.md)
 | 暂存模块（无跳转） | 完成，测试 `koa2-stage` |
 | 原厂符号 CRC 核对 | 工具完成，已回收 63 个原厂模块，测试 `koa2-module-crcs` |
 | 跳转蹦床 | 完成并裸机验证，已编进执行模块 `koa2_handoff_exec.ko`；由空跑装好但不执行，测试 `koa2-jump-baremetal`、`koa2-exec-wiring` |
-| 静止顺序 | 只有可测的顺序，缺碰硬件的实现，测试 `koa2-quiesce` |
+| 静止顺序 | 硬件部分由用户空间脚本完成，EPDC、USB、触摸、CPU1 均已实机停下并恢复；模块侧核验 `quiesce-verify.c`，测试 `koa2-quiesce`、`koa2-quiesce-verify`、`koa2-exec-dryrun` |
 | 设备测试套件 | 完成，实机暂存测试通过，见 [device-runbook.md](device-runbook.md) |
 
 ## 阶段门槛

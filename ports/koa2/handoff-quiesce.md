@@ -41,6 +41,22 @@
 - 硬件超时复位不经过 `imx2_restart_handler`，不会调用 `dump_lastk_to_mmc`。
 - 约束：交接从停喂到新内核 probe 看门狗的时间必须明显短于 60 秒；最小 initramfs 不能拖延 probe。
 
+#### 跳转前喂狗与新内核接手（源码审计，2026-11-27）
+
+真跳转在屏蔽 IRQ/FIQ 后，原厂的喂狗定时器 `imx2_wdt_timer_ping` 不再触发（它是内核定时器，靠中断），所以从屏蔽到新内核 `imx2_wdt_probe` 接手之间，看门狗在自由计时。预算核实：
+
+- 寄存器就在 wdog1，`0x30280000`（`imx7d.dtsi` 的 `wdog@30280000`，runtime DTB 一致），16 位、步距 2。喂狗是往 `WSR`（偏移 `0x02`）依次写 `0x5555`、`0xAAAA`（`imx2_wdt.c:50-52,191-197`）。这两笔写不碰 `WCR`，不改使能/超时，纯粹是喂，任何时刻都安全。
+- 所以执行模块在**关缓存之前**自己喂一次（`ioremap` wdog1，写两笔 WSR，随即 `iounmap`），把 `quiesce-verify.c` 的“距上次喂狗 < 10 秒”窗口坐实；这比靠用户空间占住 `/dev/watchdog` 简单，也不会在空跑后留下没人喂的 60 秒计时器（后者正是不碰看门狗、空跑记 `watchdog_step=deferred` 的原因）。
+- 接手侧：新内核 `imx2_wdt_probe` 在 `CONFIG_LAB126` 下走 `imx2_wdt_ping_if_active`——`WCR.WDE` 已置位（原厂开着，WDE 不可清），于是立刻 `set_timeout` 并起定时器继续喂（`imx2_wdt.c:247-253,385-387`）。所以约束仍是老那条：从最后一次喂到新内核 probe 看门狗必须明显短于 60 秒，`headless-smoke` 的 initramfs 不拖延 probe。喂狗只能用这一笔 WSR 写，`WCR` 一个字节都不许动（改 WDE/WT 会立即改变复位行为）。
+
+#### 新内核入口寄存器 r1/r2（源码审计，2026-11-27）
+
+蹦床按 zImage 入口约定进新内核：`r0=0`、`r1=机型号`、`r2=FDT`（`jump.S` 末尾，`head.S:546-547` 解压器也是 `r1=架构号`、`r2=atags/dtb`）。DT 启动时 r1 的确切值无所谓，已核实：
+
+- `__vet_atags`（`head-common.S:47-69`）只按 `r2` 判断——对齐、在物理 RAM 前 16 KiB、首标记是 DTB 魔数 `0xd00dfeed` 或 `ATAG_CORE`；**根本不读 r1**，不合法就把 r2 清零。
+- `setup_arch`（`setup.c:922-924`）先用 `r2` 调 `setup_machine_fdt(__atags_pointer)`；FDT 的 `compatible` 匹配上机型描述符就用它，此后 `__machine_arch_type`（即 r1 的值）不再参与。只有 FDT 无效、回退到 `setup_machine_tags` 时 r1 才有意义。
+- 本交接传的是改写过、校验过的 Zelda FDT（`fdt-rewrite.c`、`contract.c`），`setup_machine_fdt` 必然命中。所以执行模块空跑把 r1 填 `~0`（`0xffffffff`）、裸机测试也填 `~0`，都无妨——只要 `r2` 指向有效 FDT。真跳转保持 r1=`~0` 即可，不需要查某个具体机型号。
+
 ## 三、次核
 
 - 原厂 2 核都在线；`cpu_down`、`cpu_up`、`imx_cpu_die`、`imx_cpu_kill`、
@@ -61,7 +77,7 @@
 
 关闭缓存为不可逆点。之前的每一步都需要 run/undo；失败按逆序回滚，undo 失败也须记录。
 硬件实现须明确每步的完成条件、超时和恢复方式，不能把顺序测试当作硬件已验证。
-跳转蹦床仅在这之后关 MMU、按复制表复制载荷并跳转；它尚未编进设备模块。
+跳转蹦床仅在这之后关 MMU、按复制表复制载荷并跳转；2026-11-27 起它编进了执行模块 `koa2_handoff_exec.ko`，由空跑装好但不执行。
 
 **不得**经由 kernel_restart() / machine_restart()，否则会进入原厂重启路径并写 printk 到 eMMC。
 EPDC 动态帧缓冲须在当次交接采集并加入排除；下节地址只是此前一次启动的观察值。

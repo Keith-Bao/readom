@@ -33,7 +33,7 @@ Chinese: [ROADMAP.md](ROADMAP.md). Where it stands: [STATUS.md](STATUS.en.md).
 | The staging module (no jump) | Done, test `koa2-stage` |
 | Stock symbol CRCs | The tool is done; 63 stock modules recovered, test `koa2-module-crcs` |
 | The jump trampoline | Done and run bare-metal, now in the execute module `koa2_handoff_exec.ko`; armed by the dry-run but not executed, tests `koa2-jump-baremetal`, `koa2-exec-wiring` |
-| The quiesce sequence | Only the testable order; the hardware bodies are missing, test `koa2-quiesce` |
+| The quiesce sequence | The hardware part is done by userspace scripts; EPDC, USB, touch and CPU1 have each been stopped and restored on the device; the module-side check is `quiesce-verify.c`, tests `koa2-quiesce`, `koa2-quiesce-verify`, `koa2-exec-dryrun` |
 | The device test kit | Done, device staging passed, see [device-runbook.md](device-runbook.en.md) |
 
 ## What each stage has to show before the next

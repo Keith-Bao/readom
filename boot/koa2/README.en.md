@@ -7,8 +7,10 @@ Chinese: [README.md](README.md). The device procedure is
 
 **Where it stands**: everything that stages and checks is written and has host
 tests; the jump trampoline is written and has run bare-metal on QEMU's
-Cortex-A7, **but it is built into no module**; the quiesce sequence has only
-its testable order, and the parts that touch hardware are not written.
+Cortex-A7, and is now built into a **separate execute module**, armed by its
+dry run but not executed (see "The execute module" below); quiescing is done
+by userspace scripts, every peripheral has been stopped and restored on the
+device, and the module only checks the result.
 **Device staging passed on 2026-11-21; no jump has run on hardware.**
 
 ## The order
@@ -21,7 +23,7 @@ its testable order, and the parts that touch hardware are not written.
 | 4 | Work out the layout and validate it | `plan.c` | Yes |
 | 5 | Rewrite the FDT (bootargs, initrd, clear the memreserves) | `fdt-rewrite.c` | Yes |
 | 6 | Build the copy list and audit it | `copylist.c` | Yes |
-| 7 | Quiesce: EPDC, Wi-Fi, USB, SDMA, eMMC, the second core, interrupts, the watchdog | `quiesce.c` (hardware parts unwritten) | Every step must roll back |
+| 7 | Quiesce: EPDC, Wi-Fi, USB, SDMA, eMMC, the second core, interrupts, the watchdog | Userspace scripts stop the devices (`exec-dryrun.sh`), `quiesce-verify.c` checks; the order table is `quiesce.c` | Every step must roll back |
 | 8 | Caches off, MMU off, walk the list, jump | `jump.S` (in the execute module, armed by the dry-run but not executed) | **Irreversible** |
 
 Steps 1 to 6 are what the device test does today, and it unloads afterwards.
