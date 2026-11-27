@@ -1,0 +1,31 @@
+{
+  "module": "/tmp/tmp.zqNcEzDuWJ/koa2_handoff_stage.ko",
+  "module_vermagic": "4.1.15-lab126-koa2-headless-smoke SMP preempt mod_unload modversions ARMv7 p2v8 ",
+  "stock_vermagic": "4.1.15-lab126 SMP preempt mod_unload modversions ARMv7 p2v8 ",
+  "stock_modules": 63,
+  "stock_symbols": 1130,
+  "vermagic_tail_equal": true,
+  "module_layout": "match",
+  "imports": 35,
+  "matched": 35,
+  "differ": [],
+  "unknown": [],
+  "tree_vs_stock": {
+    "symvers": "/home/builder/readom-work/out-module-abi/Module.symvers",
+    "common": 1129,
+    "equal": 1120,
+    "differ": [
+      "cfb_copyarea",
+      "cfb_fillrect",
+      "cfb_imageblit",
+      "fb_set_var",
+      "framebuffer_alloc",
+      "framebuffer_release",
+      "lock_fb_info",
+      "register_framebuffer",
+      "unregister_framebuffer"
+    ]
+  },
+  "passed": true,
+  "scope": "Version checks only. A pass says the stock loader would accept the CRCs; it does not say the module is correct, safe, or has been loaded."
+}
