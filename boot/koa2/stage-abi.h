@@ -103,4 +103,10 @@ struct k2s_exec_report {
 };
 struct k2s_exec_dryrun { struct k2s_exec_claim claim; struct k2s_exec_report report; };
 #define K2S_EXEC_DRYRUN _IOWR('K',0x37,struct k2s_exec_dryrun)
+/* Live jump (koa2_handoff_jump.ko, built with KOA2_EXEC_BUILD and
+ * KOA2_JUMP_LIVE). Only this build sets execute_available=1 and exposes
+ * K2S_EXEC_JUMP. Requires K2S_JUMP_MAGIC and a sealed, quiesced state. */
+#define K2S_JUMP_MAGIC 0x4b4f4132u  /* "KOA2" */
+struct k2s_exec_jump { k2s_u32 magic; struct k2s_exec_claim claim; };
+#define K2S_EXEC_JUMP _IOW('K',0x38,struct k2s_exec_jump)
 #endif

@@ -79,6 +79,9 @@ static atomic_t opened = ATOMIC_INIT(0);
 #ifdef KOA2_EXEC_BUILD
 /* The execute build adds this; its body is exec.c, #included at the tail. */
 static int exec_dryrun(struct store *s, void __user *arg);
+#ifdef KOA2_JUMP_LIVE
+static int exec_jump(struct store *s, void __user *arg);
+#endif
 #endif
 /* Every import has to be one some stock module also imports, so that its CRC
  * can be checked before loading (ports/koa2/module-crcs.py). That rules out
@@ -448,6 +451,9 @@ static long stage_ioctl(struct file *file, unsigned int command, unsigned long a
     case K2S_MARK: rc=mark(s,(void __user *)arg); break;
 #ifdef KOA2_EXEC_BUILD
     case K2S_EXEC_DRYRUN: rc=exec_dryrun(s,(void __user *)arg); break;
+#ifdef KOA2_JUMP_LIVE
+    case K2S_EXEC_JUMP: rc=exec_jump(s,(void __user *)arg); break;
+#endif
 #endif
     case K2S_DISCARD: if(arg) { rc=-EINVAL; break; } discard(s); rc=0; break;
     case K2S_STATUS:
@@ -491,7 +497,9 @@ static const struct file_operations ops={
     .owner=THIS_MODULE, .open=stage_open, .release=stage_release,
     .unlocked_ioctl=stage_ioctl, .llseek=no_llseek,
 };
-#ifdef KOA2_EXEC_BUILD
+#ifdef KOA2_JUMP_LIVE
+#define K2S_DEVICE_NAME "koa2-handoff-jump"
+#elif defined(KOA2_EXEC_BUILD)
 #define K2S_DEVICE_NAME "koa2-handoff-exec"
 #else
 #define K2S_DEVICE_NAME "koa2-handoff-stage"
@@ -516,7 +524,12 @@ module_init(stage_init); module_exit(stage_exit);
 MODULE_LICENSE("GPL v2");
 #ifdef KOA2_EXEC_BUILD
 #include "exec.c"
+#ifdef KOA2_JUMP_LIVE
+#include "jump-live.c"
+MODULE_DESCRIPTION("KOA2 handoff live jump: stage, quiesce-verify, feed wdog1, disable caches, jump");
+#else
 MODULE_DESCRIPTION("KOA2 handoff execute candidate: stage, arm trampoline, quiesce dry-run; no jump");
+#endif
 #else
 MODULE_DESCRIPTION("KOA2 handoff staging: stage, check, rewrite FDT, validate plan; no jump");
 #endif

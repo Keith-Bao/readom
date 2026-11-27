@@ -26,6 +26,7 @@ _Static_assert(sizeof(struct k2s_put)==24, "k2s_put");
 _Static_assert(sizeof(struct k2s_status)==72, "k2s_status");
 _Static_assert(sizeof(struct k2s_mark)==8, "k2s_mark");
 _Static_assert(sizeof(struct k2s_exec_dryrun)==92, "k2s_exec_dryrun");
+_Static_assert(sizeof(struct k2s_exec_jump)==32, "k2s_exec_jump");
 static unsigned char *slurp(const char *path, size_t *bytes) {
     /* /sys/firmware/fdt reports no size, so read until EOF. */
     int fd=open(path,O_RDONLY); size_t cap=1<<16,n=0; unsigned char *p=malloc(cap);
@@ -44,10 +45,11 @@ int main(int argc, char **argv) {
     struct k2s_begin b; struct k2s_status st;
     unsigned char *data[K2S_SLOTS]; size_t bytes[K2S_SLOTS];
     const char *device="/dev/koa2-handoff-stage";
-    unsigned i; int fd,rc,want_mark=0,want_exec=0;
+    unsigned i; int fd,rc,want_mark=0,want_exec=0,want_jump=0;
     struct k2s_exec_dryrun ex;
     if(argc>=2 && !strcmp(argv[argc-1],"--mark")) { want_mark=1; argc--; }
     else if(argc>=2 && !strcmp(argv[argc-1],"--exec-dryrun")) { want_exec=1; argc--; device="/dev/koa2-handoff-exec"; }
+    else if(argc>=2 && !strcmp(argv[argc-1],"--exec-jump")) { want_mark=1; want_jump=1; argc--; device="/dev/koa2-handoff-jump"; }
     if(argc==6 && !strcmp(argv[1],"--device")) { device=argv[2]; argv+=2; argc-=2; }
     if(argc!=4) { fprintf(stderr,"usage: %s [--device PATH] zImage fdt initramfs [--mark|--exec-dryrun]\n",argv[0]); return 2; }
     memset(&b,0,sizeof(b)); b.version=K2S_VERSION;
@@ -94,6 +96,21 @@ int main(int argc, char **argv) {
                         ex.report.caches_on,ex.report.irq_fiq_masked,
                         ex.report.watchdog_step==K2S_WDT_DEFERRED?"deferred":"unexpected",
                         ex.report.execute_available,ex.report.stopped_before_caches);
+        }
+    }
+    if(!rc && want_jump) {
+        const char *claim=getenv("KOA2_EXEC_CLAIM");
+        unsigned v[6];
+        struct k2s_exec_jump jp;
+        memset(&jp,0,sizeof(jp));
+        if(!claim || sscanf(claim,"%u %u %u %u %u %u",&v[0],&v[1],&v[2],&v[3],&v[4],&v[5])!=6) {
+            fprintf(stderr,"KOA2_EXEC_CLAIM missing or malformed\n"); rc=1;
+        } else {
+            jp.magic=K2S_JUMP_MAGIC;
+            jp.claim.drivers_present=v[0]; jp.claim.touch_driver_present=v[1]; jp.claim.touch_quiesced_verified=v[2];
+            jp.claim.usb_driver_present=v[3]; jp.claim.usb_quiesced_verified=v[4]; jp.claim.rootfs_readonly=v[5];
+            fflush(stdout); fflush(stderr);
+            if(ioctl(fd,K2S_EXEC_JUMP,&jp)) { perror("exec_jump"); rc=1; }
         }
     }
     memset(&st,0,sizeof(st));
